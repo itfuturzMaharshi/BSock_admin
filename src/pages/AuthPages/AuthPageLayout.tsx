@@ -20,7 +20,7 @@ export default function AuthLayout({
               <Link to="/" className="block mb-4">
                 <div className="flex items-center justify-center gap-4 text-3xl font-extrabold text-white">
                   <i className="fas fa-mobile-alt text-5xl text-white"></i>
-                  <span>BStock</span>
+                  <span>xGSM</span>
                 </div>
               </Link>
             </div>

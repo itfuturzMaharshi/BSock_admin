@@ -305,8 +305,8 @@ const AppSidebar: React.FC = () => {
         <Link to="/">
           {isExpanded || isHovered || isMobileOpen ? (
             <div className="flex items-center gap-4 text-xl font-extrabold text-gray-800 dark:text-white">
-              <i className="fas fa-mobile-alt text-3xl text-blue-600 dark:text-blue-400"></i>
-              <span>BStock Admin Panel</span>
+              <i className="fas fa-mobile-alt text-3xl text-[#0071E0] dark:text-blue-400"></i>
+              <span>xGSM Admin Panel</span>
             </div>
           ) : (
             <i className="fas fa-mobile-alt text-5xl text-blue-600 dark:text-blue-400"></i>
