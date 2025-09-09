@@ -41,6 +41,11 @@ const navItems: NavItem[] = [
     path: "/profile",
   },
   {
+    icon: <UserCircleIcon />,
+    name: "Sku Family",
+    path: "/sku-family",
+  },
+  {
     name: "Forms",
     icon: <ListIcon />,
     subItems: [{ name: "Form Elements", path: "/form-elements", pro: false }],
