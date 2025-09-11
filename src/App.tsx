@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router";
+import { HashRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import SignIn from "./pages/AuthPages/SignIn";
 import SignUp from "./pages/AuthPages/SignUp";
 import NotFound from "./pages/OtherPage/NotFound";
@@ -28,9 +28,12 @@ export default function App() {
       <Router>
         <ScrollToTop />
         <Routes>
+          {/* Redirect root to signin */}
+          <Route path="/" element={<Navigate to="/signin" replace />} />
+
           {/* Dashboard Layout */}
           <Route element={<AppLayout />}>
-            <Route index path="/" element={<Home />} />
+            <Route path="/home" element={<Home />} />
 
             {/* Others Page */}
             <Route path="/profile" element={<UserProfiles />} />
@@ -39,7 +42,6 @@ export default function App() {
             <Route path="/admin" element={<Admins />} />
             <Route path="/sku-family" element={<SkuFamily />} />
             <Route path="/products" element={<Products />} />
-
 
             {/* Forms */}
             <Route path="/form-elements" element={<FormElements />} />

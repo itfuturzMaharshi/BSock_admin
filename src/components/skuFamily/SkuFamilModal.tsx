@@ -1,42 +1,31 @@
 import React, { useState, useEffect, useRef } from "react";
+import Swal from "sweetalert2";
 
-// Define the interface for country variant
-interface CountryVariant {
+interface SkuFamily {
+  _id?: string;
+  name: string;
+  code: string;
+  brand: string;
+  description: string;
+  images: string[];
+  colorVariant: string;
   country: string;
   simType: string;
   networkBands: string;
-}
-
-// Define the interface for SKU family data
-interface SkuFamily {
-  name: string;
-  code: string;
-  brand: string;
-  description: string;
-  images: string;
-  colorVariant: string;
-  countryVariant: CountryVariant;
-}
-
-// Define the interface for form data
-interface FormData {
-  name: string;
-  code: string;
-  brand: string;
-  description: string;
-  images: File[];
-  colorVariant: string;
-  countryVariant: {
-    country: string;
-    simType: string[];
-    networkBands: string;
-  };
+  countryVariant?: string;
+  isApproved?: boolean;
+  isDeleted?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  updatedBy?: string;
+  approvedBy?: string | null;
+  __v?: string;
 }
 
 interface SkuFamilyModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (newItem: SkuFamily) => void;
+  onSave: (formData: FormData) => Promise<void>;
   editItem?: SkuFamily;
 }
 
@@ -46,21 +35,22 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
   onSave,
   editItem,
 }) => {
-  const [formData, setFormData] = useState<FormData>({
+  const [formData, setFormData] = useState({
     name: "",
     code: "",
     brand: "",
     description: "",
-    images: [],
     colorVariant: "",
-    countryVariant: {
-      country: "",
-      simType: [],
-      networkBands: "",
-    },
+    country: "",
+    simType: [] as string[], // Temporary array for checkbox handling
+    networkBands: "",
   });
+  const [images, setImages] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [imageError, setImageError] = useState<string>("");
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [apiError, setApiError] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const colorOptions = ["Graphite", "Silver", "Gold", "Sierra Blue", "Mixed"];
@@ -73,21 +63,14 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
     if (isOpen) {
       if (editItem) {
         setFormData({
-          name: editItem.name,
-          code: editItem.code,
-          brand: editItem.brand,
-          description: editItem.description,
-          images: [],
-          colorVariant: editItem.colorVariant,
-          countryVariant: {
-            country: editItem.countryVariant.country,
-            simType: editItem.countryVariant.simType
-              ? editItem.countryVariant.simType
-                  .split(", ")
-                  .filter((s) => s.trim() !== "")
-              : [],
-            networkBands: editItem.countryVariant.networkBands,
-          },
+          name: editItem.name || "",
+          code: editItem.code || "",
+          brand: editItem.brand || "",
+          description: editItem.description || "",
+          colorVariant: editItem.colorVariant || "",
+          country: editItem.country || "",
+          simType: editItem.simType ? editItem.simType.split(", ") : [],
+          networkBands: editItem.networkBands || "",
         });
       } else {
         setFormData({
@@ -95,53 +78,63 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
           code: "",
           brand: "",
           description: "",
-          images: [],
           colorVariant: "",
-          countryVariant: {
-            country: "",
-            simType: [],
-            networkBands: "",
-          },
+          country: "",
+          simType: [],
+          networkBands: "",
         });
       }
+      setImages([]);
       setImageError("");
+      setFormErrors({});
+      setApiError("");
     }
   }, [isOpen, editItem]);
+
+  const validateForm = () => {
+    const errors: { [key: string]: string } = {};
+    if (!formData.name.trim()) errors.name = "Name is required";
+    if (!formData.code.trim()) errors.code = "Code is required";
+    if (!formData.brand.trim()) errors.brand = "Brand is required";
+    if (!formData.description.trim()) errors.description = "Description is required";
+    if (!formData.colorVariant) errors.colorVariant = "Color Variant is required";
+    if (!formData.country) errors.country = "Country is required";
+    if (formData.simType.length === 0) errors.simType = "At least one SIM Type is required";
+    if (!formData.networkBands) errors.networkBands = "Network Band is required";
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   const handleColorChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setFormData((prev) => ({ ...prev, colorVariant: e.target.value }));
+    setFormErrors((prev) => ({ ...prev, colorVariant: "" }));
   };
 
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value, checked } = e.target;
     setFormData((prev) => {
       const simType = checked
-        ? [...prev.countryVariant.simType, value]
-        : prev.countryVariant.simType.filter((item) => item !== value);
-      return {
-        ...prev,
-        countryVariant: { ...prev.countryVariant, simType },
-      };
+        ? [...prev.simType, value]
+        : prev.simType.filter((item) => item !== value);
+      return { ...prev, simType };
     });
+    setFormErrors((prev) => ({ ...prev, simType: "" }));
   };
 
   const handleCountryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setFormData((prev) => ({
-      ...prev,
-      countryVariant: { ...prev.countryVariant, country: e.target.value },
-    }));
+    setFormData((prev) => ({ ...prev, country: e.target.value }));
+    setFormErrors((prev) => ({ ...prev, country: "" }));
   };
 
   const handleNetworkChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setFormData((prev) => ({
-      ...prev,
-      countryVariant: { ...prev.countryVariant, networkBands: e.target.value },
-    }));
+    setFormData((prev) => ({ ...prev, networkBands: e.target.value }));
+    setFormErrors((prev) => ({ ...prev, networkBands: "" }));
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -160,32 +153,26 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
     const files = Array.from(e.dataTransfer.files).filter((file) =>
       file.type.startsWith("image/")
     );
-    const totalImages = formData.images.length + files.length;
+    const totalImages = images.length + files.length;
     if (totalImages > MAX_IMAGES) {
       setImageError(`Maximum ${MAX_IMAGES} images allowed`);
       return;
     }
     if (files.length > 0) {
       setImageError("");
-      setFormData((prev) => ({
-        ...prev,
-        images: [...prev.images, ...files],
-      }));
+      setImages((prev) => [...prev, ...files]);
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files ? Array.from(e.target.files) : [];
-    const totalImages = formData.images.length + files.length;
+    const totalImages = images.length + files.length;
     if (totalImages > MAX_IMAGES) {
       setImageError(`Maximum ${MAX_IMAGES} images allowed`);
       return;
     }
     setImageError("");
-    setFormData((prev) => ({
-      ...prev,
-      images: [...prev.images, ...files],
-    }));
+    setImages((prev) => [...prev, ...files]);
   };
 
   const handleClick = () => {
@@ -193,35 +180,49 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
   };
 
   const handleRemoveImage = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index),
-    }));
-    if (formData.images.length <= MAX_IMAGES) {
+    setImages((prev) => prev.filter((_, i) => i !== index));
+    if (images.length <= MAX_IMAGES) {
       setImageError("");
     }
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const imagesString =
-      formData.images.length > 0
-        ? formData.images.map((file) => URL.createObjectURL(file)).join(", ")
-        : editItem
-        ? editItem.images
-        : "";
-    const newItem: SkuFamily = {
-      ...formData,
-      images: imagesString,
-      colorVariant: formData.colorVariant,
-      countryVariant: {
-        ...formData.countryVariant,
-        simType: formData.countryVariant.simType.join(", "),
-        networkBands: formData.countryVariant.networkBands,
-      },
-    };
-    onSave(newItem);
-    onClose();
+    if (!validateForm()) {
+      setApiError("Please fill all required fields");
+      return;
+    }
+
+    setIsLoading(true);
+    setApiError("");
+
+    try {
+      const formDataToSend = new FormData();
+      formDataToSend.append("name", formData.name.trim());
+      formDataToSend.append("code", formData.code.trim());
+      formDataToSend.append("brand", formData.brand.trim());
+      formDataToSend.append("description", formData.description.trim());
+      formDataToSend.append("colorVariant", formData.colorVariant);
+      formDataToSend.append("country", formData.country);
+      formDataToSend.append("simType", formData.simType.join(", "));
+      formDataToSend.append("networkBands", formData.networkBands);
+      images.forEach((image) => {
+        formDataToSend.append("images", image);
+      });
+
+      await onSave(formDataToSend);
+      onClose();
+    } catch (error) {
+      const errorMessage = (error as Error).message || "Failed to save SKU family";
+      setApiError(errorMessage);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: errorMessage,
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -231,16 +232,15 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50 transition-opacity duration-300">
       <div className="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-2xl w-full max-w-[800px] max-h-[90vh] overflow-y-auto transform transition-all duration-300 scale-100">
-        {/* Font Awesome CDN */}
         <link
           rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
         />
-        {/* Close Icon */}
         <button
           type="button"
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-transform duration-200 hover:scale-110"
+          disabled={isLoading}
         >
           <svg
             className="w-6 h-6"
@@ -260,7 +260,6 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
           {title}
         </h2>
         <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Name and Code Row */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
@@ -271,10 +270,14 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                 name="name"
                 value={formData.name}
                 onChange={handleInputChange}
-                className="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
+                className={`w-full p-3 bg-gray-50 dark:bg-gray-800 border ${
+                  formErrors.name ? "border-red-500" : "border-gray-200 dark:border-gray-700"
+                } rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200`}
                 placeholder="Enter Name"
                 required
+                disabled={isLoading}
               />
+              {formErrors.name && <p className="text-red-500 text-sm mt-1">{formErrors.name}</p>}
             </div>
             <div>
               <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
@@ -285,14 +288,16 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                 name="code"
                 value={formData.code}
                 onChange={handleInputChange}
-                className="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
+                className={`w-full p-3 bg-gray-50 dark:bg-gray-800 border ${
+                  formErrors.code ? "border-red-500" : "border-gray-200 dark:border-gray-700"
+                } rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200`}
                 placeholder="Enter Code"
                 required
+                disabled={isLoading}
               />
+              {formErrors.code && <p className="text-red-500 text-sm mt-1">{formErrors.code}</p>}
             </div>
           </div>
-
-          {/* Brand and Description Row */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
@@ -303,10 +308,14 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                 name="brand"
                 value={formData.brand}
                 onChange={handleInputChange}
-                className="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
+                className={`w-full p-3 bg-gray-50 dark:bg-gray-800 border ${
+                  formErrors.brand ? "border-red-500" : "border-gray-200 dark:border-gray-700"
+                } rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200`}
                 placeholder="Enter Brand"
                 required
+                disabled={isLoading}
               />
+              {formErrors.brand && <p className="text-red-500 text-sm mt-1">{formErrors.brand}</p>}
             </div>
             <div>
               <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
@@ -317,21 +326,25 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                 name="description"
                 value={formData.description}
                 onChange={handleInputChange}
-                className="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
+                className={`w-full p-3 bg-gray-50 dark:bg-gray-800 border ${
+                  formErrors.description ? "border-red-500" : "border-gray-200 dark:border-gray-700"
+                } rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200`}
                 placeholder="Enter Description"
                 required
+                disabled={isLoading}
               />
+              {formErrors.description && (
+                <p className="text-red-500 text-sm mt-1">{formErrors.description}</p>
+              )}
             </div>
           </div>
-
-          {/* Image Upload Section */}
           <div>
             <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
               Images
             </label>
-            {editItem && (
+            {editItem && editItem.images.length > 0 && (
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                Current images: {editItem.images || "None"}
+                Current images: {editItem.images.join(", ") || "None"}
               </p>
             )}
             <div
@@ -340,9 +353,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
               onDrop={handleDrop}
               onClick={handleClick}
               className={`w-full p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer transition duration-200 flex flex-col items-center justify-center ${
-                isDragging
-                  ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                  : ""
+                isDragging ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : ""
               }`}
             >
               <input
@@ -352,10 +363,11 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                 accept="image/*"
                 multiple
                 className="hidden"
+                disabled={isLoading}
               />
-              {formData.images.length > 0 ? (
+              {images.length > 0 ? (
                 <div className="flex flex-wrap gap-3 justify-start">
-                  {formData.images.map((image, index) => (
+                  {images.map((image, index) => (
                     <div key={index} className="relative w-20 h-20">
                       <img
                         src={URL.createObjectURL(image)}
@@ -369,6 +381,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                           handleRemoveImage(index);
                         }}
                         className="absolute top-1 right-1 bg-red-500 text-white w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-600 transition-colors shadow-md"
+                        disabled={isLoading}
                       >
                         <i className="fas fa-trash text-xs"></i>
                       </button>
@@ -387,12 +400,8 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                 </>
               )}
             </div>
-            {imageError && (
-              <p className="text-red-500 text-sm mt-2">{imageError}</p>
-            )}
+            {imageError && <p className="text-red-500 text-sm mt-2">{imageError}</p>}
           </div>
-
-          {/* Color Variant and Country Row */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
@@ -401,8 +410,11 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
               <select
                 value={formData.colorVariant}
                 onChange={handleColorChange}
-                className="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
+                className={`w-full p-3 bg-gray-50 dark:bg-gray-800 border ${
+                  formErrors.colorVariant ? "border-red-500" : "border-gray-200 dark:border-gray-700"
+                } rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200`}
                 required
+                disabled={isLoading}
               >
                 <option value="">Select Color</option>
                 {colorOptions.map((option) => (
@@ -411,16 +423,22 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                   </option>
                 ))}
               </select>
+              {formErrors.colorVariant && (
+                <p className="text-red-500 text-sm mt-1">{formErrors.colorVariant}</p>
+              )}
             </div>
             <div>
               <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
                 Country
               </label>
               <select
-                value={formData.countryVariant.country}
+                value={formData.country}
                 onChange={handleCountryChange}
-                className="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
+                className={`w-full p-3 bg-gray-50 dark:bg-gray-800 border ${
+                  formErrors.country ? "border-red-500" : "border-gray-200 dark:border-gray-700"
+                } rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200`}
                 required
+                disabled={isLoading}
               >
                 <option value="">Select Country</option>
                 {countryOptions.map((option) => (
@@ -429,10 +447,9 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                   </option>
                 ))}
               </select>
+              {formErrors.country && <p className="text-red-500 text-sm mt-1">{formErrors.country}</p>}
             </div>
           </div>
-
-          {/* SIM Type and Network Bands Row */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
@@ -444,9 +461,10 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                     <input
                       type="checkbox"
                       value={option}
-                      checked={formData.countryVariant.simType.includes(option)}
+                      checked={formData.simType.includes(option)}
                       onChange={handleCheckboxChange}
                       className="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 transition duration-200"
+                      disabled={isLoading}
                     />
                     <label className="ml-3 text-base font-medium text-gray-950 dark:text-gray-200">
                       {option}
@@ -454,16 +472,20 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                   </div>
                 ))}
               </div>
+              {formErrors.simType && <p className="text-red-500 text-sm mt-1">{formErrors.simType}</p>}
             </div>
             <div>
               <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
                 Network Bands
               </label>
               <select
-                value={formData.countryVariant.networkBands}
+                value={formData.networkBands}
                 onChange={handleNetworkChange}
-                className="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
+                className={`w-full p-3 bg-gray-50 dark:bg-gray-800 border ${
+                  formErrors.networkBands ? "border-red-500" : "border-gray-200 dark:border-gray-700"
+                } rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200`}
                 required
+                disabled={isLoading}
               >
                 <option value="">Select Network Band</option>
                 {networkOptions.map((option) => (
@@ -472,23 +494,27 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                   </option>
                 ))}
               </select>
+              {formErrors.networkBands && (
+                <p className="text-red-500 text-sm mt-1">{formErrors.networkBands}</p>
+              )}
             </div>
           </div>
-
-          {/* Buttons */}
+          {apiError && <p className="text-red-500 text-sm mt-2">{apiError}</p>}
           <div className="flex justify-end gap-4 pt-6">
             <button
               type="button"
               onClick={onClose}
               className="px-6 py-2.5 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition duration-200 transform hover:scale-105"
+              disabled={isLoading}
             >
               Cancel
             </button>
             <button
               type="submit"
               className="px-6 py-2.5 bg-[#0071E0] text-white rounded-lg hover:bg-blue-600 transition duration-200 transform hover:scale-105"
+              disabled={isLoading}
             >
-              {editItem ? "Update SKU Family" : "Create SKU Family"}
+              {isLoading ? "Saving..." : editItem ? "Update SKU Family" : "Create SKU Family"}
             </button>
           </div>
         </form>
