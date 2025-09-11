@@ -1,28 +1,22 @@
 import React, { useState, useEffect } from "react";
 import Swal from "sweetalert2";
-import toastHelper from "../../utils/toastHelper"; // Adjust the path to your toastHelper file
-import SkuFamilyModal from "./SkuFamilModal";
+import toastHelper from "../../utils/toastHelper";
+import AdminsModal from "./AdminsModal";
 
-// Define the interface for country variant
-interface CountryVariant {
-  country: string;
-  simType: string;
-  networkBands: string;
-}
-
-// Define the interface for SKU family data
-interface SkuFamily {
+// Define the interface for Admin data
+interface Admin {
+  profileImage: string;
   name: string;
-  code: string;
-  brand: string;
-  description: string;
-  images: string;
-  colorVariant: string;
-  countryVariant: CountryVariant;
+  email: string;
+  password: string;
+  isSuperAdmin: boolean;
+  isApproved: boolean;
+  isActive: boolean;
+  isDeleted: boolean;
 }
 
-const SkyFamilyTable: React.FC = () => {
-  const [skyFamilyData, setSkyFamilyData] = useState<SkuFamily[]>([]);
+const AdminsTable: React.FC = () => {
+  const [adminsData, setAdminsData] = useState<Admin[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -35,16 +29,16 @@ const SkyFamilyTable: React.FC = () => {
     setLoading(false);
   }, []);
 
-  const handleSave = (newItem: SkuFamily) => {
+  const handleSave = (newItem: Admin) => {
     if (editIndex !== null) {
-      const updatedData = [...skyFamilyData];
+      const updatedData = [...adminsData];
       updatedData[editIndex] = newItem;
-      setSkyFamilyData(updatedData);
+      setAdminsData(updatedData);
       setEditIndex(null);
-      toastHelper.showTost("SKU Family updated successfully!", "success");
+      toastHelper.showTost("Admin updated successfully!", "success");
     } else {
-      setSkyFamilyData((prev) => [...prev, newItem]);
-      toastHelper.showTost("SKU Family added successfully!", "success");
+      setAdminsData((prev) => [...prev, newItem]);
+      toastHelper.showTost("Admin added successfully!", "success");
     }
     setIsModalOpen(false);
   };
@@ -57,27 +51,44 @@ const SkyFamilyTable: React.FC = () => {
   const handleDelete = async (index: number) => {
     const confirmed = await Swal.fire({
       title: "Are you sure?",
-      text: "This will delete the SKU Family!",
+      text: "This will mark the admin as deleted!",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonText: "Yes, delete it!",
+      confirmButtonText: "Yes, mark as deleted!",
       cancelButtonText: "No, cancel!",
     });
 
     if (confirmed.isConfirmed) {
-      const updatedData = skyFamilyData.filter((_, i) => i !== index);
-      setSkyFamilyData(updatedData);
-      toastHelper.showTost("SKU Family deleted successfully!", "success");
+      const updatedData = [...adminsData];
+      updatedData[index].isDeleted = true;
+      setAdminsData(updatedData);
+      toastHelper.showTost("Admin marked as deleted!", "success");
+    }
+  };
+
+  const handleRestore = async (index: number) => {
+    const confirmed = await Swal.fire({
+      title: "Are you sure?",
+      text: "This will restore the admin!",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Yes, restore!",
+      cancelButtonText: "No, cancel!",
+    });
+
+    if (confirmed.isConfirmed) {
+      const updatedData = [...adminsData];
+      updatedData[index].isDeleted = false;
+      setAdminsData(updatedData);
+      toastHelper.showTost("Admin restored successfully!", "success");
     }
   };
 
   // Filter data
-  const filteredData = skyFamilyData.filter(
+  const filteredData = adminsData.filter(
     (item) =>
       item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.description.toLowerCase().includes(searchTerm.toLowerCase())
+      item.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const totalDocs = filteredData.length;
@@ -91,11 +102,6 @@ const SkyFamilyTable: React.FC = () => {
 
   return (
     <div className="p-4">
-      {/* Font Awesome CDN */}
-      <link
-        rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-      />
       {/* Table Container */}
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-sm">
         {/* Table Header with Controls */}
@@ -106,7 +112,7 @@ const SkyFamilyTable: React.FC = () => {
               <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
               <input
                 type="text"
-                placeholder="Search by name or code..."
+                placeholder="Search by name or email..."
                 className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-64"
                 value={searchTerm}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
@@ -125,7 +131,7 @@ const SkyFamilyTable: React.FC = () => {
             }}
           >
             <i className="fas fa-plus text-xs"></i>
-            Add SKU Family
+            Add Admin
           </button>
         </div>
 
@@ -135,31 +141,25 @@ const SkyFamilyTable: React.FC = () => {
             <thead className="bg-gray-100 dark:bg-gray-900">
               <tr>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Image
+                  Profile Image
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Name
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Code
+                  Email
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Brand
+                  Password
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Description
+                  Super Admin
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Color Variant
+                  Approved
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Country
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  SIM Type
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Network Bands
+                  Active
                 </th>
                 <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Actions
@@ -169,64 +169,58 @@ const SkyFamilyTable: React.FC = () => {
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={10} className="p-12 text-center">
+                  <td colSpan={8} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
-                      Loading SKU Families...
+                      Loading Admins...
                     </div>
                   </td>
                 </tr>
               ) : paginatedData.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="p-12 text-center">
+                  <td colSpan={8} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
-                      No products found
+                      No admins found
                     </div>
                   </td>
                 </tr>
               ) : (
-                paginatedData.map((item: SkuFamily, index: number) => (
+                paginatedData.map((item: Admin, index: number) => (
                   <tr
                     key={index}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                    className={`transition-colors ${
+                      item.isDeleted
+                        ? "bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30"
+                        : "hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                    }`}
                   >
                     <td className="px-6 py-4">
                       <img
                         src={
-                          item.images.split(", ")[0] ||
-                          "https://via.placeholder.com/60x60?text=Product"
+                          item.profileImage ||
+                          "https://via.placeholder.com/60x60?text=Admin"
                         }
                         alt={item.name}
                         className="w-12 h-12 object-contain rounded-md border border-gray-200 dark:border-gray-600"
-                        onError={(e) => {
-                          e.currentTarget.src =
-                            "https://via.placeholder.com/60x60?text=Product";
-                        }}
                       />
                     </td>
                     <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-gray-200">
                       {item.name}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.code}
+                      {item.email}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.brand}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 max-w-xs overflow-hidden">
-                      {item.description}
+                      {item.password.replace(/./g, "*")}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.colorVariant}
+                      {item.isSuperAdmin ? "Yes" : "No"}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.countryVariant.country}
+                      {item.isApproved ? "Yes" : "No"}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.countryVariant.simType}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.countryVariant.networkBands}
+                      {item.isActive ? "Yes" : "No"}
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
                       <div className="flex items-center justify-center gap-3">
@@ -236,12 +230,21 @@ const SkyFamilyTable: React.FC = () => {
                         >
                           <i className="fas fa-edit"></i>
                         </button>
-                        <button
-                          onClick={() => handleDelete(index)}
-                          className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
-                        >
-                          <i className="fas fa-trash"></i>
-                        </button>
+                        {item.isDeleted ? (
+                          <button
+                            onClick={() => handleRestore(index)}
+                            className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors"
+                          >
+                            <i className="fa-solid fa-rotate-right"></i>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleDelete(index)}
+                            className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                          >
+                            <i className="fas fa-trash"></i>
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -298,17 +301,17 @@ const SkyFamilyTable: React.FC = () => {
         </div>
       </div>
 
-      <SkuFamilyModal
+      <AdminsModal
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);
           setEditIndex(null);
         }}
         onSave={handleSave}
-        editItem={editIndex !== null ? skyFamilyData[editIndex] : undefined}
+        editItem={editIndex !== null ? adminsData[editIndex] : undefined}
       />
     </div>
   );
 };
 
-export default SkyFamilyTable;
+export default AdminsTable;

@@ -40,10 +40,20 @@ const navItems: NavItem[] = [
     name: "User Profile",
     path: "/profile",
   },
+    {
+    icon: <UserCircleIcon />,
+    name: "Admins",
+    path: "/admin",
+  },
   {
     icon: <UserCircleIcon />,
     name: "Sku Family",
     path: "/sku-family",
+  },
+  {
+    icon: <UserCircleIcon />,
+    name: "Products",
+    path: "/products",
   },
   {
     name: "Forms",
@@ -311,7 +321,7 @@ const AppSidebar: React.FC = () => {
           {isExpanded || isHovered || isMobileOpen ? (
             <div className="flex items-center gap-4 text-xl font-extrabold text-gray-800 dark:text-white">
               <i className="fas fa-mobile-alt text-3xl text-[#0071E0] dark:text-blue-400"></i>
-              <span>xGSM Admin Panel</span>
+              <span>xGSM Admin</span>
             </div>
           ) : (
             <i className="fas fa-mobile-alt text-5xl text-blue-600 dark:text-blue-400"></i>

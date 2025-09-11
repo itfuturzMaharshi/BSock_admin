@@ -1,28 +1,25 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Swal from "sweetalert2";
-import toastHelper from "../../utils/toastHelper"; // Adjust the path to your toastHelper file
-import SkuFamilyModal from "./SkuFamilModal";
+import toastHelper from "../../utils/toastHelper";
+import ProductModal from "./ProductModal";
 
-// Define the interface for country variant
-interface CountryVariant {
+// Define the interface for Product data
+interface Product {
+  skuFamilyId: string;
+  simType: string[];
+  color: string;
+  ram: string[];
+  storage: string[];
+  condition: string;
+  price: number;
+  stock: number;
   country: string;
-  simType: string;
-  networkBands: string;
+  moq: number;
+  isNegotiable: boolean;
 }
 
-// Define the interface for SKU family data
-interface SkuFamily {
-  name: string;
-  code: string;
-  brand: string;
-  description: string;
-  images: string;
-  colorVariant: string;
-  countryVariant: CountryVariant;
-}
-
-const SkyFamilyTable: React.FC = () => {
-  const [skyFamilyData, setSkyFamilyData] = useState<SkuFamily[]>([]);
+const ProductsTable: React.FC = () => {
+  const [productsData, setProductsData] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -30,21 +27,21 @@ const SkyFamilyTable: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const itemsPerPage = 10;
 
-  useEffect(() => {
+  React.useEffect(() => {
     // Simulate data loading (since no API fetch, set to false immediately)
     setLoading(false);
   }, []);
 
-  const handleSave = (newItem: SkuFamily) => {
+  const handleSave = (newItem: Product) => {
     if (editIndex !== null) {
-      const updatedData = [...skyFamilyData];
+      const updatedData = [...productsData];
       updatedData[editIndex] = newItem;
-      setSkyFamilyData(updatedData);
+      setProductsData(updatedData);
       setEditIndex(null);
-      toastHelper.showTost("SKU Family updated successfully!", "success");
+      toastHelper.showTost("Product updated successfully!", "success");
     } else {
-      setSkyFamilyData((prev) => [...prev, newItem]);
-      toastHelper.showTost("SKU Family added successfully!", "success");
+      setProductsData((prev) => [...prev, newItem]);
+      toastHelper.showTost("Product added successfully!", "success");
     }
     setIsModalOpen(false);
   };
@@ -57,7 +54,7 @@ const SkyFamilyTable: React.FC = () => {
   const handleDelete = async (index: number) => {
     const confirmed = await Swal.fire({
       title: "Are you sure?",
-      text: "This will delete the SKU Family!",
+      text: "You won't be able to revert this!",
       icon: "warning",
       showCancelButton: true,
       confirmButtonText: "Yes, delete it!",
@@ -65,19 +62,39 @@ const SkyFamilyTable: React.FC = () => {
     });
 
     if (confirmed.isConfirmed) {
-      const updatedData = skyFamilyData.filter((_, i) => i !== index);
-      setSkyFamilyData(updatedData);
-      toastHelper.showTost("SKU Family deleted successfully!", "success");
+      const updatedData = productsData.filter((_, i) => i !== index);
+      setProductsData(updatedData);
+      toastHelper.showTost("Product deleted successfully!", "success");
     }
   };
 
+  // Function to generate a placeholder image URL based on product details
+  const generateImageUrl = (product: Product) => {
+    // This is a placeholder implementation - in a real app, you'd have actual image URLs
+    const baseUrl = "https://via.placeholder.com/60x60";
+    const color = product.color.toLowerCase().replace(/\s+/g, "");
+    return `${baseUrl}/${color}/ffffff?text=${product.skuFamilyId}`;
+  };
+
   // Filter data
-  const filteredData = skyFamilyData.filter(
+  const filteredData = productsData.filter(
     (item) =>
-      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.description.toLowerCase().includes(searchTerm.toLowerCase())
+      item.skuFamilyId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.color.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.condition.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.country.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.simType
+        .join(", ")
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      item.ram.join(", ").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.storage
+        .join(", ")
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      item.price.toString().includes(searchTerm) ||
+      item.stock.toString().includes(searchTerm) ||
+      item.moq.toString().includes(searchTerm)
   );
 
   const totalDocs = filteredData.length;
@@ -91,11 +108,6 @@ const SkyFamilyTable: React.FC = () => {
 
   return (
     <div className="p-4">
-      {/* Font Awesome CDN */}
-      <link
-        rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-      />
       {/* Table Container */}
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-sm">
         {/* Table Header with Controls */}
@@ -106,7 +118,7 @@ const SkyFamilyTable: React.FC = () => {
               <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
               <input
                 type="text"
-                placeholder="Search by name or code..."
+                placeholder="Search by SKU Family ID or other..."
                 className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-64"
                 value={searchTerm}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
@@ -125,7 +137,7 @@ const SkyFamilyTable: React.FC = () => {
             }}
           >
             <i className="fas fa-plus text-xs"></i>
-            Add SKU Family
+            Add Product
           </button>
         </div>
 
@@ -134,99 +146,145 @@ const SkyFamilyTable: React.FC = () => {
           <table className="w-full table-auto">
             <thead className="bg-gray-100 dark:bg-gray-900">
               <tr>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                <th
+                  rowSpan={2}
+                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle"
+                >
                   Image
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Name
+                <th
+                  rowSpan={2}
+                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle"
+                >
+                  SKU Family ID
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Code
+                <th
+                  colSpan={4}
+                  className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700"
+                >
+                  Specification
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Brand
+                <th
+                  rowSpan={2}
+                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle"
+                >
+                  Condition
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Description
+                <th
+                  rowSpan={2}
+                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle"
+                >
+                  Price
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Color Variant
+                <th
+                  rowSpan={2}
+                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle"
+                >
+                  Stock
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                <th
+                  rowSpan={2}
+                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle"
+                >
                   Country
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                <th
+                  rowSpan={2}
+                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle"
+                >
+                  MOQ
+                </th>
+                <th
+                  rowSpan={2}
+                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle"
+                >
+                  Is Negotiable
+                </th>
+                <th
+                  rowSpan={2}
+                  className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle"
+                >
+                  Actions
+                </th>
+              </tr>
+              <tr>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
                   SIM Type
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Network Bands
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
+                  Color
                 </th>
-                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Actions
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
+                  RAM
+                </th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
+                  Storage
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={10} className="p-12 text-center">
+                  <td colSpan={13} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
-                      Loading SKU Families...
+                      Loading Products...
                     </div>
                   </td>
                 </tr>
               ) : paginatedData.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="p-12 text-center">
+                  <td colSpan={13} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       No products found
                     </div>
                   </td>
                 </tr>
               ) : (
-                paginatedData.map((item: SkuFamily, index: number) => (
+                paginatedData.map((item: Product, index: number) => (
                   <tr
                     key={index}
                     className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                   >
                     <td className="px-6 py-4">
                       <img
-                        src={
-                          item.images.split(", ")[0] ||
-                          "https://via.placeholder.com/60x60?text=Product"
-                        }
-                        alt={item.name}
+                        src={generateImageUrl(item)}
+                        alt={item.skuFamilyId}
                         className="w-12 h-12 object-contain rounded-md border border-gray-200 dark:border-gray-600"
-                        onError={(e) => {
-                          e.currentTarget.src =
-                            "https://via.placeholder.com/60x60?text=Product";
-                        }}
                       />
                     </td>
                     <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-gray-200">
-                      {item.name}
+                      {item.skuFamilyId}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.code}
+                      {item.simType.join(", ")}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.brand}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 max-w-xs overflow-hidden">
-                      {item.description}
+                      {item.color}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.colorVariant}
+                      {item.ram.join(", ")}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.countryVariant.country}
+                      {item.storage.join(", ")}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.countryVariant.simType}
+                      {item.condition}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.countryVariant.networkBands}
+                      ${item.price.toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      {item.stock}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      {item.country}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      {item.moq}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      {item.isNegotiable ? "Yes" : "No"}
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
                       <div className="flex items-center justify-center gap-3">
@@ -298,17 +356,17 @@ const SkyFamilyTable: React.FC = () => {
         </div>
       </div>
 
-      <SkuFamilyModal
+      <ProductModal
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);
           setEditIndex(null);
         }}
         onSave={handleSave}
-        editItem={editIndex !== null ? skyFamilyData[editIndex] : undefined}
+        editItem={editIndex !== null ? productsData[editIndex] : undefined}
       />
     </div>
   );
 };
 
-export default SkyFamilyTable;
+export default ProductsTable;
