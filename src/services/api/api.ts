@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { SocketService } from '../socket/socket';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_BASE_URL || 'https://t9hr21z3-3200.inc1.devtunnels.ms',
@@ -41,6 +42,8 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      // Ensure socket disconnects on auth loss
+      try { SocketService.disconnect(); } catch {}
       window.location.href = '/#/signin';
     }
     return Promise.reject(error);

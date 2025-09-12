@@ -6,6 +6,7 @@ import Input from "../form/input/InputField";
 import Checkbox from "../form/input/Checkbox";
 import Button from "../ui/button/Button";
 import { LoginAdminService } from "../../services/loginAdmin/loginAdmin.services";
+import { SocketService } from "../../services/socket/socket";
 
 export default function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
@@ -76,6 +77,8 @@ export default function SignInForm() {
       // Check if login was successful and token exists
       if (data.status === 200 && data.token) {
         localStorage.setItem("token", data.token);
+        // Connect socket after login
+        try { SocketService.connect(); } catch {}
         navigate("/home");
       } else {
         setErrors((prev) => ({
