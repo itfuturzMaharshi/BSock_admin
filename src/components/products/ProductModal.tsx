@@ -1,23 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { ProductService } from "../../services/product/product.services";
+import { ProductService, Product } from "../../services/product/product.services";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
-// Define the interface for Product data
-interface Product {
-  _id?: string;
-  skuFamilyId: any; // Can be string or object with _id and name
-  simType: string;
-  color: string;
-  ram: string;
-  storage: string;
-  condition: string;
-  price: number | string;
-  stock: number | string;
-  country: string;
-  moq: number | string;
-  isNegotiable: boolean;
-}
-
-// Also update the FormData interface to match:
 interface FormData {
   skuFamilyId: string;
   simType: string;
@@ -30,6 +15,8 @@ interface FormData {
   country: string;
   moq: number | string;
   isNegotiable: boolean;
+  isFlashDeal: string;
+  expiryTime: string; // ISO string (e.g., "2025-10-30T03:30:00.000Z")
 }
 
 interface ProductModalProps {
@@ -57,10 +44,13 @@ const ProductModal: React.FC<ProductModalProps> = ({
     country: "",
     moq: 0,
     isNegotiable: false,
+    isFlashDeal: "",
+    expiryTime: "",
   });
   const [skuFamilies, setSkuFamilies] = useState<{ _id: string; name: string }[]>([]);
   const [skuLoading, setSkuLoading] = useState<boolean>(false);
   const [skuError, setSkuError] = useState<string | null>(null);
+  const [dateError, setDateError] = useState<string | null>(null);
 
   const colorOptions = ["Graphite", "Silver", "Gold", "Sierra Blue", "Mixed"];
   const countryOptions = ["Hongkong", "Dubai", "Singapore"];
@@ -90,9 +80,9 @@ const ProductModal: React.FC<ProductModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       if (editItem) {
-        const skuId = typeof editItem.skuFamilyId === 'object'
-          ? (editItem.skuFamilyId._id || '')
-          : (editItem.skuFamilyId || '');
+        const skuId = typeof editItem.skuFamilyId === "object"
+          ? (editItem.skuFamilyId._id || "")
+          : (editItem.skuFamilyId || "");
         setFormData({
           skuFamilyId: skuId,
           simType: editItem.simType,
@@ -105,6 +95,8 @@ const ProductModal: React.FC<ProductModalProps> = ({
           country: editItem.country,
           moq: editItem.moq,
           isNegotiable: editItem.isNegotiable,
+          isFlashDeal: editItem.isFlashDeal || "",
+          expiryTime: editItem.expiryTime || "",
         });
       } else {
         setFormData({
@@ -119,12 +111,17 @@ const ProductModal: React.FC<ProductModalProps> = ({
           country: "",
           moq: 0,
           isNegotiable: false,
+          isFlashDeal: "",
+          expiryTime: "",
         });
       }
+      setDateError(null);
     }
   }, [isOpen, editItem]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
     const { name, value, type } = e.target;
     setFormData((prev) => ({
       ...prev,
@@ -137,10 +134,30 @@ const ProductModal: React.FC<ProductModalProps> = ({
     }));
   };
 
+  const handleDateChange = (date: Date | null) => {
+    if (date && !isNaN(date.getTime())) {
+      setFormData((prev) => ({
+        ...prev,
+        expiryTime: date.toISOString(),
+      }));
+      setDateError(null);
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        expiryTime: "",
+      }));
+      setDateError("Please select a valid date and time");
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!formData.skuFamilyId && skuFamilies.length > 0) {
       alert("Please select a SKU Family");
+      return;
+    }
+    if (!formData.expiryTime) {
+      setDateError("Expiry time is required");
       return;
     }
     onSave(formData);
@@ -152,7 +169,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50 transition-opacity duration-300">
-      <div className="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-2xl w-full max-w-[800px] max-h-[88vh] overflow-y-auto transform transition-all duration-300 scale-100">
+      <div className="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-2xl w-full max-w-[800px] max-h-[100vh] overflow-y-auto transform transition-all duration-300 scale-100">
         {/* Close Icon */}
         <button
           type="button"
@@ -319,7 +336,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
             </div>
           </div>
 
-          {/* Condition and Price Row */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
@@ -360,7 +376,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
             </div>
           </div>
 
-          {/* Stock and MOQ Row */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
@@ -394,21 +409,52 @@ const ProductModal: React.FC<ProductModalProps> = ({
             </div>
           </div>
 
-          {/* Is Negotiable */}
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              name="isNegotiable"
-              checked={formData.isNegotiable}
-              onChange={handleInputChange}
-              className="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 transition duration-200"
-            />
-            <label className="ml-3 text-base font-medium text-gray-950 dark:text-gray-200">
-              Is Negotiable
-            </label>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                name="isNegotiable"
+                checked={formData.isNegotiable}
+                onChange={handleInputChange}
+                className="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 transition duration-200"
+              />
+              <label className="ml-3 text-base font-medium text-gray-950 dark:text-gray-200">
+                Is Negotiable
+              </label>
+            </div>
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                name="isFlashDeal"
+                checked={formData.isFlashDeal === "true"}
+                onChange={handleInputChange}
+                className="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 transition duration-200"
+              />
+              <label className="ml-3 text-base font-medium text-gray-950 dark:text-gray-200">
+                Is Flash Deal
+              </label>
+            </div>
+            <div>
+              <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
+                Expiry Time
+              </label>
+              <DatePicker
+                selected={formData.expiryTime ? new Date(formData.expiryTime) : null}
+                onChange={handleDateChange}
+                showTimeSelect
+                timeFormat="HH:mm"
+                timeIntervals={15}
+                dateFormat="yyyy-MM-dd HH:mm"
+                placeholderText="Select date and time"
+                className="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
+                required
+              />
+              {dateError && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{dateError}</p>
+              )}
+            </div>
           </div>
 
-          {/* Buttons */}
           <div className="flex justify-end gap-4 pt-6">
             <button
               type="button"
@@ -420,7 +466,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
             <button
               type="submit"
               className="px-6 py-2.5 bg-[#0071E0] text-white rounded-lg hover:bg-blue-600 transition duration-200 transform hover:scale-105"
-              disabled={skuLoading || skuError !== null}
+              disabled={skuLoading || skuError !== null || !!dateError}
             >
               {editItem ? "Update Product" : "Create Product"}
             </button>

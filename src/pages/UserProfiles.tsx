@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
-import PageBreadcrumb from "../components/common/PageBreadCrumb";
-import UserMetaCard from "../components/UserProfile/UserMetaCard";
 import PageMeta from "../components/common/PageMeta";
 import UserInfoCard from "../components/UserProfile/UserInfoCard";
 import { UserProfileService } from "../services/adminProfile/adminProfile.services";
+import PageBreadcrumb from "../components/common/PageBreadCrumb";
 
 interface FormData {
   name: string;
@@ -53,10 +52,15 @@ export default function UserProfiles() {
         description="Profile Dashboard page for TailAdmin"
       />
       <PageBreadcrumb pageTitle="Profile" />
+
       <div className="dark:border-gray-800 dark:bg-white/[0.03]">
         <div className="space-y-6">
-          <UserMetaCard name={formData.name} />
-          <UserInfoCard formData={formData} handleChange={handleChange} setFormData={setFormData} />
+          {/* <UserMetaCard name={formData.name} /> */}
+          <UserInfoCard
+            formData={formData}
+            handleChange={handleChange}
+            setFormData={setFormData}
+          />
         </div>
       </div>
     </>

@@ -1,23 +1,25 @@
 import toastHelper from '../../utils/toastHelper';
 import api from '../api/api';
 
-interface Product {
+export interface Product {
   _id?: string;
-  skuFamilyId: string;
+  skuFamilyId: string | { _id: string; name: string; images?: string[] };
   specification: string;
   simType: string;
   color: string;
   ram: string;
   storage: string;
   condition: string;
-  price: number;
-  stock: number;
+  price: number | string;
+  stock: number | string;
   country: string;
-  moq: number;
+  moq: number | string;
   isNegotiable: boolean;
+  isFlashDeal: string;
+  expiryTime: string; // ISO string (e.g., "2025-10-30T03:30:00.000Z")
 }
 
-interface ListResponse {
+export interface ListResponse {
   data: {
     docs: Product[];
     totalDocs: number;
@@ -32,6 +34,14 @@ interface ListResponse {
   };
   status: number;
   message: string;
+}
+
+export interface ImportResponse {
+  status: number;
+  message: string;
+  data: {
+    imported: string;
+  };
 }
 
 export class ProductService {
@@ -131,7 +141,6 @@ export class ProductService {
     const url = `${baseUrl}/api/${adminRoute}/skuFamily/listByName`;
 
     try {
-      // If the API expects a GET request, use api.get instead
       const res = await api.post(url, {});
       if (res.data?.status !== 200) {
         throw new Error(res.data?.message || 'Failed to fetch SKU Families');
@@ -159,6 +168,26 @@ export class ProductService {
       return res.data?.data;
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Failed to fetch SKU Families by name';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
+
+  // Upload Excel file for product import
+  static uploadExcelFile = async (formData: FormData): Promise<ImportResponse> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/product/import`;
+
+    try {
+      const res = await api.post(url, formData);
+      if (res.data?.status !== 200) {
+        throw new Error(res.data?.message || 'Failed to import products');
+      }
+      toastHelper.showTost(res.data.message || 'Products imported successfully!', 'success');
+      return res.data;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to import products';
       toastHelper.showTost(errorMessage, 'error');
       throw new Error(errorMessage);
     }

@@ -1,4 +1,6 @@
 import { useState } from "react";
+import toastHelper from '../../utils/toastHelper';
+import { UserProfileService } from "../../services/adminProfile/adminProfile.services";
 
 interface FormData {
   name: string;
@@ -14,7 +16,7 @@ interface UserInfoCardProps {
   setFormData: React.Dispatch<React.SetStateAction<FormData>>;
 }
 
-export default function UserInfoCard({ formData, handleChange }: UserInfoCardProps) {
+export default function UserInfoCard({ formData, handleChange, setFormData }: UserInfoCardProps) {
   const [activeTab, setActiveTab] = useState<"profile" | "account">("profile");
   const [showPassword, setShowPassword] = useState<{
     current: boolean;
@@ -28,6 +30,37 @@ export default function UserInfoCard({ formData, handleChange }: UserInfoCardPro
 
   const togglePassword = (field: "current" | "new" | "confirm") => {
     setShowPassword((prev) => ({ ...prev, [field]: !prev[field] }));
+  };
+
+  const handleChangePassword = async () => {
+    if (formData.newPassword !== formData.confirmPassword) {
+      toastHelper.error("New password and confirm password do not match");
+      return;
+    }
+
+    if (!formData.currentPassword || !formData.newPassword) {
+      toastHelper.error("Please fill in all password fields");
+      return;
+    }
+
+    try {
+      const response = await UserProfileService.changePassword(
+        formData.currentPassword,
+        formData.newPassword
+      );
+
+      if (response.status === 200) {
+        // Clear password fields after successful change
+        setFormData((prev) => ({
+          ...prev,
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        }));
+      }
+    } catch (error) {
+      console.error("Error changing password:", error);
+    }
   };
 
   return (
@@ -153,7 +186,7 @@ export default function UserInfoCard({ formData, handleChange }: UserInfoCardPro
           </div>
           <div className="flex justify-end mt-6">
             <button
-              onClick={() => console.log("Password Saved:", formData.newPassword)}
+              onClick={handleChangePassword}
               className="flex items-center justify-center gap-2 rounded-full border border-gray-300 bg-[#0071E3] px-4 py-3 text-base font-medium text-white shadow hover:bg-[#005bb5] dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] dark:hover:text-gray-200"
             >
               <i className="fa-solid fa-pen-to-square"></i> Change Password

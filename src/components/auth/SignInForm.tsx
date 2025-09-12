@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { EyeCloseIcon, EyeIcon } from "../../icons";
 import Label from "../form/Label";
 import Input from "../form/input/InputField";
@@ -46,14 +46,14 @@ export default function SignInForm() {
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
     if (errors[field as keyof typeof errors]) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        [field]: ""
+        [field]: "",
       }));
     }
   };
@@ -64,10 +64,13 @@ export default function SignInForm() {
     }
 
     setIsLoading(true);
-    setErrors(prev => ({ ...prev, general: "" }));
+    setErrors((prev) => ({ ...prev, general: "" }));
 
     try {
-      const credentials = { email: formData.email, password: formData.password };
+      const credentials = {
+        email: formData.email,
+        password: formData.password,
+      };
       const data = await LoginAdminService.loginAdmin(credentials);
 
       // Check if login was successful and token exists
@@ -75,9 +78,10 @@ export default function SignInForm() {
         localStorage.setItem("token", data.token);
         navigate("/home");
       } else {
-        setErrors(prev => ({
+        setErrors((prev) => ({
           ...prev,
-          general: data.message || "Login failed. Please check your credentials."
+          general:
+            data.message || "Login failed. Please check your credentials.",
         }));
       }
     } catch (err: any) {
@@ -85,7 +89,7 @@ export default function SignInForm() {
         err.response?.data?.message ||
         err.message ||
         "An error occurred. Please try again.";
-      setErrors(prev => ({ ...prev, general: errorMessage }));
+      setErrors((prev) => ({ ...prev, general: errorMessage }));
     } finally {
       setIsLoading(false);
     }
@@ -93,8 +97,7 @@ export default function SignInForm() {
 
   return (
     <div className="flex flex-col flex-1">
-      <div className="w-full max-w-md pt-10 mx-auto">
-      </div>
+      <div className="w-full max-w-md pt-10 mx-auto"></div>
       <div className="flex flex-col justify-center flex-1 w-full max-w-md mx-auto">
         <div>
           <div className="mb-5 sm:mb-8">
@@ -120,7 +123,9 @@ export default function SignInForm() {
                     disabled={isLoading}
                   />
                   {errors.email && (
-                    <p className="mt-1 text-sm text-error-500">{errors.email}</p>
+                    <p className="mt-1 text-sm text-error-500">
+                      {errors.email}
+                    </p>
                   )}
                 </div>
                 <div>
@@ -132,7 +137,9 @@ export default function SignInForm() {
                       type={showPassword ? "text" : "password"}
                       placeholder="Enter your password"
                       value={formData.password}
-                      onChange={(e) => handleInputChange("password", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("password", e.target.value)
+                      }
                       error={!!errors.password}
                       disabled={isLoading}
                     />
@@ -150,35 +157,61 @@ export default function SignInForm() {
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <Checkbox 
-                      checked={isChecked} 
-                      onChange={setIsChecked} 
+                    <Checkbox
+                      checked={isChecked}
+                      onChange={setIsChecked}
                       disabled={isLoading}
                     />
                     <span className="block font-normal text-gray-700 text-theme-sm dark:text-gray-400">
                       Keep me logged in
                     </span>
                   </div>
-                  <Link
+                  {/* <Link
                     to="/reset-password"
                     className="text-sm text-brand-500 hover:text-brand-600 dark:text-brand-400"
                   >
                     Forgot password?
-                  </Link>
+                  </Link> */}
                 </div>
                 <div>
                   <Button
-                    className="w-full"
+                    className="w-full flex items-center justify-center"
                     size="sm"
                     onClick={handleSignIn}
                     disabled={isLoading}
                   >
-                    {isLoading ? "Signing in..." : "Sign in"}
+                    {isLoading ? (
+                      <div className="flex items-center gap-2">
+                        <svg
+                          className="animate-spin h-5 w-5 text-white"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
+                        </svg>
+                        
+                      </div>
+                    ) : (
+                      "Sign in"
+                    )}
                   </Button>
                 </div>
               </div>
             </form>
-            <div className="mt-5">
+            {/* <div className="mt-5">
               <p className="text-sm font-normal text-center text-gray-700 dark:text-gray-400 sm:text-start">
                 Don&apos;t have an account?{" "}
                 <Link
@@ -188,7 +221,7 @@ export default function SignInForm() {
                   Sign Up
                 </Link>
               </p>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

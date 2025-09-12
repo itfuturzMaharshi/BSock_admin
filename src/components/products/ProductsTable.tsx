@@ -1,31 +1,17 @@
 import React, { useState, useEffect } from "react";
 import Swal from "sweetalert2";
+import { format } from "date-fns";
 import toastHelper from "../../utils/toastHelper";
 import ProductModal from "./ProductModal";
-import { ProductService } from "../../services/product/product.services";
-
-// Define the interface for Product data
-interface Product {
-  _id?: string;
-  skuFamilyId: any; // Can be string or object with _id and name
-  specification: string;
-  simType: string;
-  color: string;
-  ram: string;
-  storage: string;
-  condition: string;
-  price: number | string;
-  stock: number | string;
-  country: string;
-  moq: number | string;
-  isNegotiable: boolean;
-}
+import UploadExcelModal from "./UploadExcelModal";
+import { ProductService, Product } from "../../services/product/product.services";
 
 const ProductsTable: React.FC = () => {
   const [productsData, setProductsData] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [totalDocs, setTotalDocs] = useState<number>(0);
@@ -131,18 +117,24 @@ const ProductsTable: React.FC = () => {
 
   // Build an absolute image URL similar to SkuFamily table
   const buildImageUrl = (relativeOrAbsolute: string): string => {
-    if (!relativeOrAbsolute) return "https://via.placeholder.com/60x60?text=Product";
+    if (!relativeOrAbsolute)
+      return "https://via.placeholder.com/60x60?text=Product";
     const isAbsolute = /^https?:\/\//i.test(relativeOrAbsolute);
     if (isAbsolute) return relativeOrAbsolute;
-    const base = (import.meta as any).env?.VITE_BASE_URL || "";
-    return `${base}${relativeOrAbsolute.startsWith("/") ? "" : "/"}${relativeOrAbsolute}`;
+    const base = import.meta.env.VITE_BASE_URL || "";
+    return `${base}${
+      relativeOrAbsolute.startsWith("/") ? "" : "/"
+    }${relativeOrAbsolute}`;
   };
 
   // Prefer the first image from populated skuFamily when available
   const getProductImageSrc = (product: Product): string => {
     try {
       const sku = product?.skuFamilyId as any;
-      const first = Array.isArray(sku?.images) && sku.images.length > 0 ? sku.images[0] : "";
+      const first =
+        Array.isArray(sku?.images) && sku.images.length > 0
+          ? sku.images[0]
+          : "";
       if (first) return buildImageUrl(first);
     } catch (_) {}
     return "https://via.placeholder.com/60x60?text=Product";
@@ -157,8 +149,19 @@ const ProductsTable: React.FC = () => {
     return price.toFixed(2);
   };
 
+  // Format expiryTime for display
+  const formatExpiryTime = (expiryTime: string): string => {
+    if (!expiryTime) return "-";
+    try {
+      const date = new Date(expiryTime);
+      return format(date, "yyyy-MM-dd HH:mm");
+    } catch {
+      return "-";
+    }
+  };
+
   return (
-    <div className="p-4">
+    <div className="p-4 max-w-[calc(100vw-360px)] mx-auto">
       {/* Table Container */}
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-sm">
         {/* Table Header with Controls */}
@@ -179,17 +182,25 @@ const ProductsTable: React.FC = () => {
               />
             </div>
           </div>
-
-          <button
-            className="inline-flex items-center gap-2 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
-            onClick={() => {
-              setEditProduct(null);
-              setIsModalOpen(true);
-            }}
-          >
-            <i className="fas fa-plus text-xs"></i>
-            Add Product
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              className="inline-flex items-center gap-2 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
+              onClick={() => setIsUploadModalOpen(true)}
+            >
+              <i className="fas fa-upload text-xs"></i>
+              Upload File
+            </button>
+            <button
+              className="inline-flex items-center gap-2 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
+              onClick={() => {
+                setEditProduct(null);
+                setIsModalOpen(true);
+              }}
+            >
+              <i className="fas fa-plus text-xs"></i>
+              Add Product
+            </button>
+          </div>
         </div>
 
         {/* Table */}
@@ -253,6 +264,18 @@ const ProductsTable: React.FC = () => {
                 </th>
                 <th
                   rowSpan={2}
+                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle"
+                >
+                  Is Flash Deal
+                </th>
+                <th
+                  rowSpan={2}
+                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle"
+                >
+                  Expiry Time
+                </th>
+                <th
+                  rowSpan={2}
                   className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle"
                 >
                   Actions
@@ -276,7 +299,7 @@ const ProductsTable: React.FC = () => {
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={13} className="p-12 text-center">
+                  <td colSpan={15} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
                       Loading Products...
@@ -285,7 +308,7 @@ const ProductsTable: React.FC = () => {
                 </tr>
               ) : productsData.length === 0 ? (
                 <tr>
-                  <td colSpan={13} className="p-12 text-center">
+                  <td colSpan={15} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       No products found
                     </div>
@@ -303,7 +326,8 @@ const ProductsTable: React.FC = () => {
                         alt={getSkuFamilyText(item.skuFamilyId) || "Product"}
                         className="w-12 h-12 object-contain rounded-md border border-gray-200 dark:border-gray-600"
                         onError={(e) => {
-                          e.currentTarget.src = "https://via.placeholder.com/60x60?text=Product";
+                          e.currentTarget.src =
+                            "https://via.placeholder.com/60x60?text=Product";
                         }}
                       />
                     </td>
@@ -343,6 +367,12 @@ const ProductsTable: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                       {item.isNegotiable ? "Yes" : "No"}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      {item.isFlashDeal === "true" ? "Yes" : "No"}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      {formatExpiryTime(item.expiryTime)}
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
                       <div className="flex items-center justify-center gap-3">
@@ -422,6 +452,10 @@ const ProductsTable: React.FC = () => {
         }}
         onSave={handleSave}
         editItem={editProduct || undefined}
+      />
+      <UploadExcelModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
       />
     </div>
   );
