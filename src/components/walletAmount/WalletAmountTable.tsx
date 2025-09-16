@@ -1,0 +1,493 @@
+import React, { useState, useEffect } from "react";
+import Swal from "sweetalert2";
+import toastHelper from "../../utils/toastHelper";
+import WalletAmountModal from "./WalletAmountModal";
+
+// Define the interface for Transaction data
+interface Transaction {
+  customer: string;
+  type: "credit" | "debit";
+  amount: number;
+  description: string;
+  date: Date;
+}
+
+const WalletAmountTable: React.FC = () => {
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [selectedCustomer, setSelectedCustomer] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [editIndex, setEditIndex] = useState<number | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const itemsPerPage = 10;
+
+  // Simulate data loading (placeholder for actual API call)
+  useEffect(() => {
+    setLoading(false);
+  }, []);
+
+  // Calculate unique customers and customer-specific stats
+  const uniqueCustomers = [...new Set(transactions.map((t) => t.customer))];
+  const customerTransactions =
+    selectedCustomer === "all"
+      ? transactions
+      : transactions.filter((t) => t.customer === selectedCustomer);
+
+  // Modified: Only calculate stats for a specific customer, not "all"
+  const customerCredit =
+    selectedCustomer !== "all"
+      ? customerTransactions
+          .filter((t) => t.type === "credit")
+          .reduce((sum, t) => sum + t.amount, 0)
+      : 0;
+  const customerDebit =
+    selectedCustomer !== "all"
+      ? customerTransactions
+          .filter((t) => t.type === "debit")
+          .reduce((sum, t) => sum + t.amount, 0)
+      : 0;
+  const customerBalance = customerCredit - customerDebit;
+  const customerStats = {
+    name: selectedCustomer,
+    credit: customerCredit,
+    debit: customerDebit,
+    balance: customerBalance,
+    transactionCount: customerTransactions.length,
+  };
+
+  // Handle saving a new or edited transaction
+  const handleSave = (newItem: Transaction) => {
+    if (editIndex !== null) {
+      const updatedData = [...transactions];
+      updatedData[editIndex] = newItem;
+      setTransactions(updatedData);
+      setEditIndex(null);
+      toastHelper.showTost("Transaction updated successfully!", "success");
+    } else {
+      setTransactions((prev) => [...prev, newItem]);
+      toastHelper.showTost("Transaction added successfully!", "success");
+    }
+    setIsModalOpen(false);
+  };
+
+  // Handle editing a transaction
+  const handleEdit = (index: number) => {
+    setEditIndex(index);
+    setIsModalOpen(true);
+  };
+
+  // Handle deleting a transaction
+  const handleDelete = async (index: number) => {
+    const confirmed = await Swal.fire({
+      title: "Are you sure?",
+      text: "This will permanently delete the transaction!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, delete!",
+      cancelButtonText: "No, cancel!",
+    });
+
+    if (confirmed.isConfirmed) {
+      const updatedData = transactions.filter((_, i) => i !== index);
+      setTransactions(updatedData);
+      toastHelper.showTost("Transaction deleted successfully!", "success");
+    }
+  };
+
+  // Filter data by search term and selected customer
+  const filteredData = transactions.filter((item) => {
+    const matchesSearch =
+      item.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCustomer =
+      selectedCustomer === "all" || item.customer === selectedCustomer;
+    return matchesSearch && matchesCustomer;
+  });
+
+  const totalDocs = filteredData.length;
+  const totalPages = Math.ceil(totalDocs / itemsPerPage);
+
+  // Paginate data
+  const paginatedData = filteredData.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedCustomer]);
+
+  return (
+    <div className="p-4 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      {/* Header with Stats Cards */}
+      <div className="mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          {/* Customer Credit Card */}
+          <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 transition-all duration-300">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                  <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                    Customer Credits
+                  </p>
+                </div>
+                <p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400 mb-1">
+                  ${customerStats.credit.toLocaleString()}
+                </p>
+                {selectedCustomer !== "all" && (
+                  <p className="text-xs text-gray-500 dark:text-gray-500 truncate">
+                    {selectedCustomer}
+                  </p>
+                )}
+              </div>
+              <div className="bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded-xl">
+                <i className="fas fa-arrow-up text-emerald-600 dark:text-emerald-400 text-xl"></i>
+              </div>
+            </div>
+          </div>
+
+          {/* Customer Debit Card */}
+          <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 transition-all duration-300">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                  <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                    Customer Debits
+                  </p>
+                </div>
+                <p className="text-3xl font-bold text-red-500 dark:text-red-400 mb-1">
+                  ${customerStats.debit.toLocaleString()}
+                </p>
+                {selectedCustomer !== "all" && (
+                  <p className="text-xs text-gray-500 dark:text-gray-500">
+                    {selectedCustomer !== "all"
+                      ? `${customerStats.transactionCount} transactions`
+                      : ""}
+                  </p>
+                )}
+              </div>
+              <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded-xl">
+                <i className="fas fa-arrow-down text-red-600 dark:text-red-400 text-xl"></i>
+              </div>
+            </div>
+          </div>
+
+          {/* Wallet Balance Card */}
+          <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 transition-all duration-300">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <div
+                    className={`w-2 h-2 rounded-full ${
+                      customerStats.balance >= 0
+                        ? "bg-blue-500"
+                        : "bg-orange-500"
+                    }`}
+                  ></div>
+                  <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                    Wallet Balance
+                  </p>
+                </div>
+                <p
+                  className={`text-3xl font-bold mb-1 ${
+                    customerStats.balance >= 0
+                      ? "text-blue-600 dark:text-blue-400"
+                      : "text-orange-600 dark:text-orange-400"
+                  }`}
+                >
+                  {selectedCustomer === "all"
+                    ? "$0"
+                    : customerStats.balance > 0
+                    ? `+$${customerStats.balance.toLocaleString()}`
+                    : `-$${Math.abs(customerStats.balance).toLocaleString()}`}
+                </p>
+              </div>
+              <div
+                className={`p-3 rounded-xl ${
+                  customerStats.balance >= 0
+                    ? "bg-blue-50 dark:bg-blue-900/20"
+                    : "bg-orange-50 dark:bg-orange-900/20"
+                }`}
+              >
+                <i
+                  className={`fas fa-wallet text-xl ${
+                    customerStats.balance >= 0
+                      ? "text-blue-600 dark:text-blue-400"
+                      : "text-orange-600 dark:text-orange-400"
+                  }`}
+                ></i>
+              </div>
+            </div>
+          </div>
+
+          {/* Filter by Customer Card */}
+          <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 transition-all duration-300">
+            <div className="flex flex-col h-full">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                  Filter by Customer
+                </p>
+              </div>
+              <div className="relative flex-1">
+                <i className="fas fa-filter absolute left-3 top-3 text-gray-400 text-sm"></i>
+                <select
+                  value={selectedCustomer}
+                  onChange={(e) => setSelectedCustomer(e.target.value)}
+                  className="w-full pl-10 pr-10 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent appearance-none cursor-pointer font-medium"
+                >
+                  <option value="all">
+                    All Customers ({uniqueCustomers.length})
+                  </option>
+                  {uniqueCustomers.map((customer: string) => (
+                    <option key={customer} value={customer}>
+                      {customer}
+                    </option>
+                  ))}
+                </select>
+                <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Table Container */}
+      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-lg">
+        {/* Table Header with Controls */}
+        <div className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+          <div className="flex items-center gap-3">
+            {/* Search */}
+            <div className="relative">
+              <i className="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+              <input
+                type="text"
+                placeholder="Search by customer or description..."
+                className="pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm w-72 shadow-sm"
+                value={searchTerm}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
+              />
+            </div>
+          </div>
+
+          <button
+            className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-[#0071E0] to-blue-600 text-white px-6 py-3 text-sm font-semibold hover:from-blue-600 hover:to-blue-700 dark:from-blue-500 dark:to-blue-600 dark:hover:from-blue-600 dark:hover:to-blue-700 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+            onClick={() => {
+              setEditIndex(null);
+              setIsModalOpen(true);
+            }}
+          >
+            <i className="fas fa-plus text-xs"></i>
+            Add Transaction
+          </button>
+        </div>
+
+        {/* Table */}
+        <div className="max-w-full overflow-x-auto">
+          <table className="w-full table-auto">
+            <thead className="bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900">
+              <tr>
+                <th className="px-6 py-5 text-left text-sm font-bold text-gray-800 dark:text-gray-100 border-b-2 border-gray-300 dark:border-gray-600 align-middle uppercase tracking-wider">
+                  <div className="flex items-center gap-2">
+                    Customer
+                  </div>
+                </th>
+                <th className="px-6 py-5 text-left text-sm font-bold text-gray-800 dark:text-gray-100 border-b-2 border-gray-300 dark:border-gray-600 align-middle uppercase tracking-wider">
+                  <div className="flex items-center gap-2">
+                    Type
+                  </div>
+                </th>
+                <th className="px-6 py-5 text-left text-sm font-bold text-gray-800 dark:text-gray-100 border-b-2 border-gray-300 dark:border-gray-600 align-middle uppercase tracking-wider">
+                  <div className="flex items-center gap-2">
+                    Amount
+                  </div>
+                </th>
+                <th className="px-6 py-5 text-left text-sm font-bold text-gray-800 dark:text-gray-100 border-b-2 border-gray-300 dark:border-gray-600 align-middle uppercase tracking-wider">
+                  <div className="flex items-center gap-2">
+                    Description
+                  </div>
+                </th>
+                <th className="px-6 py-5 text-left text-sm font-bold text-gray-800 dark:text-gray-100 border-b-2 border-gray-300 dark:border-gray-600 align-middle uppercase tracking-wider">
+                  <div className="flex items-center gap-2">
+                    Date
+                  </div>
+                </th>
+                <th className="px-6 py-5 text-center text-sm font-bold text-gray-800 dark:text-gray-100 border-b-2 border-gray-300 dark:border-gray-600 align-middle uppercase tracking-wider">
+                  <div className="flex items-center justify-center gap-2">
+                    Actions
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="p-16 text-center bg-gray-50 dark:bg-gray-800">
+                    <div className="text-gray-500 dark:text-gray-400 text-lg">
+                      <div className="animate-spin rounded-full h-10 w-10 border-t-3 border-blue-600 mx-auto mb-6"></div>
+                      <p className="font-medium">Loading Transactions...</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : paginatedData.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="p-16 text-center bg-gray-50 dark:bg-gray-800">
+                    <div className="text-gray-500 dark:text-gray-400">
+                      <i className="fas fa-inbox text-4xl mb-4 text-gray-300 dark:text-gray-600"></i>
+                      <p className="text-lg font-medium mb-2">No transactions found</p>
+                      <p className="text-sm">Try adjusting your search criteria or add a new transaction.</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                paginatedData.map((item: Transaction, index: number) => (
+                  <tr
+                    key={index}
+                    className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-gray-700 dark:hover:to-gray-600 transition-all duration-200 group"
+                  >
+                    <td className="px-6 py-5 text-sm">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900 dark:to-indigo-900 rounded-full flex items-center justify-center">
+                          <i className="fas fa-user text-xs text-blue-600 dark:text-blue-400"></i>
+                        </div>
+                        <span className="font-semibold text-gray-900 dark:text-gray-100 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors">
+                          {item.customer}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5 text-sm">
+                      <span
+                        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider ${
+                          item.type === "credit"
+                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-700"
+                            : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-700"
+                        }`}
+                      >
+                        <i
+                          className={`fas ${
+                            item.type === "credit" ? "fa-arrow-up" : "fa-arrow-down"
+                          } text-xs`}
+                        ></i>
+                        {item.type.charAt(0).toUpperCase() + item.type.slice(1)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-5 text-sm">
+                      <span
+                        className={`font-bold text-lg ${
+                          item.type === "credit"
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : "text-red-500 dark:text-red-400"
+                        }`}
+                      >
+                        {item.type === "debit" ? "-" : "+"}$
+                        {item.amount.toLocaleString()}
+                      </span>
+                    </td>
+                    <td className="px-6 py-5 text-sm">
+                      <span className="text-gray-700 dark:text-gray-300 font-medium leading-relaxed">
+                        {item.description}
+                      </span>
+                    </td>
+                    <td className="px-6 py-5 text-sm">
+                      <div className="flex items-center gap-2">
+                        <i className="fas fa-clock text-xs text-gray-400"></i>
+                        <span className="text-gray-600 dark:text-gray-400 font-medium">
+                          {item.date.toLocaleString()}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5 text-sm text-center">
+                      <div className="flex items-center justify-center gap-4">
+                        <button
+                          onClick={() => handleEdit(index)}
+                          className="p-2 text-blue-600 hover:text-white hover:bg-blue-600 dark:text-blue-400 dark:hover:text-white dark:hover:bg-blue-500 transition-all duration-200 rounded-lg hover:shadow-md transform hover:-translate-y-0.5"
+                          title="Edit Transaction"
+                        >
+                          <i className="fas fa-edit text-sm"></i>
+                        </button>
+                        <button
+                          onClick={() => handleDelete(index)}
+                          className="p-2 text-red-600 hover:text-white hover:bg-red-600 dark:text-red-400 dark:hover:text-white dark:hover:bg-red-500 transition-all duration-200 rounded-lg hover:shadow-md transform hover:-translate-y-0.5"
+                          title="Delete Transaction"
+                        >
+                          <i className="fas fa-trash text-sm"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-5 border-t border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+          <div className="text-sm text-gray-600 dark:text-gray-400 mb-4 sm:mb-0 font-medium">
+            Showing <span className="font-semibold text-gray-900 dark:text-gray-100">{paginatedData.length}</span> of{" "}
+            <span className="font-semibold text-gray-900 dark:text-gray-100">{totalDocs}</span> items
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50 text-sm transition-all duration-200 font-medium shadow-sm hover:shadow-md"
+            >
+              <i className="fas fa-chevron-left text-xs mr-2"></i>
+              Previous
+            </button>
+
+            <div className="flex space-x-1">
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                const pageNum = i + 1;
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md ${
+                      currentPage === pageNum
+                        ? "bg-gradient-to-r from-[#0071E0] to-blue-600 text-white border border-blue-600 dark:from-blue-500 dark:to-blue-600 dark:border-blue-500 transform scale-105"
+                        : "bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 hover:border-gray-400 dark:hover:border-gray-500"
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={() =>
+                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+              }
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50 text-sm transition-all duration-200 font-medium shadow-sm hover:shadow-md"
+            >
+              Next
+              <i className="fas fa-chevron-right text-xs ml-2"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <WalletAmountModal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditIndex(null);
+        }}
+        onSave={handleSave}
+        editItem={editIndex !== null ? transactions[editIndex] : undefined}
+      />
+    </div>
+  );
+};
+
+export default WalletAmountTable;
