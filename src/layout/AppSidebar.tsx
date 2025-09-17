@@ -13,7 +13,7 @@ const navItems: NavItem[] = [
   {
     icon: <i className="fas fa-th-large"></i>,
     name: "Dashboard",
-    path:"/home"
+    path: "/home",
     // subItems: [{ name: "Ecommerce", path: "/", pro: false }],
   },
   {
@@ -111,7 +111,7 @@ const AppSidebar: React.FC = () => {
   };
 
   const renderMenuItems = (items: NavItem[], menuType: "main") => (
-    <ul className="flex flex-col gap-4">
+    <ul className="flex flex-col gap-3">
       {items.map((nav, index) => (
         <li key={nav.name}>
           {nav.subItems ? (
@@ -128,7 +128,7 @@ const AppSidebar: React.FC = () => {
               }`}
             >
               <span
-                className={`menu-item-icon-size w-8 h-8 flex items-center justify-center ${
+                className={`menu-item-icon-size w-6 h-6 flex items-center justify-center ${
                   openSubmenu?.type === menuType && openSubmenu?.index === index
                     ? "menu-item-icon-active"
                     : "menu-item-icon-inactive"
@@ -137,11 +137,11 @@ const AppSidebar: React.FC = () => {
                 {nav.icon}
               </span>
               {(isExpanded || isHovered || isMobileOpen) && (
-                <span className="menu-item-text text-lg ml-3">{nav.name}</span>
+                <span className="menu-item-text text-base ml-2">{nav.name}</span>
               )}
               {(isExpanded || isHovered || isMobileOpen) && (
                 <i
-                  className={`ml-auto w-6 h-6 transition-transform duration-200 fas fa-chevron-down flex items-center justify-center ${
+                  className={`ml-auto w-5 h-5 transition-transform duration-200 fas fa-chevron-down flex items-center justify-center ${
                     openSubmenu?.type === menuType &&
                     openSubmenu?.index === index
                       ? "rotate-180 text-brand-500"
@@ -159,7 +159,7 @@ const AppSidebar: React.FC = () => {
                 }`}
               >
                 <span
-                  className={`menu-item-icon-size w-12 h-12 flex items-center justify-center text-xl ${
+                  className={`menu-item-icon-size w-8 h-8 flex items-center justify-center text-base ${
                     isActive(nav.path)
                       ? "menu-item-icon-active"
                       : "menu-item-icon-inactive"
@@ -168,7 +168,7 @@ const AppSidebar: React.FC = () => {
                   {nav.icon}
                 </span>
                 {(isExpanded || isHovered || isMobileOpen) && (
-                  <span className="menu-item-text text-lg ml-3">{nav.name}</span>
+                  <span className="menu-item-text text-base ml-2">{nav.name}</span>
                 )}
               </Link>
             )
@@ -186,12 +186,12 @@ const AppSidebar: React.FC = () => {
                     : "0px",
               }}
             >
-              <ul className="mt-2 space-y-1 ml-9">
+              <ul className="mt-1 space-y-1 ml-8">
                 {nav.subItems.map((subItem) => (
                   <li key={subItem.name}>
                     <Link
                       to={subItem.path}
-                      className={`menu-dropdown-item text-base ${
+                      className={`menu-dropdown-item text-sm ${
                         isActive(subItem.path)
                           ? "menu-dropdown-item-active"
                           : "menu-dropdown-item-inactive"
@@ -235,13 +235,13 @@ const AppSidebar: React.FC = () => {
 
   return (
     <aside
-      className={`fixed mt-16 flex flex-col lg:mt-0 top-0 px-5 left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-50 border-r border-gray-200 
+      className={`fixed mt-16 flex flex-col lg:mt-0 top-0 px-4 left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-50 border-r border-gray-200 
         ${
           isExpanded || isMobileOpen
-            ? "w-[290px]"
+            ? "w-[270px]"
             : isHovered
-            ? "w-[290px]"
-            : "w-[90px]"
+            ? "w-[270px]"
+            : "w-[80px]"
         }
         ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
         lg:translate-x-0`}
@@ -249,27 +249,27 @@ const AppSidebar: React.FC = () => {
       onMouseLeave={() => setIsHovered(false)}
     >
       <div
-        className={`py-8 flex ${
+        className={`py-6 flex ${
           !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
         }`}
       >
         <Link to="/">
           {isExpanded || isHovered || isMobileOpen ? (
-            <div className="flex items-center gap-4 text-2xl font-extrabold text-gray-800 dark:text-white">
-              <i className="fas fa-mobile-alt text-4xl text-[#0071E0] dark:text-blue-400"></i>
+            <div className="flex items-center gap-3 text-xl font-bold text-gray-800 dark:text-white">
+              <i className="fas fa-mobile-alt text-3xl text-[#0071E0] dark:text-blue-400"></i>
               <span>xGSM Admin</span>
             </div>
           ) : (
-            <i className="fas fa-mobile-alt text-6xl text-blue-600 dark:text-blue-400"></i>
+            <i className="fas fa-mobile-alt text-5xl text-blue-600 dark:text-blue-400"></i>
           )}
         </Link>
       </div>
       <div className="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar">
-        <nav className="mb-6">
-          <div className="flex flex-col gap-4">
+        <nav className="mb-5">
+          <div className="flex flex-col gap-3">
             <div>
               <h2
-                className={`mb-4 text-sm uppercase flex leading-[20px] text-gray-400 ${
+                className={`mb-3 text-xs uppercase flex leading-[18px] text-gray-400 ${
                   !isExpanded && !isHovered
                     ? "lg:justify-center"
                     : "justify-start"
@@ -278,7 +278,7 @@ const AppSidebar: React.FC = () => {
                 {isExpanded || isHovered || isMobileOpen ? (
                   "Menu"
                 ) : (
-                  <i className="fas fa-ellipsis-h size-8"></i>
+                  <i className="fas fa-ellipsis-h size-6"></i>
                 )}
               </h2>
               {renderMenuItems(navItems, "main")}
