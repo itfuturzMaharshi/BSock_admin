@@ -46,6 +46,12 @@ const navItems: NavItem[] = [
     name: "Wallet Amount",
     path: "/wallet-amount",
   },
+  {
+    icon:<i className="fas fa-cart-shopping"></i>,
+    name:"Customer Cart",
+    path:"/customer-cart"
+  }
+  ,
 ];
 
 const AppSidebar: React.FC = () => {
