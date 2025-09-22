@@ -17,6 +17,12 @@ export interface Product {
   isNegotiable: boolean;
   isFlashDeal: string;
   expiryTime: string; // ISO string (e.g., "2025-10-30T03:30:00.000Z")
+  status?: string;
+  isVerified?: boolean;
+  verifiedBy?: string;
+  isApproved?: boolean;
+  approvedBy?: string;
+  updatedBy?: string;
 }
 
 export interface ListResponse {
@@ -129,6 +135,55 @@ export class ProductService {
       return res.data;
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Failed to fetch Product';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
+
+  // Verify a product
+  static verifyProduct = async (id: string): Promise<any> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/product/verify`;
+
+    try {
+      const res = await api.post(url, { id });
+      
+      // Check if response status is 200 and data is not null
+      if (res.status === 200 && res.data.data) {
+        toastHelper.showTost(res.data.message || 'Product verified successfully!', 'success');
+        return res.data;
+      } else {
+        // Show warning message and return false
+        toastHelper.showTost(res.data.message || 'Failed to verify product', 'warning');
+        return false;
+      }
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to verify Product';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
+
+  // Approve a product
+  static approveProduct = async (id: string): Promise<any> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/product/approve`;
+
+    try {
+      const res = await api.post(url, { id });
+      // Check if response status is 200 and data is not null
+      if (res.status === 200 && res.data.data) {
+        toastHelper.showTost(res.data.message || 'Product approved successfully!', 'success');
+        return res.data;
+      } else {
+        // Show warning message and return false
+        toastHelper.showTost(res.data.message || 'Failed to approve product', 'warning');
+        return false;
+      }
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to approve Product';
       toastHelper.showTost(errorMessage, 'error');
       throw new Error(errorMessage);
     }

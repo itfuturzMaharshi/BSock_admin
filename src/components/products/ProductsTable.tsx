@@ -105,6 +105,54 @@ const ProductsTable: React.FC = () => {
     }
   };
 
+  const handleVerify = async (product: Product) => {
+    if (!product._id) return;
+
+    const confirmed = await Swal.fire({
+      title: "Verify Product",
+      text: "Are you sure you want to verify this product?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Yes, verify it!",
+      cancelButtonText: "No, cancel!",
+    });
+
+    if (confirmed.isConfirmed) {
+      try {
+        const result = await ProductService.verifyProduct(product._id);
+        if (result !== false) {
+          fetchProducts(); // Refresh the list only if successful
+        }
+      } catch (error) {
+        console.error("Failed to verify product:", error);
+      }
+    }
+  };
+
+  const handleApprove = async (product: Product) => {
+    if (!product._id) return;
+
+    const confirmed = await Swal.fire({
+      title: "Approve Product",
+      text: "Are you sure you want to approve this product?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Yes, approve it!",
+      cancelButtonText: "No, cancel!",
+    });
+
+    if (confirmed.isConfirmed) {
+      try {
+        const result = await ProductService.approveProduct(product._id);
+        if (result !== false) {
+          fetchProducts(); // Refresh the list only if successful
+        }
+      } catch (error) {
+        console.error("Failed to approve product:", error);
+      }
+    }
+  };
+
   // Safely derive a displayable SKU Family text from possibly-populated object
   const getSkuFamilyText = (skuFamilyId: any): string => {
     if (skuFamilyId == null) return "";
@@ -157,6 +205,32 @@ const ProductsTable: React.FC = () => {
       return format(date, "yyyy-MM-dd HH:mm");
     } catch {
       return "-";
+    }
+  };
+
+  // Get status badge for product
+  const getStatusBadge = (product: Product) => {
+    if (product.isApproved) {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+          <i className="fas fa-check-circle mr-1"></i>
+          Approved
+        </span>
+      );
+    } else if (product.isVerified) {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+          <i className="fas fa-clock mr-1"></i>
+          Under Approval
+        </span>
+      );
+    } else {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+          <i className="fas fa-exclamation-circle mr-1"></i>
+          Under Verification
+        </span>
+      );
     }
   };
 
@@ -278,6 +352,12 @@ const ProductsTable: React.FC = () => {
                   rowSpan={2}
                   className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle"
                 >
+                  Status
+                </th>
+                <th
+                  rowSpan={2}
+                  className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle"
+                >
                   Actions
                 </th>
               </tr>
@@ -299,7 +379,7 @@ const ProductsTable: React.FC = () => {
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={15} className="p-12 text-center">
+                  <td colSpan={16} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
                       Loading Products...
@@ -308,7 +388,7 @@ const ProductsTable: React.FC = () => {
                 </tr>
               ) : productsData.length === 0 ? (
                 <tr>
-                  <td colSpan={15} className="p-12 text-center">
+                  <td colSpan={16} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       No products found
                     </div>
@@ -372,16 +452,39 @@ const ProductsTable: React.FC = () => {
                       {formatExpiryTime(item.expiryTime)}
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
-                      <div className="flex items-center justify-center gap-3">
+                      {getStatusBadge(item)}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        {!item.isVerified && (
+                          <button
+                            onClick={() => handleVerify(item)}
+                            className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors"
+                            title="Verify Product"
+                          >
+                            <i className="fas fa-check"></i>
+                          </button>
+                        )}
+                        {item.isVerified && !item.isApproved && (
+                          <button
+                            onClick={() => handleApprove(item)}
+                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                            title="Approve Product"
+                          >
+                            <i className="fas fa-thumbs-up"></i>
+                          </button>
+                        )}
                         <button
                           onClick={() => handleEdit(item)}
-                          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                          className="text-yellow-600 hover:text-yellow-800 dark:text-yellow-400 dark:hover:text-yellow-300 transition-colors"
+                          title="Edit Product"
                         >
                           <i className="fas fa-edit"></i>
                         </button>
                         <button
                           onClick={() => handleDelete(item)}
                           className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                          title="Delete Product"
                         >
                           <i className="fas fa-trash"></i>
                         </button>
