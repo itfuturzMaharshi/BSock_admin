@@ -28,26 +28,23 @@ class SocketServiceClass {
     });
 
     this.socket.on('connect', () => {
-      // console.log('Socket connected', this.socket?.id);
+      console.log('Socket connected', this.socket?.id);
+      // Auto-join room when connected
+      this.joinRoom();
     });
 
     this.socket.on('disconnect', () => {
-      // console.log('Socket disconnected');
+      console.log('Socket disconnected');
     });
 
-    // Message channels aligned with backend rooms
-    this.socket.on('adminMessage', (_payload: any) => {
-      void _payload;
-      // You can surface this via a callback bus if needed
-      // console.log('adminMessage', payload);
+    // Message listener for backend userMessage
+    this.socket.on('userMessage', (payload: any) => {
+      console.log('Received userMessage:', payload);
     });
-    this.socket.on('customerMessage', (_payload: any) => {
-      void _payload;
-      // console.log('customerMessage', payload);
-    });
-    this.socket.on('sellerMessage', (_payload: any) => {
-      void _payload;
-      // console.log('sellerMessage', payload);
+
+    // Message listener for sendToAll
+    this.socket.on('message', (payload: any) => {
+      console.log('Received broadcast message:', payload);
     });
   }
 
@@ -63,18 +60,52 @@ class SocketServiceClass {
     return this.socket;
   }
 
-  // Client-initiated events matching backend handlers
-  sendMessage(toUserId: string, message: string) {
-    if (!this.socket) return;
-    this.socket.emit('sendMessage', { toUserId, message });
+  // Get user data from localStorage
+  private getUserData(): { userId: string; userType: UserType } | null {
+    const userId = localStorage.getItem('userId');
+    
+    if (!userId) {
+      console.warn('Missing userId in localStorage');
+      return null;
+    }
+    
+    return { userId, userType:'admin' };
   }
 
-  sendToType(userType: UserType, message: string) {
+  // Join room with userId and userType
+  joinRoom() {
+    console.log('Attempting to join room...');
     if (!this.socket) return;
-    this.socket.emit('sendToType', { userType, message });
+    console.log('Socket instance exists');
+    
+    const userData = this.getUserData();
+    console.log('User data:', userData);
+    if (!userData) return;
+    
+    this.socket.emit('joinRoom', {
+      userId: userData.userId,
+      userType: userData.userType
+    });
+  }
+
+  // Leave room
+  leaveRoom() {
+    if (!this.socket) return;
+    
+    const userData = this.getUserData();
+    if (!userData) return;
+    
+    this.socket.emit('leaveRoom', {
+      userId: userData.userId,
+      userType: userData.userType
+    });
+  }
+
+  // Send message to all connected users
+  sendToAll(message: any) {
+    if (!this.socket) return;
+    this.socket.emit('sendToAll', message);
   }
 }
 
 export const SocketService = new SocketServiceClass();
-
-
