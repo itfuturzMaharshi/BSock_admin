@@ -23,6 +23,8 @@ export interface Product {
   isApproved?: boolean;
   approvedBy?: string;
   updatedBy?: string;
+  canVerify?: boolean;
+  canApprove?: boolean;
 }
 
 export interface ListResponse {

@@ -456,7 +456,7 @@ const ProductsTable: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
                       <div className="flex items-center justify-center gap-2">
-                        {!item.isVerified && (
+                        {item.canVerify && (
                           <button
                             onClick={() => handleVerify(item)}
                             className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors"
@@ -465,7 +465,7 @@ const ProductsTable: React.FC = () => {
                             <i className="fas fa-check"></i>
                           </button>
                         )}
-                        {item.isVerified && !item.isApproved && (
+                        {item.canApprove && (
                           <button
                             onClick={() => handleApprove(item)}
                             className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
