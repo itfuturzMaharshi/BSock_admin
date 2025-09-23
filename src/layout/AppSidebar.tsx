@@ -27,10 +27,16 @@ const navItems: NavItem[] = [
     path: "/admin",
   },
   {
+    icon: <i className="fa-solid fa-building"></i>,
+    name: "Business Requests",
+    path: "/business-requests",
+  },
+  {
     icon: <i className="fas fa-tags"></i>,
     name: "Sku Family",
     path: "/sku-family",
   },
+
   {
     icon: <i className="fas fa-box-open"></i>,
     name: "Products",
@@ -47,11 +53,10 @@ const navItems: NavItem[] = [
     path: "/wallet-amount",
   },
   {
-    icon:<i className="fas fa-cart-shopping"></i>,
-    name:"Customer Cart",
-    path:"/customer-cart"
-  }
-  ,
+    icon: <i className="fas fa-cart-shopping"></i>,
+    name: "Customer Cart",
+    path: "/customer-cart",
+  },
 ];
 
 const AppSidebar: React.FC = () => {
@@ -62,7 +67,9 @@ const AppSidebar: React.FC = () => {
     type: "main";
     index: number;
   } | null>(null);
-  const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>({});
+  const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>(
+    {}
+  );
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const isActive = useCallback(
@@ -143,7 +150,9 @@ const AppSidebar: React.FC = () => {
                 {nav.icon}
               </span>
               {(isExpanded || isHovered || isMobileOpen) && (
-                <span className="menu-item-text text-base ml-2">{nav.name}</span>
+                <span className="menu-item-text text-base ml-2">
+                  {nav.name}
+                </span>
               )}
               {(isExpanded || isHovered || isMobileOpen) && (
                 <i
@@ -174,7 +183,9 @@ const AppSidebar: React.FC = () => {
                   {nav.icon}
                 </span>
                 {(isExpanded || isHovered || isMobileOpen) && (
-                  <span className="menu-item-text text-base ml-2">{nav.name}</span>
+                  <span className="menu-item-text text-base ml-2">
+                    {nav.name}
+                  </span>
                 )}
               </Link>
             )
