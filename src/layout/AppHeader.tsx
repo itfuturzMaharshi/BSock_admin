@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 
 import { Link } from "react-router";
+import { Handshake } from "lucide-react";
 import { useSidebar } from "../context/SidebarContext";
 import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 import NotificationDropdown from "../components/header/NotificationDropdown";
 import UserDropdown from "../components/header/UserDropdown";
+import NegotiationModal from "../components/negotiation/NegotiationModal";
 
 const AppHeader: React.FC = () => {
   const [isApplicationMenuOpen, setApplicationMenuOpen] = useState(false);
+  const [isNegotiationModalOpen, setIsNegotiationModalOpen] = useState(false);
 
   const { isMobileOpen, toggleSidebar, toggleMobileSidebar } = useSidebar();
 
@@ -21,6 +24,10 @@ const AppHeader: React.FC = () => {
 
   const toggleApplicationMenu = () => {
     setApplicationMenuOpen(!isApplicationMenuOpen);
+  };
+
+  const handleNegotiationClick = () => {
+    setIsNegotiationModalOpen(true);
   };
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -161,12 +168,27 @@ const AppHeader: React.FC = () => {
             <ThemeToggleButton />
             {/* <!-- Dark Mode Toggler --> */}
             <NotificationDropdown />
+            {/* <!-- Negotiation Button --> */}
+            <button
+              onClick={handleNegotiationClick}
+              className="flex items-center justify-center w-10 h-10 text-gray-700 rounded-lg z-99999 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+              title="Negotiations"
+            >
+              <Handshake className="w-5 h-5" />
+            </button>
             {/* <!-- Notification Menu Area --> */}
           </div>
           {/* <!-- User Area --> */}
           <UserDropdown />
         </div>
       </div>
+
+      {/* Negotiation Modal */}
+      <NegotiationModal
+        isOpen={isNegotiationModalOpen}
+        onClose={() => setIsNegotiationModalOpen(false)}
+        // userType="admin"
+      />
     </header>
   );
 };
