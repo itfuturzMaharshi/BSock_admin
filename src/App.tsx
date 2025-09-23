@@ -25,6 +25,7 @@ import CostModule from "./pages/CostModule/CostModule";
 import WalletAmount from "./pages/WalletAmount/WalletAmount";
 import CustomerCart from "./pages/Customer/CustomerCart";
 import BusinessRequests from "./pages/BusinessRequests/BusinessRequests";
+import Orders from "./pages/Orders/Orders";
 export default function App() {
   return (
     <>
@@ -46,6 +47,7 @@ export default function App() {
             <Route path="/business-requests" element={<BusinessRequests />} />
             <Route path="/sku-family" element={<SkuFamily />} />
             <Route path="/products" element={<Products />} />
+            <Route path="/orders" element={<Orders />} />
             <Route path="/cost-module" element={<CostModule />} />
             <Route path="/wallet-amount" element={<WalletAmount />} />
             <Route path="/customer-cart" element={<CustomerCart />} />
