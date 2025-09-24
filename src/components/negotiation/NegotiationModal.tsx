@@ -70,51 +70,31 @@ const NegotiationModal = ({ isOpen, onClose }: NegotiationModalProps) => {
     }
   };
 
-  // Check if there's a newer negotiation for the same product
+  // Check if there's a newer negotiation for the same bid
   const hasNewerNegotiation = (currentNegotiation: Negotiation) => {
     if (!negotiations || negotiations.length === 0) return false;
     
     return negotiations.some(negotiation => {
-      // Same product, different negotiation, newer timestamp
-      const currentProductId = typeof currentNegotiation.productId === 'string' 
-        ? currentNegotiation.productId 
-        : currentNegotiation.productId._id;
-      const negotiationProductId = typeof negotiation.productId === 'string' 
-        ? negotiation.productId 
-        : negotiation.productId._id;
-      
-      return negotiationProductId === currentProductId &&
+      // Same bid, different negotiation, newer timestamp
+      return negotiation.bidId === currentNegotiation.bidId &&
              negotiation._id !== currentNegotiation._id &&
              new Date(negotiation.createdAt) > new Date(currentNegotiation.createdAt) &&
              negotiation.status === 'negotiation';
     });
   };
 
-  // Check if any negotiation for the same product has been accepted
+  // Check if any negotiation for the same bid has been accepted
   const hasAcceptedNegotiation = (currentNegotiation: Negotiation) => {
-    const currentProductId = typeof currentNegotiation.productId === 'string' 
-      ? currentNegotiation.productId 
-      : currentNegotiation.productId._id;
-
     // Check in active negotiations
     const hasAcceptedInActive = negotiations && negotiations.some(negotiation => {
-      const negotiationProductId = typeof negotiation.productId === 'string' 
-        ? negotiation.productId 
-        : negotiation.productId._id;
-      
-      return negotiationProductId === currentProductId &&
+      return negotiation.bidId === currentNegotiation.bidId &&
              negotiation._id !== currentNegotiation._id &&
              negotiation.status === 'accepted';
     });
 
     // Check in accepted negotiations
     const hasAcceptedInAccepted = acceptedNegotiations && acceptedNegotiations.some(negotiation => {
-      const negotiationProductId = typeof negotiation.productId === 'string' 
-        ? negotiation.productId 
-        : negotiation.productId._id;
-      
-      return negotiationProductId === currentProductId &&
-             negotiation._id !== currentNegotiation._id &&
+      return negotiation.bidId === currentNegotiation.bidId &&
              negotiation.status === 'accepted';
     });
 
@@ -122,7 +102,7 @@ const NegotiationModal = ({ isOpen, onClose }: NegotiationModalProps) => {
   };
 
   const canRespond = (negotiation: Negotiation) => {
-    // If any negotiation for the same product has been accepted, don't allow responding
+    // If any negotiation for the same bid has been accepted, don't allow responding
     if (hasAcceptedNegotiation(negotiation)) {
       return false;
     }
@@ -132,12 +112,12 @@ const NegotiationModal = ({ isOpen, onClose }: NegotiationModalProps) => {
   };
 
   const canAccept = (negotiation: Negotiation) => {
-    // If any negotiation for the same product has been accepted, don't allow accepting
+    // If any negotiation for the same bid has been accepted, don't allow accepting
     if (hasAcceptedNegotiation(negotiation)) {
       return false;
     }
 
-    // If there's a newer negotiation for the same product, don't allow accepting old ones
+    // If there's a newer negotiation for the same bid, don't allow accepting old ones
     if (hasNewerNegotiation(negotiation)) {
       return false;
     }
