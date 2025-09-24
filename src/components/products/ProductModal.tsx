@@ -53,6 +53,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
   const [skuLoading, setSkuLoading] = useState<boolean>(false);
   const [skuError, setSkuError] = useState<string | null>(null);
   const [dateError, setDateError] = useState<string | null>(null);
+  const [moqError, setMoqError] = useState<string | null>(null);
 
   const colorOptions = ["Graphite", "Silver", "Gold", "Sierra Blue", "Mixed"];
   const countryOptions = ["Hongkong", "Dubai", "Singapore"];
@@ -151,6 +152,21 @@ const ProductModal: React.FC<ProductModalProps> = ({
         next.moq = typeof updatedValue === "number" ? updatedValue : parseFloat(String(updatedValue)) || 0;
       }
 
+      // Validate MOQ vs Stock for 'partial' type
+      const numericStock = parseFloat(String(name === "stock" ? updatedValue : previous.stock)) || 0;
+      const numericMoq = parseFloat(String(name === "moq" ? updatedValue : previous.moq)) || 0;
+      const purchaseType = String(name === "purchaseType" ? updatedValue : previous.purchaseType);
+      if (purchaseType === "partial") {
+        if (numericMoq >= numericStock) {
+          setMoqError("MOQ must be less than Stock");
+        } else {
+          setMoqError(null);
+        }
+      } else {
+        // For 'full', equality is enforced elsewhere; no error
+        setMoqError(null);
+      }
+
       return next;
     });
   };
@@ -200,6 +216,19 @@ const ProductModal: React.FC<ProductModalProps> = ({
         next.moq = numeric;
       }
 
+      // Validate MOQ vs Stock for 'partial' type
+      const numericStock = parseFloat(String(name === "stock" ? value : previous.stock)) || 0;
+      const numericMoq = parseFloat(String(name === "moq" ? value : previous.moq)) || 0;
+      if (previous.purchaseType === "partial") {
+        if (numericMoq >= numericStock) {
+          setMoqError("MOQ must be less than Stock");
+        } else {
+          setMoqError(null);
+        }
+      } else {
+        setMoqError(null);
+      }
+
       return next;
     });
   };
@@ -212,6 +241,13 @@ const ProductModal: React.FC<ProductModalProps> = ({
     }
     if (!formData.expiryTime) {
       setDateError("Expiry time is required");
+      return;
+    }
+    // Final MOQ validation before submit
+    const numericStock = parseFloat(String(formData.stock)) || 0;
+    const numericMoq = parseFloat(String(formData.moq)) || 0;
+    if (formData.purchaseType === "partial" && numericMoq >= numericStock) {
+      setMoqError("MOQ must be less than Stock");
       return;
     }
     onSave(formData);
@@ -477,6 +513,9 @@ const ProductModal: React.FC<ProductModalProps> = ({
                 required
                 disabled={formData.purchaseType === "full"}
               />
+              {moqError && formData.purchaseType === "partial" && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{moqError}</p>
+              )}
               {formData.purchaseType === "full" && (
                 <p className="mt-1 text-sm text-gray-500">MOQ equals Stock for Full purchase type.</p>
               )}
@@ -540,7 +579,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
             <button
               type="submit"
               className="px-6 py-2.5 bg-[#0071E0] text-white rounded-lg hover:bg-blue-600 transition duration-200 transform hover:scale-105"
-              disabled={skuLoading || skuError !== null || !!dateError}
+              disabled={skuLoading || skuError !== null || !!dateError || !!moqError}
             >
               {editItem ? "Update Product" : "Create Product"}
             </button>
