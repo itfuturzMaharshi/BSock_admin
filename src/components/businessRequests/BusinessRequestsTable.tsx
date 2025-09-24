@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Swal from "sweetalert2";
+import { BusinessRequestsService } from "../../services/businessRequests/businessRequests.services";
 
 interface BusinessRequest {
   _id?: string;
@@ -20,6 +21,27 @@ const BusinessRequestsTable: React.FC = () => {
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(null);
+  const [statusOverrides, setStatusOverrides] = useState<Record<string, "Approved" | "Pending" | "Rejected">>({});
+
+  // Load overrides from localStorage once
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('br_status_overrides');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+          setStatusOverrides(parsed);
+        }
+      }
+    } catch {}
+  }, []);
+
+  // Persist overrides
+  useEffect(() => {
+    try {
+      localStorage.setItem('br_status_overrides', JSON.stringify(statusOverrides));
+    } catch {}
+  }, [statusOverrides]);
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -46,45 +68,78 @@ const BusinessRequestsTable: React.FC = () => {
     };
   }, [openDropdownId]);
 
-  // Mock fetch data function (replace with actual backend API call)
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { docs, totalDocs } = await BusinessRequestsService.getBusinessRequests(
+        currentPage,
+        itemsPerPage,
+        searchTerm?.trim() || undefined
+      );
+
+      const baseUrl = import.meta.env.VITE_BASE_URL as string | undefined;
+      const makeAbsoluteUrl = (path?: string | null): string | undefined => {
+        if (!path) return undefined;
+        if (path.startsWith('http://') || path.startsWith('https://')) return path;
+        if (!baseUrl) return path;
+        const trimmed = path.startsWith('/') ? path : `/${path}`;
+        return `${baseUrl}${trimmed}`;
+      };
+
+      const mapped: BusinessRequest[] = (docs || []).map((d: any) => {
+        const bp = d?.businessProfile || {};
+        const statusStr: string | undefined = (bp?.status || '').toString().toLowerCase();
+        let status: "Approved" | "Pending" | "Rejected" = "Pending";
+        if (statusStr === 'approved') status = 'Approved';
+        else if (statusStr === 'rejected') status = 'Rejected';
+        else status = 'Pending';
+
+        return {
+          _id: d?._id ?? d?.id,
+          logo: makeAbsoluteUrl(bp?.logo),
+          certificate: makeAbsoluteUrl(bp?.certificate),
+          businessName: bp?.businessName ?? d?.name ?? "-",
+          country: bp?.country ?? "-",
+          address: bp?.address ?? undefined,
+          status,
+        } as BusinessRequest;
+      });
+
+      // Apply local overrides when present
+      const withOverrides = mapped.map((item) => {
+        if (item._id && statusOverrides[item._id]) {
+          return { ...item, status: statusOverrides[item._id] };
+        }
+        return item;
+      });
+
+      // Auto-clear overrides that the server has now persisted (only for Approved)
       try {
-        const response = {
-          data: {
-            docs: [
-              {
-                _id: "1",
-                logo: "https://via.placeholder.com/60x60?text=Logo",
-                certificate: "https://via.placeholder.com/60x60?text=Cert",
-                businessName: "ABC Corp",
-                country: "USA",
-                address: "123 Main St",
-                status: "Pending",
-              },
-              {
-                _id: "2",
-                businessName: "XYZ Ltd",
-                country: "India",
-                status: "Approved",
-              },
-            ],
-            totalDocs: 2,
-          },
-        };
-        setBusinessRequests(response.data.docs || []);
-        setTotalDocs(response.data.totalDocs || 0);
-      } catch (err) {
-        console.error("Error fetching business requests:", err);
-        setBusinessRequests([]);
-        setTotalDocs(0);
-      } finally {
-        setLoading(false);
-      }
-    };
+        const nextOverrides = { ...statusOverrides };
+        for (const item of mapped) {
+          if (item._id && nextOverrides[item._id] === 'Approved' && item.status === 'Approved') {
+            delete nextOverrides[item._id];
+          }
+        }
+        if (JSON.stringify(nextOverrides) !== JSON.stringify(statusOverrides)) {
+          setStatusOverrides(nextOverrides);
+        }
+      } catch {}
+
+      setBusinessRequests(withOverrides);
+      setTotalDocs(Number(totalDocs) || 0);
+    } catch (err) {
+      console.error("Error fetching business requests:", err);
+      setBusinessRequests([]);
+      setTotalDocs(0);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, itemsPerPage, searchTerm, statusOverrides]);
+
+  useEffect(() => {
     fetchData();
-  }, [currentPage, searchTerm]);
+  }, [fetchData]);
 
   const handleStatusChange = async (id: string, newStatus: "Approved" | "Pending" | "Rejected") => {
     const confirmed = await Swal.fire({
@@ -97,23 +152,34 @@ const BusinessRequestsTable: React.FC = () => {
     });
 
     if (confirmed.isConfirmed) {
+      // Optimistic UI update + record override
+      setStatusOverrides((prev) => ({ ...prev, [id]: newStatus }));
+      setBusinessRequests((prev: BusinessRequest[]) =>
+        prev.map((item: BusinessRequest) =>
+          item._id === id ? { ...item, status: newStatus } : item
+        )
+      );
+
       try {
-        setBusinessRequests((prev: BusinessRequest[]) =>
-          prev.map((item: BusinessRequest) =>
-            item._id === id ? { ...item, status: newStatus } : item
-          )
-        );
-        setOpenDropdownId(null); // Close dropdown after action
-        setDropdownPosition(null); // Reset dropdown position
+        const payloadStatus: 'approved' | 'pending' | 'rejected' =
+          newStatus === 'Approved' ? 'approved' : newStatus === 'Rejected' ? 'rejected' : 'pending';
+        await BusinessRequestsService.updateCustomerStatus(id, payloadStatus);
+        // Clear override if server now reflects our chosen status
+        await fetchData();
       } catch (err) {
         console.error("Error updating status:", err);
+        // Revert on error
+        await fetchData();
+      } finally {
+        setOpenDropdownId(null);
+        setDropdownPosition(null);
       }
     }
   };
 
   const totalPages = Math.ceil(totalDocs / itemsPerPage);
 
-  const getStatusStyles = (status: string) => {
+  const getStatusStyles = (status: "Approved" | "Pending" | "Rejected") => {
     switch (status) {
       case "Approved":
         return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
@@ -205,7 +271,7 @@ const BusinessRequestsTable: React.FC = () => {
                           src={item.logo}
                           alt="Logo"
                           className="w-12 h-12 object-contain rounded-md border border-gray-200 dark:border-gray-600 cursor-pointer"
-                          onClick={() => setSelectedImage(item.logo)}
+                          onClick={() => setSelectedImage(item.logo || null)}
                         />
                       ) : (
                         <span className="text-gray-400 dark:text-gray-500">-</span>
@@ -217,7 +283,7 @@ const BusinessRequestsTable: React.FC = () => {
                           src={item.certificate}
                           alt="Certificate"
                           className="w-12 h-12 object-contain rounded-md border border-gray-200 dark:border-gray-600 cursor-pointer"
-                          onClick={() => setSelectedImage(item.certificate)}
+                          onClick={() => setSelectedImage(item.certificate || null)}
                         />
                       ) : (
                         <span className="text-gray-400 dark:text-gray-500">-</span>
@@ -274,7 +340,7 @@ const BusinessRequestsTable: React.FC = () => {
                               }
                               
                               setDropdownPosition({ top, left });
-                              setOpenDropdownId(item._id);
+                              setOpenDropdownId(item._id || null);
                             }
                           }}
                           aria-label="Toggle actions"
