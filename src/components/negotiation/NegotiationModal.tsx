@@ -443,9 +443,9 @@ const NegotiationModal = ({ isOpen, onClose }: NegotiationModalProps) => {
                               </span>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <span className="text-sm text-gray-600">From:</span>
+                              <span className="text-sm text-gray-600">Accepted By:</span>
                               <span className="font-medium text-gray-900">
-                                {individualNegotiation.FromUserType}
+                                {individualNegotiation.toUserType}
                               </span>
                             </div>
                           </div>
