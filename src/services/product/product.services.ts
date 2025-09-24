@@ -14,6 +14,7 @@ export interface Product {
   stock: number | string;
   country: string;
   moq: number | string;
+  purchaseType?: string; // 'full' | 'partial'
   isNegotiable: boolean;
   isFlashDeal: string;
   expiryTime: string; // ISO string (e.g., "2025-10-30T03:30:00.000Z")
