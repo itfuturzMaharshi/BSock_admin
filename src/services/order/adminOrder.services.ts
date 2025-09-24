@@ -29,7 +29,7 @@ export interface Order {
   approvedBy?: string;
   canVerify?: boolean;
   canApprove?: boolean;
-  tracking?: TrackingItem[]; // Add tracking to Order interface
+  tracking?: TrackingItem[];
 }
 
 export interface TrackingItem {
@@ -74,7 +74,6 @@ export interface TrackingResponse {
 }
 
 export class AdminOrderService {
-  // Get order list with pagination and search
   static getOrderList = async (
     page: number,
     limit: number,
@@ -86,12 +85,8 @@ export class AdminOrderService {
     const url = `${baseUrl}/api/${adminRoute}/order/list`;
 
     const body: any = { page, limit };
-    if (search) {
-      body.search = search;
-    }
-    if (status) {
-      body.status = status;
-    }
+    if (search) body.search = search;
+    if (status) body.status = status;
 
     try {
       const res = await api.post(url, body);
@@ -103,14 +98,28 @@ export class AdminOrderService {
     }
   };
 
-  // Update order status
-  static updateOrderStatus = async (orderId: string, status: string): Promise<any> => {
+  // Update order status with optional cartItems
+  static updateOrderStatus = async (
+    orderId: string,
+    status: string,
+    cartItems?: OrderItem[]
+  ): Promise<any> => {
     const baseUrl = import.meta.env.VITE_BASE_URL;
     const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
     const url = `${baseUrl}/api/${adminRoute}/order/update-status`;
 
+    const body: any = { orderId, status };
+    if (cartItems && cartItems.length > 0) {
+      body.cartItems = cartItems.map(item => ({
+        productId: item.productId._id,
+        skuFamilyId: item.skuFamilyId._id,
+        quantity: item.quantity,
+        price: item.price,
+      }));
+    }
+
     try {
-      const res = await api.post(url, { orderId, status });
+      const res = await api.post(url, body);
       if (res.status === 200 && res.data.data) {
         toastHelper.showTost(res.data.message || `Order status updated to ${status}!`, 'success');
         return res.data;
@@ -125,7 +134,6 @@ export class AdminOrderService {
     }
   };
 
-  // Fetch order tracking
   static getOrderTracking = async (orderId: string, page: number = 1, limit: number = 10): Promise<TrackingResponse> => {
     const baseUrl = import.meta.env.VITE_BASE_URL;
     const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;

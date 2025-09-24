@@ -3,8 +3,9 @@ import api from '../api/api';
 
 interface CostModule {
   _id?: string;
-  type: 'Logistic' | 'Product';
+  type: 'Product' | 'Categories' | 'Country' | 'ExtraDelivery';
   products: string[];
+  categories: string[];
   countries: string[];
   remark: string;
   costType: 'Percentage' | 'Fixed';
@@ -20,7 +21,7 @@ interface ListQueryParams {
   page?: number;
   limit?: number;
   search?: string;
-  type?: 'Logistic' | 'Product';
+  type?: 'Product' | 'Categories' | 'Country' | 'ExtraDelivery';
   costType?: 'Percentage' | 'Fixed';
 }
 
@@ -50,7 +51,6 @@ export class CostModuleService {
       });
 
       const responseData = res.data;
-
       if (res.status === 200) {
         toastHelper.showTost(responseData.message || 'Cost created successfully!', 'success');
       } else {

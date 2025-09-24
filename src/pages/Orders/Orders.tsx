@@ -1,4 +1,3 @@
-import React from 'react';
 import PageMeta from "../../components/common/PageMeta";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import OrdersTable from "../../components/orders/OrdersTable";

@@ -2,12 +2,14 @@ import React, { useState, useEffect } from "react";
 import { CostModuleService } from "../../services/costModule/costModule.services";
 import toastHelper from "../../utils/toastHelper";
 import Select from "react-select";
+import CreatableSelect from "react-select/creatable";
 
 // Define the interface for CostModule data
 interface CostModule {
   _id?: string;
-  type: "Logistic" | "Product";
+  type: "Product" | "Categories" | "Country" | "ExtraDelivery";
   products: string[];
+  categories: string[];
   countries: string[];
   remark: string;
   costType: "Percentage" | "Fixed";
@@ -19,8 +21,9 @@ interface CostModule {
 
 // Define the interface for form data
 interface FormData {
-  type: "Logistic" | "Product";
+  type: "Product" | "Categories" | "Country" | "ExtraDelivery";
   products: string[];
+  categories: string[];
   countries: string[];
   remark: string;
   costType: "Percentage" | "Fixed";
@@ -49,8 +52,9 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
   editItem,
 }) => {
   const [formData, setFormData] = useState<FormData>({
-    type: "Logistic",
+    type: "Product",
     products: [],
+    categories: [],
     countries: [],
     remark: "",
     costType: "Percentage",
@@ -93,8 +97,9 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
       if (editItem) {
         setFormData({
           type: editItem.type,
-          products: editItem.products,
-          countries: editItem.countries,
+          products: editItem.products.map(p => p._id),
+          categories: editItem.categories || [],
+          countries: editItem.countries || [],
           remark: editItem.remark,
           costType: editItem.costType,
           value: editItem.value.toString(),
@@ -104,8 +109,9 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
         });
       } else {
         setFormData({
-          type: "Logistic",
+          type: "Product",
           products: [],
+          categories: [],
           countries: [],
           remark: "",
           costType: "Percentage",
@@ -127,7 +133,7 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === "countries" ? [value] : value,
+      [name]: value,
     }));
   };
 
@@ -135,26 +141,42 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
   const handleProductChange = (selectedOption: any) => {
     setFormData((prev) => ({
       ...prev,
-      products: selectedOption ? [selectedOption.value] : [],
+      products: selectedOption ? selectedOption.map((option: any) => option.value) : [],
+    }));
+  };
+
+  const handleCategoryChange = (selectedOption: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      categories: selectedOption ? selectedOption.map((option: any) => option.value) : [],
+    }));
+  };
+
+  const handleCountryChange = (selectedOption: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      countries: selectedOption ? selectedOption.map((option: any) => option.value) : [],
     }));
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (
-      formData.products.length === 0 ||
-      formData.countries.length === 0 ||
-      !formData.value
-    ) {
+    const type = formData.type;
+    let valid = !!formData.value;
+    if (type === 'Product' && formData.products.length === 0) valid = false;
+    if (type === 'Categories' && formData.categories.length === 0) valid = false;
+    if (['Country', 'ExtraDelivery'].includes(type) && formData.countries.length === 0) valid = false;
+    if (!valid) {
       toastHelper.error(
-        "Please fill all required fields (Products, Countries, Value)."
+        "Please fill all required fields."
       );
       return;
     }
     setIsSubmitting(true);
     const newItem: CostModule = {
-      type: formData.type as "Logistic" | "Product",
+      type: formData.type,
       products: formData.products,
+      categories: formData.categories,
       countries: formData.countries,
       remark: formData.remark,
       costType: formData.costType as "Percentage" | "Fixed",
@@ -184,67 +206,79 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
     label: product.specification,
   }));
 
-  // Find the selected product for react-select
-  const selectedProduct = productOptions.find(
-    (option) => option.value === formData.products[0]
+  // Prepare country options
+  const countryOptions = countriesList.map((country) => ({
+    value: country,
+    label: country,
+  }));
+
+  // Find the selected products for react-select
+  const selectedProducts = productOptions.filter((option) =>
+    formData.products.includes(option.value)
   );
 
-  // Custom styles for react-select to match Country dropdown
-  // const customSelectStyles = {
-  //   control: (provided: any, state: any) => ({
-  //     ...provided,
-  //     backgroundColor: state.isDisabled
-  //       ? "#e5e7eb"
-  //       : "var(--input-bg, #f9fafb)",
-  //     borderColor: "var(--border-color, #e5e7eb)",
-  //     borderWidth: "1px",
-  //     borderRadius: "0.5rem",
-  //     padding: "0.75rem",
-  //     fontSize: "1rem",
-  //     lineHeight: "1.5rem",
-  //     color: "var(--text-color, #1f2937)",
-  //     boxShadow: state.isFocused ? "0 0 0 2px #3b82f6" : "none",
-  //     "&:hover": {
-  //       borderColor: "#3b82f6",
-  //     },
-  //     transition: "all 0.2s",
-  //     minHeight: "48px", // Match the height of the Country select
-  //     height: "48px", // Explicitly set height to match
-  //     display: "flex",
-  //     alignItems: "center",
-  //   }),
-  //   menu: (provided: any) => ({
-  //     ...provided,
-  //     backgroundColor: "var(--input-bg, #f9fafb)",
-  //     borderRadius: "0.5rem",
-  //     color: "var(--text-color, #1f2937)",
-  //   }),
-  //   option: (provided: any, state: any) => ({
-  //     ...provided,
-  //     backgroundColor: state.isSelected
-  //       ? "#3b82f6"
-  //       : state.isFocused
-  //       ? "#e5e7eb"
-  //       : "var(--input-bg, #f9fafb)",
-  //     color: state.isSelected ? "#fff" : "var(--text-color, #1f2937)",
-  //     padding: "0.75rem",
-  //     "&:hover": {
-  //       backgroundColor: "#e5e7eb",
-  //     },
-  //   }),
-  //   singleValue: (provided: any) => ({
-  //     ...provided,
-  //     color: "var(--text-color, #1f2937)",
-  //   }),
-  //   placeholder: (provided: any) => ({
-  //     ...provided,
-  //     color: "#6b7280",
-  //   }),
-  //   input: (provided: any) => ({
-  //     ...provided,
-  //     color: "var(--text-color, #1f2937)",
-  //   }),
-  // };
+  const selectedCategories = formData.categories.map((cat) => ({
+    value: cat,
+    label: cat,
+  }));
+
+  const selectedCountries = countryOptions.filter((option) =>
+    formData.countries.includes(option.value)
+  );
+
+  const customStyles = {
+    control: (defaultStyles: any, state: any) => ({
+      ...defaultStyles,
+      display: "flex",
+      alignItems: "center",
+      minHeight: "48px",
+      padding: "6px 12px",
+      backgroundColor: state.isDisabled
+        ? "#f9fafb"
+        : "var(--tw-colors-gray-50)", // light mode background
+      border: state.isFocused
+        ? "2px solid #3b82f6" // blue-500 on focus
+        : "1px solid #e5e7eb", // gray-200 default
+      borderRadius: "0.5rem", // rounded-lg
+      boxShadow: state.isFocused ? "0 0 0 1px #3b82f6" : "none",
+      transition: "all 0.2s ease",
+      cursor: "pointer",
+    }),
+    placeholder: (defaultStyles: any) => ({
+      ...defaultStyles,
+      textAlign: "left",
+      color: "#6b7280", // gray-500 placeholder
+    }),
+    singleValue: (defaultStyles: any) => ({
+      ...defaultStyles,
+      textAlign: "left",
+      color: "#1f2937", // gray-800 text
+    }),
+    input: (defaultStyles: any) => ({
+      ...defaultStyles,
+      textAlign: "left",
+      color: "#1f2937", // gray-800
+    }),
+    menu: (defaultStyles: any) => ({
+      ...defaultStyles,
+      borderRadius: "0.5rem",
+      marginTop: "4px",
+      boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+      zIndex: 20,
+    }),
+    option: (defaultStyles: any, state: any) => ({
+      ...defaultStyles,
+      textAlign: "left",
+      backgroundColor: state.isSelected
+        ? "#3b82f6"
+        : state.isFocused
+        ? "#e6f0ff"
+        : "white",
+      color: state.isSelected ? "white" : "#1f2937",
+      cursor: "pointer",
+      padding: "10px 12px",
+    }),
+  };
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50 transition-opacity duration-300">
@@ -288,8 +322,10 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
                 required
                 disabled={isSubmitting}
               >
-                <option value="Logistic">Logistic</option>
                 <option value="Product">Product</option>
+                <option value="Categories">Categories</option>
+                <option value="Country">Country</option>
+                <option value="ExtraDelivery">Extra Delivery</option>
               </select>
             </div>
             <div>
@@ -310,105 +346,72 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
             </div>
           </div>
 
-          {/* Products and Countries Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Conditional Fields */}
+          {formData.type === "Product" && (
             <div>
               <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
                 Product
               </label>
               <div className="w-full">
                 <Select
+                  isMulti
                   options={productOptions}
-                  value={selectedProduct}
+                  value={selectedProducts}
                   onChange={handleProductChange}
                   placeholder={
-                    loadingProducts ? "Loading products..." : "Select a product"
+                    loadingProducts ? "Loading products..." : "Select products"
                   }
                   isLoading={loadingProducts}
                   isDisabled={isSubmitting || loadingProducts}
-                  styles={{
-                    control: (defaultStyles, state) => ({
-                      ...defaultStyles,
-                      display: "flex",
-                      alignItems: "center",
-                      minHeight: "48px",
-                      padding: "6px 12px",
-                      backgroundColor: state.isDisabled
-                        ? "#f9fafb"
-                        : "var(--tw-colors-gray-50)", // light mode background
-                      border: state.isFocused
-                        ? "2px solid #3b82f6" // blue-500 on focus
-                        : "1px solid #e5e7eb", // gray-200 default
-                      borderRadius: "0.5rem", // rounded-lg
-                      boxShadow: state.isFocused ? "0 0 0 1px #3b82f6" : "none",
-                      transition: "all 0.2s ease",
-                      cursor: "pointer",
-                    }),
-                    placeholder: (defaultStyles) => ({
-                      ...defaultStyles,
-                      textAlign: "left",
-                      color: "#6b7280", // gray-500 placeholder
-                    }),
-                    singleValue: (defaultStyles) => ({
-                      ...defaultStyles,
-                      textAlign: "left",
-                      color: "#1f2937", // gray-800 text
-                    }),
-                    input: (defaultStyles) => ({
-                      ...defaultStyles,
-                      textAlign: "left",
-                      color: "#1f2937", // gray-800
-                    }),
-                    menu: (defaultStyles) => ({
-                      ...defaultStyles,
-                      borderRadius: "0.5rem",
-                      marginTop: "4px",
-                      boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-                      zIndex: 20,
-                    }),
-                    option: (defaultStyles, state) => ({
-                      ...defaultStyles,
-                      textAlign: "left",
-                      backgroundColor: state.isSelected
-                        ? "#3b82f6"
-                        : state.isFocused
-                        ? "#e6f0ff"
-                        : "white",
-                      color: state.isSelected ? "white" : "#1f2937",
-                      cursor: "pointer",
-                      padding: "10px 12px",
-                    }),
-                  }}
+                  styles={customStyles}
                   isClearable
                   isSearchable
                   classNamePrefix="react-select"
                 />
               </div>
             </div>
-
+          )}
+          {formData.type === "Categories" && (
             <div>
               <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
-                Country
+                Categories
               </label>
-              <select
-                name="countries"
-                value={formData.countries[0] || ""}
-                onChange={handleInputChange}
-                className="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
-                required
-                disabled={isSubmitting}
-              >
-                <option value="" disabled>
-                  Select a country
-                </option>
-                {countriesList.map((country) => (
-                  <option key={country} value={country}>
-                    {country}
-                  </option>
-                ))}
-              </select>
+              <div className="w-full">
+                <CreatableSelect
+                  isMulti
+                  value={selectedCategories}
+                  onChange={handleCategoryChange}
+                  placeholder="Add categories"
+                  isDisabled={isSubmitting}
+                  styles={customStyles}
+                  isClearable
+                  isSearchable
+                  classNamePrefix="react-select"
+                />
+              </div>
             </div>
-          </div>
+          )}
+          {["Country", "ExtraDelivery"].includes(formData.type) && (
+            <div>
+              <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
+                Countries
+              </label>
+              <div className="w-full">
+                <Select
+                  isMulti
+                  options={countryOptions}
+                  value={selectedCountries}
+                  onChange={handleCountryChange}
+                  placeholder="Select countries"
+                  isDisabled={isSubmitting}
+                  styles={customStyles}
+                  isClearable
+                  isSearchable
+                  classNamePrefix="react-select"
+                />
+              </div>
+            </div>
+          )}
 
           {/* Remark */}
           <div>
