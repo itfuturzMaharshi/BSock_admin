@@ -34,9 +34,10 @@ export interface Order {
 
 export interface TrackingItem {
   status: string;
-  changedBy?: string;
+  changedBy?: any;
   userType: string;
   changedAt: string;
+  message?: string; // Added message field to match schema
 }
 
 export interface ListResponse {
@@ -98,11 +99,11 @@ export class AdminOrderService {
     }
   };
 
-  // Update order status with optional cartItems
   static updateOrderStatus = async (
     orderId: string,
     status: string,
-    cartItems?: OrderItem[]
+    cartItems?: OrderItem[],
+    message?: string // Added message parameter
   ): Promise<any> => {
     const baseUrl = import.meta.env.VITE_BASE_URL;
     const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
@@ -116,6 +117,9 @@ export class AdminOrderService {
         quantity: item.quantity,
         price: item.price,
       }));
+    }
+    if (message) {
+      body.message = message; // Include message in request body
     }
 
     try {

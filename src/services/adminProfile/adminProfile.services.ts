@@ -1,3 +1,4 @@
+// src/services/adminProfile/adminProfile.services.ts
 import toastHelper from '../../utils/toastHelper';
 import api from '../api/api';
 
@@ -20,6 +21,21 @@ interface ProfileResponse {
 interface ChangePasswordResponse {
   status: number;
   message?: string;
+}
+
+interface Settings {
+  _id?: string;
+  bidWalletAllowancePer: number | null;
+  readyStockAllowancePer: number | null;
+  readyStockOrderProcess: { name: string; order: number }[];
+  reportTime: string;
+  timezone: string;
+}
+
+interface SettingsResponse {
+  status: number;
+  message?: string;
+  data: Settings | Settings[] | { docs: Settings[] };
 }
 
 export class UserProfileService {
@@ -78,6 +94,96 @@ export class UserProfileService {
       };
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || 'Failed to change password';
+      toastHelper.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+  };
+
+  static createSettings = async (settingsData: Settings): Promise<SettingsResponse> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/settings/create`;
+
+    try {
+      const res = await api.post(url, settingsData, {
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const responseData = res.data;
+
+      if (res.status === 200) {
+        toastHelper.showTost(responseData.message || 'Settings created successfully!', 'success');
+      } else {
+        toastHelper.showTost(responseData.message || 'Failed to create settings', 'warning');
+      }
+
+      return {
+        status: res.status,
+        message: responseData.message,
+        data: responseData.data,
+      };
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to create settings';
+      toastHelper.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+  };
+
+  static updateSettings = async (settingsData: Settings): Promise<SettingsResponse> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/settings/update`;
+
+    try {
+      const res = await api.post(url, settingsData, {
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const responseData = res.data;
+
+      if (res.status === 200) {
+        toastHelper.showTost(responseData.message || 'Settings updated successfully!', 'success');
+      } else {
+        toastHelper.showTost(responseData.message || 'Failed to update settings', 'warning');
+      }
+
+      return {
+        status: res.status,
+        message: responseData.message,
+        data: responseData.data,
+      };
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to update settings';
+      toastHelper.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+  };
+
+  static listSettings = async (page: number = 1, limit: number = 10): Promise<SettingsResponse> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/settings/list`;
+
+    try {
+      const res = await api.post(url, { page, limit }, {
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const responseData = res.data;
+
+      if (res.status === 200) {
+        // toastHelper.showTost(responseData.message || 'Settings retrieved successfully!', 'success');
+      } else {
+        toastHelper.showTost(responseData.message || 'Failed to retrieve settings', 'warning');
+      }
+
+      return {
+        status: res.status,
+        message: responseData.message,
+        data: responseData.data,
+      };
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to retrieve settings';
       toastHelper.error(errorMessage);
       throw new Error(errorMessage);
     }

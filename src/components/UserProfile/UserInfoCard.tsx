@@ -1,6 +1,8 @@
-import { useState } from "react";
+// src/components/UserInfoCard.tsx
+import { useState, useEffect } from "react";
 import toastHelper from '../../utils/toastHelper';
 import { UserProfileService } from "../../services/adminProfile/adminProfile.services";
+import SettingsModal from "./SettingsModal";
 
 interface FormData {
   name: string;
@@ -17,7 +19,7 @@ interface UserInfoCardProps {
 }
 
 export default function UserInfoCard({ formData, handleChange, setFormData }: UserInfoCardProps) {
-  const [activeTab, setActiveTab] = useState<"profile" | "account">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "account" | "settings">("profile");
   const [showPassword, setShowPassword] = useState<{
     current: boolean;
     new: boolean;
@@ -27,6 +29,10 @@ export default function UserInfoCard({ formData, handleChange, setFormData }: Us
     new: false,
     confirm: false,
   });
+  const [settingsList, setSettingsList] = useState<any[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<"create" | "update">("create");
+  const [selectedSettings, setSelectedSettings] = useState<any>(null);
 
   const togglePassword = (field: "current" | "new" | "confirm") => {
     setShowPassword((prev) => ({ ...prev, [field]: !prev[field] }));
@@ -50,7 +56,6 @@ export default function UserInfoCard({ formData, handleChange, setFormData }: Us
       );
 
       if (response.status === 200) {
-        // Clear password fields after successful change
         setFormData((prev) => ({
           ...prev,
           currentPassword: "",
@@ -62,6 +67,47 @@ export default function UserInfoCard({ formData, handleChange, setFormData }: Us
       console.error("Error changing password:", error);
     }
   };
+
+  const handleListSettings = async () => {
+    try {
+      const response = await UserProfileService.listSettings();
+      if (response.status === 200) {
+        setSettingsList((response.data as any).docs || []);
+      }
+    } catch (error) {
+      console.error("Error listing settings:", error);
+    }
+  };
+
+  const openCreateModal = () => {
+    setModalMode("create");
+    setSelectedSettings(null);
+    setIsModalOpen(true);
+  };
+
+  const openUpdateModal = (settings: any) => {
+    setModalMode("update");
+    setSelectedSettings({
+      _id: settings._id,
+      bidWalletAllowancePer: settings.bidWalletAllowancePer?.toString() || "",
+      readyStockAllowancePer: settings.readyStockAllowancePer?.toString() || "",
+      readyStockOrderProcess: JSON.stringify(settings.readyStockOrderProcess) || "",
+      reportTime: settings.reportTime || "",
+      timezone: settings.timezone || "Asia/Kolkata",
+    });
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedSettings(null);
+  };
+
+  useEffect(() => {
+    if (activeTab === "settings") {
+      handleListSettings();
+    }
+  }, [activeTab]);
 
   return (
     <div className="p-5 border bg-white border-gray-200 rounded-2xl shadow dark:border-gray-800 lg:p-6">
@@ -86,6 +132,16 @@ export default function UserInfoCard({ formData, handleChange, setFormData }: Us
         >
           <i className="fas fa-cog mr-2"></i> Account Setting
         </button>
+        <button
+          onClick={() => setActiveTab("settings")}
+          className={`pb-2 text-base font-medium ${
+            activeTab === "settings"
+              ? "border-b-2 border-[#0071E3] text-[#0071E3]"
+              : "text-gray-600 dark:text-gray-400 hover:text-[#0071E3]"
+          }`}
+        >
+          <i className="fas fa-list mr-2"></i> Settings
+        </button>
       </div>
 
       {activeTab === "profile" ? (
@@ -107,7 +163,7 @@ export default function UserInfoCard({ formData, handleChange, setFormData }: Us
             </p>
           </div>
         </div>
-      ) : (
+      ) : activeTab === "account" ? (
         <div className="grid grid-cols-1 gap-6">
           <div>
             <p className="mb-2 flex items-center gap-2 text-base font-medium text-gray-600 dark:text-gray-400">
@@ -193,7 +249,80 @@ export default function UserInfoCard({ formData, handleChange, setFormData }: Us
             </button>
           </div>
         </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-6">
+          {settingsList.length === 0 && (
+            <div className="flex justify-end mb-4">
+              <button
+                onClick={openCreateModal}
+                className="flex items-center justify-center gap-2 rounded-full border border-gray-300 bg-[#0071E3] px-4 py-2 text-sm font-medium text-white shadow hover:bg-[#005bb5] dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] dark:hover:text-gray-200"
+              >
+                <i className="fas fa-plus"></i> Add Settings
+              </button>
+            </div>
+          )}
+          {settingsList.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="min-w-full border border-gray-200 dark:border-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-800">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Bid Wallet Allowance
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Ready Stock Allowance
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Report Time
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Timezone
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Action
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                  {settingsList.map((settings) => (
+                    <tr key={settings._id} className="hover:bg-gray-100 dark:hover:bg-gray-700">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-white/90">
+                        {settings.bidWalletAllowancePer || 'N/A'}%
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-white/90">
+                        {settings.readyStockAllowancePer || 'N/A'}%
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-white/90">
+                        {settings.reportTime || 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-white/90">
+                        {settings.timezone || 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <button
+                          onClick={() => openUpdateModal(settings)}
+                          className="flex items-center justify-center gap-2 rounded-full border border-gray-300 bg-[#0071E3] px-3 py-1 text-sm font-medium text-white shadow hover:bg-[#005bb5] dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] dark:hover:text-gray-200"
+                        >
+                          <i className="fas fa-pen-to-square"></i> Update
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-600 dark:text-gray-400 text-center">No settings found.</p>
+          )}
+        </div>
       )}
+      <SettingsModal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        mode={modalMode}
+        initialData={selectedSettings}
+        onSave={handleListSettings}
+      />
     </div>
   );
 }
