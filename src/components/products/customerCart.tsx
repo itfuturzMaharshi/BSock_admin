@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import Swal from "sweetalert2";
 import { format } from "date-fns";
 import toastHelper from "../../utils/toastHelper";
+import CustomerCartService, { CustomerCartItem, CartProduct } from "../../services/order/customerCart.services";
 
 // Interface for Customer Cart data
 interface Customer {
@@ -12,32 +13,28 @@ interface Customer {
   address?: string;
 }
 
-interface Product {
-  _id: string;
-  skuFamilyId: any;
-  simType?: string;
-  color?: string;
-  ram?: string;
-  storage?: string;
-  condition?: string;
-  price: number;
-  stock: number;
-  country?: string;
-  moq: number;
-  isNegotiable?: boolean;
-  isFlashDeal?: string | boolean;
-  expiryTime?: string;
-}
+// interface Product {
+//   _id: string;
+//   skuFamilyId: any;
+//   simType?: string;
+//   color?: string;
+//   ram?: string;
+//   storage?: string;
+//   condition?: string;
+//   price: number | string;
+//   stock: number | string;
+//   country?: string;
+//   moq: number | string;
+//   isNegotiable?: boolean;
+//   isFlashDeal?: string | boolean;
+//   expiryTime?: string;
+//   specification?: string | null;
+//   purchaseType?: string;
+//   isApproved?: boolean;
+//   isDeleted?: boolean;
+// }
 
-interface CustomerCart {
-  _id: string;
-  customer: Customer;
-  product: Product;
-  quantity: number;
-  addedAt: string;
-  status: "active" | "removed" | "ordered";
-  notes?: string;
-}
+type CustomerCart = CustomerCartItem & { updatedAt?: string };
 
 const CustomerCart: React.FC = () => {
   const [customerCartsData, setCustomerCartsData] = useState<CustomerCart[]>(
@@ -54,182 +51,73 @@ const CustomerCart: React.FC = () => {
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState<boolean>(false);
   const itemsPerPage = 10;
 
-  // Fetch customer carts on component mount and when filters change
+  // Fetch customer carts on filters change
   useEffect(() => {
     fetchCustomerCarts();
-    fetchCustomers();
   }, [currentPage, searchTerm, selectedCustomer]);
+
+  // Fetch all customers once on mount
+  useEffect(() => {
+    fetchCustomers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fetchCustomerCarts = async () => {
     try {
       setLoading(true);
-      // Replace with your actual API call
-      // const response = await CustomerCartService.getCustomerCartList(
-      //   currentPage,
-      //   itemsPerPage,
-      //   searchTerm,
-      //   selectedCustomer
-      // );
-
-      // Mock data for demonstration - expanded dataset
-      const allMockData = [
-        {
-          _id: "1",
-          customer: {
-            _id: "c1",
-            name: "John Doe",
-            email: "john@example.com",
-            phone: "+1234567890",
-            address: "123 Main St, NY",
-          },
-          product: {
-            _id: "p1",
-            skuFamilyId: "iPhone 14 Pro",
-            simType: "Dual SIM",
-            color: "Space Black",
-            ram: "6GB",
-            storage: "128GB",
-            condition: "New",
-            price: 999.99,
-            stock: 50,
-            country: "USA",
-            moq: 1,
-            isNegotiable: true,
-            isFlashDeal: false,
-            expiryTime: "2024-12-31T23:59:59Z",
-          },
-          quantity: 2,
-          addedAt: "2024-01-15T10:30:00Z",
-          status: "active" as const,
-          notes: "Customer interested in bulk purchase",
+      const response = await CustomerCartService.getCustomerCartList(
+        currentPage,
+        itemsPerPage,
+        searchTerm,
+        selectedCustomer
+      );
+      const docs = (response?.data?.docs || []) as any[];
+      const mapped: CustomerCart[] = docs.map((d: any) => ({
+        _id: d._id,
+        customer: {
+          _id: d.customerId?._id || "",
+          name: d.customerId?.name || "",
+          email: d.customerId?.email || "",
         },
-        {
-          _id: "2",
-          customer: {
-            _id: "c2",
-            name: "Jane Smith",
-            email: "jane@example.com",
-            phone: "+1234567891",
-            address: "456 Oak Ave, CA",
-          },
-          product: {
-            _id: "p2",
-            skuFamilyId: "Samsung Galaxy S23",
-            simType: "Single SIM",
-            color: "Phantom White",
-            ram: "8GB",
-            storage: "256GB",
-            condition: "Refurbished",
-            price: 749.99,
-            stock: 30,
-            country: "South Korea",
-            moq: 1,
-            isNegotiable: false,
-            isFlashDeal: true,
-            expiryTime: "2024-11-30T23:59:59Z",
-          },
-          quantity: 1,
-          addedAt: "2024-01-20T14:15:00Z",
-          status: "active" as const,
-          notes: "",
+        product: {
+          _id: d.productId?._id || "",
+          skuFamilyId: d.skuFamilyId || null,
+          simType: d.simType,
+          color: d.color,
+          ram: d.ram,
+          storage: d.storage,
+          condition: d.condition,
+          price: d.price ?? d.productId?.price ?? 0,
+          stock: d.stock,
+          country: d.country,
+          moq: d.moq,
+          isNegotiable: d.isNegotiable,
+          isFlashDeal: d.isFlashDeal,
+          expiryTime: d.expiryTime,
+          specification: d.specification ?? null,
+          purchaseType: d.purchaseType,
+          isApproved: d.isApproved,
+          isDeleted: d.isDeleted,
         },
-        {
-          _id: "3",
-          customer: {
-            _id: "c3",
-            name: "Bob Johnson",
-            email: "bob@example.com",
-            phone: "+1234567892",
-            address: "789 Pine St, TX",
-          },
-          product: {
-            _id: "p3",
-            skuFamilyId: "Google Pixel 7",
-            simType: "eSIM",
-            color: "Obsidian",
-            ram: "8GB",
-            storage: "128GB",
-            condition: "New",
-            price: 599.99,
-            stock: 25,
-            country: "USA",
-            moq: 1,
-            isNegotiable: true,
-            isFlashDeal: false,
-            expiryTime: "2024-10-31T23:59:59Z",
-          },
-          quantity: 3,
-          addedAt: "2024-01-18T16:45:00Z",
-          status: "ordered" as const,
-          notes: "Rush order requested",
-        },
-        {
-          _id: "4",
-          customer: {
-            _id: "c1",
-            name: "John Doe",
-            email: "john@example.com",
-            phone: "+1234567890",
-            address: "123 Main St, NY",
-          },
-          product: {
-            _id: "p4",
-            skuFamilyId: "OnePlus 11",
-            simType: "Dual SIM",
-            color: "Titan Black",
-            ram: "12GB",
-            storage: "256GB",
-            condition: "New",
-            price: 699.99,
-            stock: 15,
-            country: "China",
-            moq: 2,
-            isNegotiable: false,
-            isFlashDeal: true,
-            expiryTime: "2024-09-30T23:59:59Z",
-          },
-          quantity: 1,
-          addedAt: "2024-01-22T11:20:00Z",
-          status: "removed" as const,
-          notes: "Customer changed mind",
-        },
-      ];
+        quantity: parseFloat(String(d.quantity)) || 0,
+        addedAt: d.createdAt || d.updatedAt || "",
+        updatedAt: d.updatedAt || "",
+        status: d.isActive ? "active" : "removed",
+        notes: undefined,
+      }));
 
-      // Apply filters
-      let filteredData = allMockData;
+      const nTotalDocs = parseInt(String(response?.data?.totalDocs || 0)) || mapped.length;
+      const nTotalPages = parseInt(String(response?.data?.totalPages || 1)) || 1;
 
-      // Filter by search term (product title)
-      if (searchTerm) {
-        filteredData = filteredData.filter((item) =>
-          getProductTitle(item.product.skuFamilyId)
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase())
-        );
-      }
-
-      // Filter by selected customer
-      if (selectedCustomer) {
-        filteredData = filteredData.filter(
-          (item) => item.customer._id === selectedCustomer
-        );
-      }
-
-      // Apply pagination
-      const startIndex = (currentPage - 1) * itemsPerPage;
-      const endIndex = startIndex + itemsPerPage;
-      const paginatedData = filteredData.slice(startIndex, endIndex);
-
-      const mockData = {
-        docs: paginatedData,
-        totalDocs: filteredData.length,
-        totalPages: Math.ceil(filteredData.length / itemsPerPage),
-      };
-
-      setCustomerCartsData(mockData.docs);
-      setTotalDocs(mockData.totalDocs);
-      setTotalPages(mockData.totalPages);
+      setCustomerCartsData(mapped);
+      setTotalDocs(nTotalDocs);
+      setTotalPages(nTotalPages);
     } catch (error) {
       console.error("Failed to fetch customer carts:", error);
+      toastHelper.showTost(
+        (error as any)?.message || "Failed to fetch customer carts",
+        "error"
+      );
     } finally {
       setLoading(false);
     }
@@ -237,19 +125,20 @@ const CustomerCart: React.FC = () => {
 
   const fetchCustomers = async () => {
     try {
-      // Replace with your actual API call
-      // const response = await CustomerService.getCustomerList();
-
-      // Mock data for demonstration
-      const mockCustomers = [
-        { _id: "c1", name: "John Doe", email: "john@example.com" },
-        { _id: "c2", name: "Jane Smith", email: "jane@example.com" },
-        { _id: "c3", name: "Bob Johnson", email: "bob@example.com" },
-      ];
-
-      setCustomers(mockCustomers);
+      // Load a large page of cart items to aggregate all customers
+      const resp = await CustomerCartService.getCustomerCartList(1, 10);
+      const docs = (resp?.data?.docs || []) as any[];
+      const uniqueMap = new Map<string, Customer>();
+      for (const d of docs) {
+        const c = d?.customerId;
+        if (c?._id && !uniqueMap.has(c._id)) {
+          uniqueMap.set(c._id, { _id: c._id, name: c.name, email: c.email });
+        }
+      }
+      setCustomers(Array.from(uniqueMap.values()));
     } catch (error) {
       console.error("Failed to fetch customers:", error);
+      toastHelper.showTost((error as any)?.message || 'Failed to fetch customers', 'error');
     }
   };
 
@@ -284,19 +173,18 @@ const CustomerCart: React.FC = () => {
     setIsPreviewModalOpen(true);
   };
 
-  // Safely get product title
-  const getProductTitle = (skuFamilyId: any): string => {
-    if (skuFamilyId == null) return "Unknown Product";
-    if (typeof skuFamilyId === "string") return skuFamilyId;
-    if (typeof skuFamilyId === "object") {
-      return (
-        skuFamilyId.name ||
-        skuFamilyId.code ||
-        skuFamilyId._id ||
-        "Unknown Product"
-      );
+  // Safely get product title: use specification only; if null/empty, show blank
+  const getProductTitle = (productOrSku: any): string => {
+    const product: any = productOrSku && productOrSku._id ? productOrSku : null;
+    if (product) {
+      const spec = product.specification;
+      if (spec === null || spec === undefined || String(spec).trim() === "") {
+        return "N/A";
+      }
+      return String(spec);
     }
-    return String(skuFamilyId);
+    // If called with non-product, do not fallback; return blank
+    return "";
   };
 
   // Build image URL
@@ -312,7 +200,7 @@ const CustomerCart: React.FC = () => {
   };
 
   // Get product image
-  const getProductImageSrc = (product: Product): string => {
+  const getProductImageSrc = (product: CartProduct): string => {
     try {
       const sku = product?.skuFamilyId as any;
       const first =
@@ -460,7 +348,7 @@ const CustomerCart: React.FC = () => {
                       <div className="flex items-center gap-4">
                         <img
                           src={getProductImageSrc(item.product)}
-                          alt={getProductTitle(item.product.skuFamilyId)}
+                          alt={getProductTitle(item.product)}
                           className="w-16 h-16 object-contain rounded-full border border-gray-200 dark:border-gray-600 flex-shrink-0"
                           onError={(e) => {
                             e.currentTarget.src =
@@ -469,7 +357,7 @@ const CustomerCart: React.FC = () => {
                         />
                         <div className="min-w-0 flex-1">
                           <h3 className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
-                            {getProductTitle(item.product.skuFamilyId)}
+                            {getProductTitle(item.product)}
                           </h3>
                           <div className="mt-1 space-y-1">
                             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600 dark:text-gray-400">
@@ -659,7 +547,7 @@ const CustomerCart: React.FC = () => {
                       <div className="flex items-start gap-4">
                         <img
                           src={getProductImageSrc(previewItem.product)}
-                          alt={getProductTitle(previewItem.product.skuFamilyId)}
+                          alt={getProductTitle(previewItem.product)}
                           className="w-16 h-16 object-contain rounded-md border border-gray-200 dark:border-gray-600 bg-white"
                           onError={(e) => {
                             e.currentTarget.src =
@@ -668,7 +556,7 @@ const CustomerCart: React.FC = () => {
                         />
                         <div className="flex-1">
                           <h4 className="text-base font-medium text-gray-800 dark:text-gray-200 mb-2">
-                            {getProductTitle(previewItem.product.skuFamilyId)}
+                            {getProductTitle(previewItem.product)}
                           </h4>
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
                             {previewItem.product.simType && (
@@ -708,6 +596,16 @@ const CustomerCart: React.FC = () => {
                                 </span>
                                 <span className="text-gray-600 dark:text-gray-400">
                                   {previewItem.product.storage}
+                                </span>
+                              </div>
+                            )}
+                            {previewItem.product.specification && (
+                              <div className="flex justify-left gap-1">
+                                <span className="text-gray-800 dark:text-gray-200">
+                                  Specification:
+                                </span>
+                                <span className="text-gray-600 dark:text-gray-400">
+                                  {previewItem.product.specification}
                                 </span>
                               </div>
                             )}
@@ -751,6 +649,16 @@ const CustomerCart: React.FC = () => {
                                 {previewItem.product.moq}
                               </span>
                             </div>
+                            {previewItem.product.purchaseType && (
+                              <div className="flex justify-left gap-1">
+                                <span className="text-gray-800 dark:text-gray-200">
+                                  Purchase Type:
+                                </span>
+                                <span className="text-gray-600 dark:text-gray-400 capitalize">
+                                  {previewItem.product.purchaseType}
+                                </span>
+                              </div>
+                            )}
                             <div className="flex justify-left gap-1">
                               <span className="text-gray-800 dark:text-gray-200">
                                 Negotiable:
@@ -792,6 +700,22 @@ const CustomerCart: React.FC = () => {
                                 </span>
                                 <span className="text-gray-600 dark:text-gray-400">
                                   {formatDate(previewItem.product.expiryTime)}
+                                </span>
+                              </div>
+                            )}
+                            {typeof previewItem.product.isApproved !== 'undefined' && (
+                              <div className="flex justify-left gap-1">
+                                <span className="text-gray-800 dark:text-gray-200">Approved:</span>
+                                <span className={`${previewItem.product.isApproved ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                  {previewItem.product.isApproved ? 'Yes' : 'No'}
+                                </span>
+                              </div>
+                            )}
+                            {typeof previewItem.product.isDeleted !== 'undefined' && (
+                              <div className="flex justify-left gap-1">
+                                <span className="text-gray-800 dark:text-gray-200">Deleted:</span>
+                                <span className={`${previewItem.product.isDeleted ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                                  {previewItem.product.isDeleted ? 'Yes' : 'No'}
                                 </span>
                               </div>
                             )}
@@ -976,7 +900,7 @@ const CustomerCart: React.FC = () => {
                       <div className="text-lg font-semibold text-green-600 dark:text-green-400 mb-1">
                         $
                         {(
-                          previewItem.product.price * previewItem.quantity
+                          (parseFloat(String(previewItem.product.price)) || 0) * previewItem.quantity
                         ).toFixed(2)}
                       </div>
                       <div className="text-xs text-gray-500 dark:text-gray-400">
@@ -990,6 +914,14 @@ const CustomerCart: React.FC = () => {
                       </div>
                       <div className="text-xs text-gray-500 dark:text-gray-400">
                         Added Date
+                      </div>
+                    </div>
+                    <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                      <div className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">
+                        {formatDate(previewItem.updatedAt || previewItem.addedAt)}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        Updated Date
                       </div>
                     </div>
                   </div>
