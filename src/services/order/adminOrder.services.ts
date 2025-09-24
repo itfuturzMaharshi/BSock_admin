@@ -1,0 +1,145 @@
+// adminOrder.services.ts
+import toastHelper from '../../utils/toastHelper';
+import api from '../api/api';
+
+export interface OrderItem {
+  productId: { _id: string; name: string; price: number };
+  skuFamilyId: { _id: string; name: string };
+  quantity: number;
+  price: number;
+}
+
+export interface Address {
+  address: string;
+  city: string;
+  postalCode: string;
+  country: string;
+}
+
+export interface Order {
+  _id: string;
+  customerId: { _id: string; name?: string; email?: string };
+  cartItems: OrderItem[];
+  billingAddress: Address;
+  shippingAddress: Address;
+  status: string;
+  totalAmount: number;
+  createdAt: string;
+  verifiedBy?: string;
+  approvedBy?: string;
+  canVerify?: boolean;
+  canApprove?: boolean;
+  tracking?: TrackingItem[]; // Add tracking to Order interface
+}
+
+export interface TrackingItem {
+  status: string;
+  changedBy?: string;
+  userType: string;
+  changedAt: string;
+}
+
+export interface ListResponse {
+  data: {
+    docs: Order[];
+    totalDocs: number;
+    limit: number;
+    totalPages: number;
+    page: number;
+    pagingCounter: number;
+    hasPrevPage: boolean;
+    hasNextPage: boolean;
+    prevPage: number | null;
+    nextPage: number | null;
+  };
+  status: number;
+  message: string;
+}
+
+export interface TrackingResponse {
+  data: {
+    docs: TrackingItem[];
+    totalDocs: number;
+    limit: number;
+    totalPages: number;
+    page: number;
+    pagingCounter: number;
+    hasPrevPage: boolean;
+    hasNextPage: boolean;
+    prevPage: number | null;
+    nextPage: number | null;
+  };
+  status: number;
+  message: string;
+}
+
+export class AdminOrderService {
+  // Get order list with pagination and search
+  static getOrderList = async (
+    page: number,
+    limit: number,
+    search?: string,
+    status?: string
+  ): Promise<ListResponse> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/order/list`;
+
+    const body: any = { page, limit };
+    if (search) {
+      body.search = search;
+    }
+    if (status) {
+      body.status = status;
+    }
+
+    try {
+      const res = await api.post(url, body);
+      return res.data;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to fetch orders';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
+
+  // Update order status
+  static updateOrderStatus = async (orderId: string, status: string): Promise<any> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/order/update-status`;
+
+    try {
+      const res = await api.post(url, { orderId, status });
+      if (res.status === 200 && res.data.data) {
+        toastHelper.showTost(res.data.message || `Order status updated to ${status}!`, 'success');
+        return res.data;
+      } else {
+        toastHelper.showTost(res.data.message || 'Failed to update order status', 'warning');
+        return false;
+      }
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to update order status';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
+
+  // Fetch order tracking
+  static getOrderTracking = async (orderId: string, page: number = 1, limit: number = 10): Promise<TrackingResponse> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/order/tracking/list`;
+
+    try {
+      const res = await api.post(url, { orderId, page, limit });
+      return res.data;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to fetch order tracking';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
+}
+
+export default AdminOrderService;

@@ -2,7 +2,7 @@ import axios from 'axios';
 import { SocketService } from '../socket/socket';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_BASE_URL || 'https://t9hr21z3-3200.inc1.devtunnels.ms',
+  baseURL: import.meta.env.VITE_BASE_URL || 'http://localhost:3200',
   timeout: 10000,
 });
 

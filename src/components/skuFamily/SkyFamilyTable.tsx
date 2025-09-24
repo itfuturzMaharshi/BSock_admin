@@ -222,10 +222,6 @@ const SkuFamilyTable: React.FC = () => {
                         })()}
                         alt={item.name || "Product"}
                         className="w-12 h-12 object-contain rounded-md border border-gray-200 dark:border-gray-600"
-                        onError={(e) => {
-                          e.currentTarget.src =
-                            "https://via.placeholder.com/60x60?text=Product";
-                        }}
                       />
                     </td>
                     <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-gray-200">

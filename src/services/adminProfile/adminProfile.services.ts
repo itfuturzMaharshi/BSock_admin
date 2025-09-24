@@ -36,7 +36,8 @@ export class UserProfileService {
       const responseData = res.data;
 
       if (res.status === 200) {
-        toastHelper.showTost(responseData.message || 'Profile fetched successfully!', 'success');
+        localStorage.setItem('userId', responseData.data._id);
+        // toastHelper.showTost(responseData.message || 'Profile fetched successfully!', 'success');
       } else {
         toastHelper.showTost(responseData.message || 'Failed to fetch profile', 'warning');
       }
