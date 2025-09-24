@@ -1,6 +1,15 @@
 import { useState, useEffect } from 'react';
-import { X, MessageSquare, DollarSign, Clock, CheckCircle, User, Package, Send, Eye } from 'lucide-react';
+import { X, MessageSquare, DollarSign, Clock, CheckCircle, User, Package, Send } from 'lucide-react';
 import NegotiationService, { Negotiation } from '../../services/negotiation/negotiation.services';
+
+interface NegotiationGroup {
+  bidId: string;
+  productId: any;
+  negotiations: Negotiation[];
+  status: 'negotiation' | 'accepted';
+  acceptedBy?: 'Admin' | 'Customer';
+  acceptedAt?: string;
+}
 
 interface NegotiationModalProps {
   isOpen: boolean;
@@ -9,7 +18,7 @@ interface NegotiationModalProps {
 
 const NegotiationModal = ({ isOpen, onClose }: NegotiationModalProps) => {
   const [activeTab, setActiveTab] = useState('active');
-  const [negotiations, setNegotiations] = useState<Negotiation[]>([]);
+  const [negotiations, setNegotiations] = useState<NegotiationGroup[]>([]);
   const [acceptedNegotiations, setAcceptedNegotiations] = useState<Negotiation[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedNegotiation, setSelectedNegotiation] = useState<Negotiation | null>(null);
@@ -19,6 +28,43 @@ const NegotiationModal = ({ isOpen, onClose }: NegotiationModalProps) => {
     offerPrice: '',
     message: ''
   });
+  const imageBaseUrl = import.meta.env.VITE_BASE_URL;
+
+  // Group negotiations by bidId to show complete bid flow
+  const groupNegotiationsByBidId = (allNegotiations: Negotiation[]): NegotiationGroup[] => {
+    const grouped = allNegotiations.reduce((acc, negotiation) => {
+      const bidId = negotiation.bidId;
+      
+      if (!acc[bidId]) {
+        acc[bidId] = {
+          bidId,
+          productId: negotiation.productId,
+          negotiations: [],
+          status: 'negotiation' as 'negotiation' | 'accepted',
+          acceptedBy: undefined,
+          acceptedAt: undefined
+        };
+      }
+      
+      acc[bidId].negotiations.push(negotiation);
+      
+      // If any negotiation in the group is accepted, mark the group as accepted
+      if (negotiation.status === 'accepted') {
+        acc[bidId].status = 'accepted';
+        acc[bidId].acceptedBy = negotiation.toUserType || 'Admin';
+        acc[bidId].acceptedAt = negotiation.updatedAt;
+      }
+      
+      return acc;
+    }, {} as Record<string, NegotiationGroup>);
+    
+    // Convert to array and sort by creation date (most recent first)
+    return Object.values(grouped).sort((a, b) => {
+      const aLatest = Math.max(...a.negotiations.map(n => new Date(n.createdAt).getTime()));
+      const bLatest = Math.max(...b.negotiations.map(n => new Date(n.createdAt).getTime()));
+      return bLatest - aLatest;
+    });
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -30,8 +76,21 @@ const NegotiationModal = ({ isOpen, onClose }: NegotiationModalProps) => {
   const fetchNegotiations = async () => {
     setLoading(true);
     try {
-      const response = await NegotiationService.getAllNegotiations(1, 50, 'negotiation');
-      setNegotiations(response.negotiations || []);
+      // Fetch both active and accepted negotiations to show complete bid flow
+      const [activeResponse, acceptedResponse] = await Promise.all([
+        NegotiationService.getAllNegotiations(1, 50, 'negotiation'),
+        NegotiationService.getAcceptedNegotiations(1, 50)
+      ]);
+      
+      // Combine all negotiations and group by bidId
+      const allNegotiations = [
+        ...(activeResponse.negotiations || []),
+        ...(acceptedResponse.negotiations || [])
+      ];
+      
+      // Group negotiations by bidId to show complete flow
+      const groupedNegotiations = groupNegotiationsByBidId(allNegotiations);
+      setNegotiations(groupedNegotiations);
     } catch (error) {
       console.error('Error fetching negotiations:', error);
     } finally {
@@ -71,10 +130,10 @@ const NegotiationModal = ({ isOpen, onClose }: NegotiationModalProps) => {
   };
 
   // Check if there's a newer negotiation for the same bid
-  const hasNewerNegotiation = (currentNegotiation: Negotiation) => {
-    if (!negotiations || negotiations.length === 0) return false;
+  const hasNewerNegotiation = (currentNegotiation: Negotiation, negotiationGroup: NegotiationGroup) => {
+    if (!negotiationGroup.negotiations || negotiationGroup.negotiations.length === 0) return false;
     
-    return negotiations.some(negotiation => {
+    return negotiationGroup.negotiations.some(negotiation => {
       // Same bid, different negotiation, newer timestamp
       return negotiation.bidId === currentNegotiation.bidId &&
              negotiation._id !== currentNegotiation._id &&
@@ -84,41 +143,29 @@ const NegotiationModal = ({ isOpen, onClose }: NegotiationModalProps) => {
   };
 
   // Check if any negotiation for the same bid has been accepted
-  const hasAcceptedNegotiation = (currentNegotiation: Negotiation) => {
-    // Check in active negotiations
-    const hasAcceptedInActive = negotiations && negotiations.some(negotiation => {
-      return negotiation.bidId === currentNegotiation.bidId &&
-             negotiation._id !== currentNegotiation._id &&
-             negotiation.status === 'accepted';
-    });
-
-    // Check in accepted negotiations
-    const hasAcceptedInAccepted = acceptedNegotiations && acceptedNegotiations.some(negotiation => {
-      return negotiation.bidId === currentNegotiation.bidId &&
-             negotiation.status === 'accepted';
-    });
-
-    return hasAcceptedInActive || hasAcceptedInAccepted;
+  const hasAcceptedNegotiation = (negotiationGroup: NegotiationGroup) => {
+    return negotiationGroup.status === 'accepted';
   };
 
-  const canRespond = (negotiation: Negotiation) => {
-    // If any negotiation for the same bid has been accepted, don't allow responding
-    if (hasAcceptedNegotiation(negotiation)) {
+  // Check if admin can make a counter offer for the entire bid group
+  const canMakeCounterForBid = (negotiationGroup: NegotiationGroup) => {
+    // If any negotiation for the same bid has been accepted, don't allow counter
+    if (hasAcceptedNegotiation(negotiationGroup)) {
       return false;
     }
 
-    // Admin can respond to customer's offers (when admin is the receiver)
-    return negotiation.FromUserType === 'Customer' && negotiation.status === 'negotiation';
+    // Admin can always make counter offers until bid is accepted
+    return true;
   };
 
-  const canAccept = (negotiation: Negotiation) => {
+  const canAccept = (negotiation: Negotiation, negotiationGroup: NegotiationGroup) => {
     // If any negotiation for the same bid has been accepted, don't allow accepting
-    if (hasAcceptedNegotiation(negotiation)) {
+    if (hasAcceptedNegotiation(negotiationGroup)) {
       return false;
     }
 
     // If there's a newer negotiation for the same bid, don't allow accepting old ones
-    if (hasNewerNegotiation(negotiation)) {
+    if (hasNewerNegotiation(negotiation, negotiationGroup)) {
       return false;
     }
 
@@ -143,39 +190,31 @@ const NegotiationModal = ({ isOpen, onClose }: NegotiationModalProps) => {
     });
   };
 
-  const getProductImage = (product: Negotiation['productId']) => {
-    if (typeof product === 'object' && product.mainImage) {
-      return product.mainImage;
-    }
-    return '/images/placeholder-product.jpg';
+  const getProductImage = (productId: any) => {
+    if (typeof productId === 'string') return '/images/placeholder.jpg';
+    return productId?.skuFamilyId?.images[0] ? `${imageBaseUrl}/${productId?.skuFamilyId?.images[0]}` : '';
   };
 
-  const getProductName = (product: Negotiation['productId']) => {
-    if (typeof product === 'object' && product.skuFamilyId && product.skuFamilyId.name) {
-      return product.skuFamilyId.name;
-    }
-    return 'Product';
+  const getProductName = (productId: any) => {
+    if (typeof productId === 'string') return 'Product';
+    return productId?.name || 'Product';
   };
 
-  const getUserName = (user: Negotiation['fromUserId']) => {
-    if (typeof user === 'object' && user.firstName && user.lastName) {
-      return `${user.firstName} ${user.lastName}`;
-    }
-    return 'User';
+  const getUserName = (userId: any) => {
+    if (typeof userId === 'string') return 'User';
+    return `${userId?.firstName || ''} ${userId?.lastName || ''}`.trim() || 'User';
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
             <MessageSquare className="w-6 h-6 text-blue-600" />
-            <h2 className="text-xl font-semibold text-gray-900">
-              Admin Negotiations
-            </h2>
+            <h2 className="text-xl font-semibold text-gray-900">Negotiations</h2>
           </div>
           <button
             onClick={onClose}
@@ -195,7 +234,7 @@ const NegotiationModal = ({ isOpen, onClose }: NegotiationModalProps) => {
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            Active Negotiations
+            All Negotiations
           </button>
           <button
             onClick={() => setActiveTab('accepted')}
@@ -216,206 +255,291 @@ const NegotiationModal = ({ isOpen, onClose }: NegotiationModalProps) => {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             </div>
           ) : (
-            <div className="space-y-4">
-              {(activeTab === 'active' ? negotiations : acceptedNegotiations).map((negotiation) => (
-                <div
-                  key={negotiation._id}
-                  className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-3">
-                        <img
-                          src={getProductImage(negotiation.productId)}
-                          alt={getProductName(negotiation.productId)}
-                          className="w-16 h-16 object-cover rounded-lg border border-gray-200"
-                        />
-                        <div className="flex-1">
-                          <h3 className="font-medium text-gray-900">
-                            {getProductName(negotiation.productId)}
-                          </h3>
-                          <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
-                            <span className="flex items-center">
-                              <User className="w-4 h-4 mr-1" />
-                              {getUserName(negotiation.fromUserId)}
-                            </span>
-                            <span className="flex items-center">
-                              <Clock className="w-4 h-4 mr-1" />
-                              {formatDate(negotiation.createdAt)}
-                            </span>
+            <div className="space-y-6">
+              {(activeTab === 'active' ? negotiations : acceptedNegotiations).map((item) => {
+                // Handle both grouped negotiations and individual accepted negotiations
+                const negotiationGroup = activeTab === 'active' ? item as NegotiationGroup : null;
+                const individualNegotiation = activeTab === 'accepted' ? item as Negotiation : null;
+                
+                if (negotiationGroup) {
+                  return (
+                    <div key={negotiationGroup.bidId} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                      {/* Group Header */}
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center space-x-3">
+                          <img
+                            src={getProductImage(negotiationGroup.productId)}
+                            alt={getProductName(negotiationGroup.productId)}
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSePykPxV7hbiMoufhNrCVlkEh94nvJQIMDeA&s';
+                            }}
+                            className="w-16 h-16 object-cover rounded-lg border border-gray-200"
+                          />
+                          <div className="flex-1">
+                            <h3 className="font-medium text-gray-900">
+                              {getProductName(negotiationGroup.productId)}
+                            </h3>
+                            <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
+                              <span className="flex items-center">
+                                <Package className="w-4 h-4 mr-1" />
+                                Bid ID: {negotiationGroup?.bidId?.slice(0, 8)}...
+                              </span>
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                negotiationGroup.status === 'accepted' 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {negotiationGroup.status === 'accepted' ? 'Accepted' : 'Negotiating'}
+                              </span>
+                              {negotiationGroup.status === 'accepted' && negotiationGroup.acceptedBy && (
+                                <span className="text-sm text-gray-600">
+                                  Accepted by: {negotiationGroup.acceptedBy}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
-                        <div className="flex items-center space-x-2">
-                          <DollarSign className="w-4 h-4 text-green-600" />
-                          <span className="text-sm text-gray-600">Offer Price:</span>
-                          <span className="font-medium text-green-600">
-                            {formatPrice(negotiation.offerPrice)}
-                          </span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Package className="w-4 h-4 text-blue-600" />
-                          <span className="text-sm text-gray-600">Status:</span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            negotiation.status === 'accepted' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {negotiation.status === 'accepted' ? 'Accepted' : 'Negotiating'}
-                          </span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <span className="text-sm text-gray-600">From:</span>
-                          <span className="font-medium text-gray-900">
-                            {negotiation.FromUserType}
-                          </span>
-                        </div>
-                      </div>
-
-                      {negotiation.message && (
-                        <div className="bg-gray-50 rounded-lg p-3 mb-3">
-                          <p className="text-sm text-gray-700">{negotiation.message}</p>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex flex-col space-y-2 ml-4">
-                      {activeTab === 'active' && (
-                        <>
-                          {canRespond(negotiation) ? (
-                            <>
-                              {canAccept(negotiation) && (
-                                <button
-                                  onClick={() => {
-                                    setSelectedNegotiation(negotiation);
-                                    setResponseData({ action: 'accept', offerPrice: '', message: '' });
-                                    setShowResponseForm(true);
-                                  }}
-                                  className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-1"
-                                >
-                                  <CheckCircle className="w-4 h-4" />
-                                  <span>Accept</span>
-                                </button>
-                              )}
-                              <button
-                                onClick={() => {
-                                  setSelectedNegotiation(negotiation);
+                        
+                        {/* Bid-level Counter Button */}
+                        <div className="flex flex-col space-y-2">
+                          {canMakeCounterForBid(negotiationGroup) && (
+                            <button
+                              onClick={() => {
+                                // Use the latest customer negotiation for counter
+                                const latestCustomerNegotiation = negotiationGroup.negotiations
+                                  .filter(n => n.FromUserType === 'Customer')
+                                  .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+                                
+                                if (latestCustomerNegotiation) {
+                                  setSelectedNegotiation(latestCustomerNegotiation);
                                   setResponseData({ action: 'counter', offerPrice: '', message: '' });
                                   setShowResponseForm(true);
-                                }}
-                                className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-1"
-                              >
-                                <MessageSquare className="w-4 h-4" />
-                                <span>Counter</span>
-                              </button>
-                            </>
-                          ) : hasAcceptedNegotiation(negotiation) ? (
-                            <div className="px-3 py-1.5 bg-gray-100 text-gray-600 text-sm rounded-lg flex items-center space-x-1">
-                              <CheckCircle className="w-4 h-4" />
-                              <span>Other bid accepted</span>
+                                }
+                              }}
+                              className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                            >
+                              <Send className="w-4 h-4" />
+                              <span>Make Counter Offer</span>
+                            </button>
+                          )}
+                          {hasAcceptedNegotiation(negotiationGroup) && (
+                            <div className="text-xs text-gray-500 text-center">
+                              Bid accepted
                             </div>
-                          ) : null}
-                        </>
-                      )}
-                      {activeTab === 'accepted' && (
-                        <button
-                          onClick={() => {
-                            // Navigate to product details page
-                            const productId = typeof negotiation.productId === 'string' 
-                              ? negotiation.productId 
-                              : negotiation.productId._id;
-                            window.location.href = `/#/product/${productId}`;
-                          }}
-                          className="px-3 py-1.5 bg-orange-600 text-white text-sm rounded-lg hover:bg-orange-700 transition-colors flex items-center space-x-1"
-                        >
-                          <Eye className="w-4 h-4" />
-                          <span>View Product</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                          )}
+                        </div>
+                      </div>
 
-              {(activeTab === 'active' ? negotiations : acceptedNegotiations).length === 0 && (
-                <div className="text-center py-12">
-                  <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    No {activeTab === 'active' ? 'active' : 'accepted'} negotiations
-                  </h3>
-                  <p className="text-gray-500">
-                    {activeTab === 'active' 
-                      ? 'No active negotiations at the moment.'
-                      : 'No accepted orders yet.'
-                    }
-                  </p>
-                </div>
-              )}
+                      {/* Negotiation Flow */}
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-medium text-gray-700 mb-2">Bidding Flow:</h4>
+                        {negotiationGroup.negotiations
+                          .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+                          .map((negotiation) => (
+                            <div key={negotiation._id} className="bg-gray-50 rounded-lg p-3 border-l-4 border-blue-500">
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center space-x-4 text-sm">
+                                    <span className="font-medium text-gray-900">
+                                      {negotiation.FromUserType} Offer
+                                    </span>
+                                    <span className="flex items-center text-green-600">
+                                      <DollarSign className="w-4 h-4 mr-1" />
+                                      {formatPrice(negotiation.offerPrice)}
+                                    </span>
+                                    <span className="flex items-center text-gray-500">
+                                      <Clock className="w-4 h-4 mr-1" />
+                                      {formatDate(negotiation.createdAt)}
+                                    </span>
+                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                      negotiation.status === 'accepted' 
+                                        ? 'bg-green-100 text-green-800' 
+                                        : 'bg-yellow-100 text-yellow-800'
+                                    }`}>
+                                      {negotiation.status === 'accepted' ? 'Accepted' : 'Pending'}
+                                    </span>
+                                  </div>
+                                  {negotiation.message && (
+                                    <p className="text-sm text-gray-600 mt-2">{negotiation.message}</p>
+                                  )}
+                                </div>
+                                
+                                {/* Action Buttons */}
+                                <div className="flex flex-col space-y-2 ml-4">
+                                  {negotiation.status === 'negotiation' && (
+                                    <>
+                                      {canAccept(negotiation, negotiationGroup) && (
+                                        <button
+                                          onClick={() => {
+                                            setSelectedNegotiation(negotiation);
+                                            setResponseData({ action: 'accept', offerPrice: '', message: '' });
+                                            setShowResponseForm(true);
+                                          }}
+                                          className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-1"
+                                        >
+                                          <CheckCircle className="w-4 h-4" />
+                                          <span>Accept</span>
+                                        </button>
+                                      )}
+                                      {hasAcceptedNegotiation(negotiationGroup) && (
+                                        <div className="text-xs text-gray-500 text-center">
+                                          Other bid accepted
+                                        </div>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  );
+                } else if (individualNegotiation) {
+                  // Handle individual accepted negotiations for the accepted tab
+                  return (
+                    <div key={individualNegotiation._id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3 mb-3">
+                            <img
+                              src={getProductImage(individualNegotiation.productId)}
+                              alt={getProductName(individualNegotiation.productId)}
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSePykPxV7hbiMoufhNrCVlkEh94nvJQIMDeA&s';
+                              }}
+                              className="w-16 h-16 object-cover rounded-lg border border-gray-200"
+                            />
+                            <div className="flex-1">
+                              <h3 className="font-medium text-gray-900">
+                                {getProductName(individualNegotiation.productId)}
+                              </h3>
+                              <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
+                                <span className="flex items-center">
+                                  <User className="w-4 h-4 mr-1" />
+                                  {getUserName(individualNegotiation.fromUserId)}
+                                </span>
+                                <span className="flex items-center">
+                                  <Clock className="w-4 h-4 mr-1" />
+                                  {formatDate(individualNegotiation.createdAt)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+                            <div className="flex items-center space-x-2">
+                              <DollarSign className="w-4 h-4 text-green-600" />
+                              <span className="text-sm text-gray-600">Offer Price:</span>
+                              <span className="font-medium text-green-600">
+                                {formatPrice(individualNegotiation.offerPrice)}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Package className="w-4 h-4 text-blue-600" />
+                              <span className="text-sm text-gray-600">Status:</span>
+                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                Accepted
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sm text-gray-600">From:</span>
+                              <span className="font-medium text-gray-900">
+                                {individualNegotiation.FromUserType}
+                              </span>
+                            </div>
+                          </div>
+
+                          {individualNegotiation.message && (
+                            <div className="bg-gray-50 rounded-lg p-3 mb-3">
+                              <p className="text-sm text-gray-700">{individualNegotiation.message}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              })}
             </div>
           )}
         </div>
-      </div>
 
-      {/* Response Form Modal */}
-      {showResponseForm && selectedNegotiation && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-            <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                {responseData.action === 'accept' ? 'Accept Offer' : 'Make Counter Offer'}
-              </h3>
-
-              {responseData.action === 'counter' && (
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Counter Offer Price
-                  </label>
-                  <input
-                    type="number"
-                    value={responseData.offerPrice}
-                    onChange={(e) => setResponseData({ ...responseData, offerPrice: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter your counter offer"
-                    required
-                  />
+        {/* Response Form Modal */}
+        {showResponseForm && selectedNegotiation && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-60 p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    {responseData.action === 'accept' ? 'Accept Offer' : 'Make Counter Offer'}
+                  </h3>
+                  <button
+                    onClick={() => setShowResponseForm(false)}
+                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    <X className="w-5 h-5 text-gray-500" />
+                  </button>
                 </div>
-              )}
 
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Message (Optional)
-                </label>
-                <textarea
-                  value={responseData.message}
-                  onChange={(e) => setResponseData({ ...responseData, message: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  rows={3}
-                  placeholder="Add a message..."
-                />
-              </div>
+                <form onSubmit={(e) => { e.preventDefault(); handleRespond(); }} className="space-y-4">
+                  {responseData.action === 'counter' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Counter Offer Price
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={responseData.offerPrice}
+                        onChange={(e) => setResponseData({ ...responseData, offerPrice: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Enter your counter offer"
+                        required
+                      />
+                    </div>
+                  )}
 
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => setShowResponseForm(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleRespond}
-                  disabled={responseData.action === 'counter' && !responseData.offerPrice}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-                >
-                  <Send className="w-4 h-4" />
-                  <span>Send</span>
-                </button>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Message
+                    </label>
+                    <textarea
+                      value={responseData.message}
+                      onChange={(e) => setResponseData({ ...responseData, message: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      rows={3}
+                      placeholder="Add a message..."
+                    />
+                  </div>
+
+                  <div className="flex space-x-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setShowResponseForm(false)}
+                      className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className={`flex-1 px-4 py-2 text-white rounded-lg transition-colors ${
+                        responseData.action === 'accept'
+                          ? 'bg-green-600 hover:bg-green-700'
+                          : 'bg-blue-600 hover:bg-blue-700'
+                      }`}
+                    >
+                      {responseData.action === 'accept' ? 'Accept Offer' : 'Send Counter Offer'}
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
