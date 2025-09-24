@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import Swal from "sweetalert2";
 import { format } from "date-fns";
 import toastHelper from "../../utils/toastHelper";
-import { AdminOrderService, Order, TrackingItem } from "../../services/order/adminOrder.services";
+import { AdminOrderService, Order, TrackingItem, OrderItem } from "../../services/order/adminOrder.services";
 
 const OrdersTable: React.FC = () => {
   const [ordersData, setOrdersData] = useState<Order[]>([]);
@@ -12,19 +12,13 @@ const OrdersTable: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [totalDocs, setTotalDocs] = useState<number>(0);
   const [totalPages, setTotalPages] = useState<number>(1);
+  const [editOrderId, setEditOrderId] = useState<string | null>(null);
+  const [selectedStatus, setSelectedStatus] = useState<{ [key: string]: string }>({});
+  const [editedCartItems, setEditedCartItems] = useState<{ [key: string]: OrderItem[] }>({});
   const itemsPerPage = 10;
 
-  // Available status options
-  const statusOptions = [
-    "request",
-    "verified",
-    "approved",
-    "shipped",
-    "delivered",
-    "cancelled",
-  ];
+  const statusOptions = ["request", "verified", "approved", "shipped", "delivered", "cancelled"];
 
-  // Fetch orders on component mount and when page/search/status changes
   useEffect(() => {
     fetchOrders();
   }, [currentPage, searchTerm, statusFilter]);
@@ -48,25 +42,59 @@ const OrdersTable: React.FC = () => {
     }
   };
 
-  // Handle status change
-  const handleStatusChange = async (order: Order, newStatus: string) => {
-    if (!order._id || newStatus === order.status) return;
+  const handleStatusChange = (orderId: string, newStatus: string) => {
+    setSelectedStatus((prev) => ({ ...prev, [orderId]: newStatus }));
+    if (["request", "accepted"].includes(ordersData.find((o) => o._id === orderId)?.status || "") &&
+        ["verified", "approved"].includes(newStatus)) {
+      setEditOrderId(orderId);
+      setEditedCartItems((prev) => ({
+        ...prev,
+        [orderId]: ordersData.find((o) => o._id === orderId)?.cartItems.map((item) => ({ ...item })) || [],
+      }));
+    } else {
+      setEditOrderId(null);
+    }
+  };
+
+  const handleQuantityChange = (orderId: string, itemId: string, newQuantity: string) => {
+    setEditedCartItems((prev) => {
+      const updatedItems = prev[orderId].map((item) =>
+        item._id === itemId ? { ...item, quantity: parseInt(newQuantity) || 1 } : item
+      );
+      return { ...prev, [orderId]: updatedItems };
+    });
+  };
+
+  const handleUpdateStatus = async (order: Order) => {
+    const newStatus = selectedStatus[order._id] || order.status;
+    if (!order._id || newStatus === order.status && !editedCartItems[order._id]) return;
 
     const confirmed = await Swal.fire({
       title: "Change Order Status",
-      text: `Are you sure you want to change the status of this order to "${newStatus}"?`,
+      text: `Are you sure you want to change the status of this order to "${newStatus}"${
+        editedCartItems[order._id] ? " and update quantities" : ""
+      }?`,
       icon: "question",
       showCancelButton: true,
-      confirmButtonText: "Yes, change it!",
+      confirmButtonText: "Yes, update it!",
       cancelButtonText: "No, cancel!",
     });
 
     if (confirmed.isConfirmed) {
       try {
-        const result = await AdminOrderService.updateOrderStatus(order._id, newStatus);
+        const cartItems = ["request", "accepted"].includes(order.status) && ["verified", "approved"].includes(newStatus)
+          ? editedCartItems[order._id] || order.cartItems
+          : undefined;
+        const result = await AdminOrderService.updateOrderStatus(order._id, newStatus, cartItems);
         if (result !== false) {
           toastHelper.showTost(`Order status updated to ${newStatus}!`, "success");
-          fetchOrders(); // Refresh the list
+          setEditOrderId(null);
+          setEditedCartItems((prev) => {
+            const updated = { ...prev };
+            delete updated[order._id];
+            return updated;
+          });
+          fetchOrders();
         }
       } catch (error) {
         console.error("Failed to update order status:", error);
@@ -74,7 +102,6 @@ const OrdersTable: React.FC = () => {
     }
   };
 
-  // Handle view tracking
   const handleViewTracking = async (orderId: string) => {
     try {
       const response = await AdminOrderService.getOrderTracking(orderId);
@@ -90,7 +117,6 @@ const OrdersTable: React.FC = () => {
         return;
       }
 
-      // Format tracking details for modal
       const trackingHtml = `
         <div style="text-align: left;">
           <h3 style="margin-bottom: 16px;">Tracking Details for Order ${orderId}</h3>
@@ -142,7 +168,6 @@ const OrdersTable: React.FC = () => {
     }
   };
 
-  // Format price
   const formatPrice = (price: number | string): string => {
     if (typeof price === "string") {
       const num = parseFloat(price);
@@ -151,7 +176,6 @@ const OrdersTable: React.FC = () => {
     return price.toFixed(2);
   };
 
-  // Format date
   const formatDate = (date: string): string => {
     if (!date) return "-";
     try {
@@ -161,7 +185,6 @@ const OrdersTable: React.FC = () => {
     }
   };
 
-  // Get status badge
   const getStatusBadge = (order: Order) => {
     const statusColors: { [key: string]: string } = {
       request: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
@@ -170,6 +193,7 @@ const OrdersTable: React.FC = () => {
       shipped: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
       delivered: "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200",
       cancelled: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+      accepted: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200",
     };
 
     return (
@@ -185,12 +209,9 @@ const OrdersTable: React.FC = () => {
 
   return (
     <div className="p-4 max-w-[calc(100vw-360px)] mx-auto">
-      {/* Table Container */}
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-sm">
-        {/* Table Header with Controls */}
         <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
           <div className="flex items-center gap-3">
-            {/* Search */}
             <div className="relative">
               <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
               <input
@@ -204,7 +225,6 @@ const OrdersTable: React.FC = () => {
                 }}
               />
             </div>
-            {/* Status Filter */}
             <div className="relative">
               <select
                 value={statusFilter}
@@ -225,7 +245,6 @@ const OrdersTable: React.FC = () => {
           </div>
         </div>
 
-        {/* Table */}
         <div className="max-w-full overflow-x-auto">
           <table className="w-full table-auto">
             <thead className="bg-gray-100 dark:bg-gray-900">
@@ -287,11 +306,29 @@ const OrdersTable: React.FC = () => {
                       {order.customerId.name || order.customerId.email || order.customerId._id}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {order.cartItems.map((item) => (
-                        <div key={item.productId._id}>
-                          {item.skuFamilyId?.name || item.productId.name} (x{item.quantity})
-                        </div>
-                      ))}
+                      {editOrderId === order._id &&
+                      ["request", "accepted"].includes(order.status) &&
+                      ["verified", "approved"].includes(selectedStatus[order._id] || "") ? (
+                        editedCartItems[order._id]?.map((item) => (
+                          <div key={item._id} className="flex items-center gap-2 mb-2">
+                            <span>{item.skuFamilyId?.name || item.productId.name} (x</span>
+                            <input
+                              type="number"
+                              min="1"
+                              value={item.quantity}
+                              onChange={(e) => handleQuantityChange(order._id, item._id, e.target.value)}
+                              className="w-16 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-sm"
+                            />
+                            <span>)</span>
+                          </div>
+                        ))
+                      ) : (
+                        order.cartItems.map((item) => (
+                          <div key={item._id}>
+                            {item.skuFamilyId?.name || item.productId.name} (x{item.quantity})
+                          </div>
+                        ))
+                      )}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                       ${formatPrice(order.totalAmount)}
@@ -303,17 +340,26 @@ const OrdersTable: React.FC = () => {
                       {getStatusBadge(order)}
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
-                      <select
-                        value={order.status}
-                        onChange={(e) => handleStatusChange(order, e.target.value)}
-                        className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                      >
-                        {statusOptions.map((status) => (
-                          <option key={status} value={status}>
-                            {status.charAt(0).toUpperCase() + status.slice(1)}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={selectedStatus[order._id] || order.status}
+                          onChange={(e) => handleStatusChange(order._id, e.target.value)}
+                          className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        >
+                          {statusOptions.map((status) => (
+                            <option key={status} value={status}>
+                              {status.charAt(0).toUpperCase() + status.slice(1)}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() => handleUpdateStatus(order)}
+                          className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-400 text-sm"
+                          disabled={!selectedStatus[order._id] && !editedCartItems[order._id]}
+                        >
+                          Submit
+                        </button>
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
                       <button
@@ -331,7 +377,6 @@ const OrdersTable: React.FC = () => {
           </table>
         </div>
 
-        {/* Pagination */}
         <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
           <div className="text-sm text-gray-600 dark:text-gray-400 mb-4 sm:mb-0">
             Showing {ordersData.length} of {totalDocs} orders

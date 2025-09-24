@@ -6,8 +6,9 @@ import { CostModuleService } from "../../services/costModule/costModule.services
 // Define the interface for CostModule data
 interface CostModule {
   _id?: string;
-  type: "Logistic" | "Product";
-  products: string[];
+  type: "Product" | "Categories" | "Country" | "ExtraDelivery";
+  products: Product[];
+  categories: string[];
   countries: string[];
   remark: string;
   costType: "Percentage" | "Fixed";
@@ -15,6 +16,11 @@ interface CostModule {
   minValue?: number;
   maxValue?: number;
   isDeleted: boolean;
+}
+
+interface Product {
+  _id: string;
+  specification: string;
 }
 
 const CostModuleTable: React.FC = () => {
@@ -60,6 +66,7 @@ const CostModuleTable: React.FC = () => {
         const updates = {
           type: newItem.type,
           products: newItem.products,
+          categories: newItem.categories,
           countries: newItem.countries,
           remark: newItem.remark,
           costType: newItem.costType,
@@ -157,6 +164,9 @@ const CostModuleTable: React.FC = () => {
                   <div className="flex items-center gap-2">Products</div>
                 </th>
                 <th className="px-6 py-5 text-left text-sm font-bold text-gray-800 dark:text-gray-100 border-b-2 border-gray-300 dark:border-gray-600 align-middle uppercase tracking-wider">
+                  <div className="flex items-center gap-2">Categories</div>
+                </th>
+                <th className="px-6 py-5 text-left text-sm font-bold text-gray-800 dark:text-gray-100 border-b-2 border-gray-300 dark:border-gray-600 align-middle uppercase tracking-wider">
                   <div className="flex items-center gap-2">Countries</div>
                 </th>
                 <th className="px-6 py-5 text-left text-sm font-bold text-gray-800 dark:text-gray-100 border-b-2 border-gray-300 dark:border-gray-600 align-middle uppercase tracking-wider">
@@ -182,7 +192,7 @@ const CostModuleTable: React.FC = () => {
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="p-16 text-center bg-gray-50 dark:bg-gray-800">
+                  <td colSpan={10} className="p-16 text-center bg-gray-50 dark:bg-gray-800">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       <div className="animate-spin rounded-full h-10 w-10 border-t-3 border-blue-600 mx-auto mb-6"></div>
                       <p className="font-medium">Loading Cost Modules...</p>
@@ -191,7 +201,7 @@ const CostModuleTable: React.FC = () => {
                 </tr>
               ) : paginatedData.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="p-16 text-center bg-gray-50 dark:bg-gray-800">
+                  <td colSpan={10} className="p-16 text-center bg-gray-50 dark:bg-gray-800">
                     <div className="text-gray-500 dark:text-gray-400">
                       <i className="fas fa-inbox text-4xl mb-4 text-gray-300 dark:text-gray-600"></i>
                       <p className="text-lg font-medium mb-2">No cost modules found</p>
@@ -217,7 +227,12 @@ const CostModuleTable: React.FC = () => {
                     </td>
                     <td className="px-6 py-5 text-sm">
                       <span className="text-gray-700 dark:text-gray-300 font-medium leading-relaxed">
-                        {item.products.join(", ") || "-"}
+                        {item.products.map(p => p.specification).join(", ") || "-"}
+                      </span>
+                    </td>
+                    <td className="px-6 py-5 text-sm">
+                      <span className="text-gray-700 dark:text-gray-300 font-medium leading-relaxed">
+                        {item.categories?.join(", ") || "-"}
                       </span>
                     </td>
                     <td className="px-6 py-5 text-sm">
