@@ -226,7 +226,7 @@ const BusinessRequestsTable: React.FC = () => {
     }
   };
 
-  const placeholderImage = "https://placehold.co/48x48?text=Image";
+  const placeholderImage = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTMmyTPv4M5fFPvYLrMzMQcPD_VO34ByNjouQ&s";
 
   return (
     <div className="p-4">

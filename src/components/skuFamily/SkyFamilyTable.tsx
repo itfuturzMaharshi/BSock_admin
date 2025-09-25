@@ -108,6 +108,9 @@ const SkuFamilyTable: React.FC = () => {
 
   const totalPages = Math.ceil(totalDocs / itemsPerPage);
 
+  const placeholderImage =
+    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTMmyTPv4M5fFPvYLrMzMQcPD_VO34ByNjouQ&s";
+
   return (
     <div className="p-4">
       <link
@@ -211,8 +214,7 @@ const SkuFamilyTable: React.FC = () => {
                             Array.isArray(item.images) && item.images.length > 0
                               ? item.images[0]
                               : "";
-                          if (!first)
-                            return "https://via.placeholder.com/60x60?text=Product";
+                          if (!first) return placeholderImage; // 👈 fallback if no image url
                           const isAbsolute = /^https?:\/\//i.test(first);
                           return isAbsolute
                             ? first
@@ -222,6 +224,10 @@ const SkuFamilyTable: React.FC = () => {
                         })()}
                         alt={item.name || "Product"}
                         className="w-12 h-12 object-contain rounded-md border border-gray-200 dark:border-gray-600"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src =
+                            placeholderImage; // 👈 fallback if load fails
+                        }}
                       />
                     </td>
                     <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-gray-200">

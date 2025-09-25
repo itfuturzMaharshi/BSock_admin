@@ -235,6 +235,9 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
     }
   };
 
+  const placeholderImage =
+    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTMmyTPv4M5fFPvYLrMzMQcPD_VO34ByNjouQ&s";
+
   return (
     <div className="p-4">
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-sm">
@@ -337,9 +340,13 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                   >
                     <td className="px-6 py-4">
                       <img
-                        src={getProductImageSrc(item)}
-                        alt={getSkuFamilyText(item.skuFamilyId) || "Product"}
+                        src={getProductImageSrc(item) || placeholderImage}
+                        alt={getSkuFamilyText(item?.skuFamilyId) || "Product"}
                         className="w-12 h-12 object-contain rounded-md border border-gray-200 dark:border-gray-600"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src =
+                            placeholderImage; 
+                        }}
                       />
                     </td>
                     <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-gray-200">
@@ -490,8 +497,12 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
               <div className="flex items-center space-x-4">
                 <img
                   src={getProductImageSrc(selectedProduct)}
-                  alt={getSkuFamilyText(selectedProduct.skuFamilyId)}
+                  alt={getSkuFamilyText(selectedProduct?.skuFamilyId)}
                   className="w-16 h-16 object-contain rounded-lg border border-gray-200 dark:border-gray-600 flex-shrink-0"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src =
+                      placeholderImage;
+                  }}
                 />
                 <div>
                   <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
