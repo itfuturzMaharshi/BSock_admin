@@ -4,9 +4,17 @@ import { format } from "date-fns";
 import toastHelper from "../../utils/toastHelper";
 import ProductModal from "./ProductModal";
 import UploadExcelModal from "./UploadExcelModal";
-import { ProductService, Product } from "../../services/product/product.services";
+import {
+  ProductService,
+  Product,
+} from "../../services/product/product.services";
 
-const ProductsTable: React.FC = () => {
+// Assuming loggedInAdminId is available (e.g., from context, prop, or auth service)
+interface ProductsTableProps {
+  loggedInAdminId: string; // Add this prop or fetch it from context
+}
+
+const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
   const [productsData, setProductsData] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -16,6 +24,7 @@ const ProductsTable: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [totalDocs, setTotalDocs] = useState<number>(0);
   const [totalPages, setTotalPages] = useState<number>(1);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const itemsPerPage = 10;
 
   // Fetch products on component mount and when page/search changes
@@ -43,7 +52,6 @@ const ProductsTable: React.FC = () => {
 
   const handleSave = async (productData: any) => {
     try {
-      // Convert string values to numbers where needed
       const processedData = {
         ...productData,
         price:
@@ -61,17 +69,15 @@ const ProductsTable: React.FC = () => {
       };
 
       if (editProduct && editProduct._id) {
-        // Update existing product
         await ProductService.updateProduct(editProduct._id, processedData);
         toastHelper.showTost("Product updated successfully!", "success");
       } else {
-        // Create new product
         await ProductService.createProduct(processedData);
         toastHelper.showTost("Product added successfully!", "success");
       }
       setIsModalOpen(false);
       setEditProduct(null);
-      fetchProducts(); // Refresh the list
+      fetchProducts();
     } catch (error) {
       console.error("Failed to save product:", error);
     }
@@ -98,7 +104,7 @@ const ProductsTable: React.FC = () => {
       try {
         await ProductService.deleteProduct(product._id);
         toastHelper.showTost("Product deleted successfully!", "success");
-        fetchProducts(); // Refresh the list
+        fetchProducts();
       } catch (error) {
         console.error("Failed to delete product:", error);
       }
@@ -121,7 +127,7 @@ const ProductsTable: React.FC = () => {
       try {
         const result = await ProductService.verifyProduct(product._id);
         if (result !== false) {
-          fetchProducts(); // Refresh the list only if successful
+          fetchProducts();
         }
       } catch (error) {
         console.error("Failed to verify product:", error);
@@ -145,7 +151,7 @@ const ProductsTable: React.FC = () => {
       try {
         const result = await ProductService.approveProduct(product._id);
         if (result !== false) {
-          fetchProducts(); // Refresh the list only if successful
+          fetchProducts();
         }
       } catch (error) {
         console.error("Failed to approve product:", error);
@@ -153,7 +159,10 @@ const ProductsTable: React.FC = () => {
     }
   };
 
-  // Safely derive a displayable SKU Family text from possibly-populated object
+  const handleView = (product: Product) => {
+    setSelectedProduct(product);
+  };
+
   const getSkuFamilyText = (skuFamilyId: any): string => {
     if (skuFamilyId == null) return "";
     if (typeof skuFamilyId === "string") return skuFamilyId;
@@ -163,7 +172,6 @@ const ProductsTable: React.FC = () => {
     return String(skuFamilyId);
   };
 
-  // Build an absolute image URL similar to SkuFamily table
   const buildImageUrl = (relativeOrAbsolute: string): string => {
     if (!relativeOrAbsolute)
       return "https://via.placeholder.com/60x60?text=Product";
@@ -175,7 +183,6 @@ const ProductsTable: React.FC = () => {
     }${relativeOrAbsolute}`;
   };
 
-  // Prefer the first image from populated skuFamily when available
   const getProductImageSrc = (product: Product): string => {
     try {
       const sku = product?.skuFamilyId as any;
@@ -188,7 +195,6 @@ const ProductsTable: React.FC = () => {
     return "https://via.placeholder.com/60x60?text=Product";
   };
 
-  // Helper function to safely format price
   const formatPrice = (price: number | string): string => {
     if (typeof price === "string") {
       const num = parseFloat(price);
@@ -197,37 +203,32 @@ const ProductsTable: React.FC = () => {
     return price.toFixed(2);
   };
 
-  // Format expiryTime for display
   const formatExpiryTime = (expiryTime: string): string => {
     if (!expiryTime) return "-";
     try {
       const date = new Date(expiryTime);
-      return format(date, "yyyy-MM-dd HH:mm");
+      return format(date, "MMM dd, yyyy");
     } catch {
       return "-";
     }
   };
 
-  // Get status badge for product
   const getStatusBadge = (product: Product) => {
     if (product.isApproved) {
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-          <i className="fas fa-check-circle mr-1"></i>
+        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-green-100 text-green-700 border border-green-200">
           Approved
         </span>
       );
     } else if (product.isVerified) {
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-          <i className="fas fa-clock mr-1"></i>
-          Under Approval
+        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-yellow-100 text-yellow-700 border border-yellow-200">
+          Pending Approval
         </span>
       );
     } else {
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-          <i className="fas fa-exclamation-circle mr-1"></i>
+        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-red-100 text-red-700 border border-red-200">
           Under Verification
         </span>
       );
@@ -235,13 +236,10 @@ const ProductsTable: React.FC = () => {
   };
 
   return (
-    <div className="p-4 max-w-[calc(100vw-360px)] mx-auto">
-      {/* Table Container */}
+    <div className="p-4">
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-sm">
-        {/* Table Header with Controls */}
         <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
           <div className="flex items-center gap-3">
-            {/* Search */}
             <div className="relative">
               <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
               <input
@@ -277,109 +275,46 @@ const ProductsTable: React.FC = () => {
           </div>
         </div>
 
-        {/* Table */}
         <div className="max-w-full overflow-x-auto">
           <table className="w-full table-auto">
             <thead className="bg-gray-100 dark:bg-gray-900">
               <tr>
-                <th
-                  rowSpan={2}
-                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle"
-                >
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Image
                 </th>
-                <th
-                  rowSpan={2}
-                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle"
-                >
-                  SKU Family ID
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                  Name
                 </th>
-                <th
-                  colSpan={4}
-                  className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700"
-                >
-                  Specification
-                </th>
-                <th
-                  rowSpan={2}
-                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle"
-                >
-                  Condition
-                </th>
-                <th
-                  rowSpan={2}
-                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle"
-                >
-                  Price
-                </th>
-                <th
-                  rowSpan={2}
-                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle"
-                >
-                  Stock
-                </th>
-                <th
-                  rowSpan={2}
-                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle"
-                >
-                  Country
-                </th>
-                <th
-                  rowSpan={2}
-                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle"
-                >
-                  MOQ
-                </th>
-                <th
-                  rowSpan={2}
-                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle"
-                >
-                  Is Negotiable
-                </th>
-                <th
-                  rowSpan={2}
-                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle"
-                >
-                  Is Flash Deal
-                </th>
-                <th
-                  rowSpan={2}
-                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle"
-                >
-                  Expiry Time
-                </th>
-                <th
-                  rowSpan={2}
-                  className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle"
-                >
-                  Status
-                </th>
-                <th
-                  rowSpan={2}
-                  className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle"
-                >
-                  Actions
-                </th>
-              </tr>
-              <tr>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   SIM Type
                 </th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Color
                 </th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   RAM
                 </th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Storage
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                  Price
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                  Country
+                </th>
+                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                  Status
+                </th>
+                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                  Actions
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={16} className="p-12 text-center">
+                  <td colSpan={10} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
                       Loading Products...
@@ -388,7 +323,7 @@ const ProductsTable: React.FC = () => {
                 </tr>
               ) : productsData.length === 0 ? (
                 <tr>
-                  <td colSpan={16} className="p-12 text-center">
+                  <td colSpan={10} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       No products found
                     </div>
@@ -405,7 +340,6 @@ const ProductsTable: React.FC = () => {
                         src={getProductImageSrc(item)}
                         alt={getSkuFamilyText(item.skuFamilyId) || "Product"}
                         className="w-12 h-12 object-contain rounded-md border border-gray-200 dark:border-gray-600"
-                  
                       />
                     </td>
                     <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-gray-200">
@@ -424,56 +358,45 @@ const ProductsTable: React.FC = () => {
                       {item.storage}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.condition}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                       ${formatPrice(item.price)}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {typeof item.stock === "string"
-                        ? parseInt(item.stock) || 0
-                        : item.stock}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                       {item.country}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {typeof item.moq === "string"
-                        ? parseInt(item.moq) || 0
-                        : item.moq}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.isNegotiable ? "Yes" : "No"}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.isFlashDeal === "true" ? "Yes" : "No"}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {formatExpiryTime(item.expiryTime)}
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
                       {getStatusBadge(item)}
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        {item.canVerify && (
-                          <button
-                            onClick={() => handleVerify(item)}
-                            className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors"
-                            title="Verify Product"
-                          >
-                            <i className="fas fa-check"></i>
-                          </button>
-                        )}
-                        {item.canApprove && (
-                          <button
-                            onClick={() => handleApprove(item)}
-                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                            title="Approve Product"
-                          >
-                            <i className="fas fa-thumbs-up"></i>
-                          </button>
-                        )}
+                      <div className="flex items-center justify-center gap-3">
+                        {/* Verify button: Show only if canVerify is true and the admin hasn't verified it */}
+                        {item.canVerify &&
+                          item.verifiedBy !== loggedInAdminId && (
+                            <button
+                              onClick={() => handleVerify(item)}
+                              className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors"
+                              title="Verify Product"
+                            >
+                              <i className="fas fa-check"></i>
+                            </button>
+                          )}
+                        <button
+                          onClick={() => handleView(item)}
+                          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                          title="View"
+                        >
+                          <i className="fas fa-eye"></i>
+                        </button>
+                        {/* Approve button: Show only if canApprove is true and the admin hasn't verified it */}
+                        {item.canApprove &&
+                          item.verifiedBy !== loggedInAdminId && (
+                            <button
+                              onClick={() => handleApprove(item)}
+                              className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                              title="Approve Product"
+                            >
+                              <i className="fas fa-thumbs-up"></i>
+                            </button>
+                          )}
                         <button
                           onClick={() => handleEdit(item)}
                           className="text-yellow-600 hover:text-yellow-800 dark:text-yellow-400 dark:hover:text-yellow-300 transition-colors"
@@ -497,7 +420,6 @@ const ProductsTable: React.FC = () => {
           </table>
         </div>
 
-        {/* Pagination */}
         <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
           <div className="text-sm text-gray-600 dark:text-gray-400 mb-4 sm:mb-0">
             Showing {productsData.length} of {totalDocs} items
@@ -510,8 +432,6 @@ const ProductsTable: React.FC = () => {
             >
               Previous
             </button>
-
-            {/* Page Numbers */}
             <div className="flex space-x-1">
               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                 const pageNum = i + 1;
@@ -530,7 +450,6 @@ const ProductsTable: React.FC = () => {
                 );
               })}
             </div>
-
             <button
               onClick={() =>
                 setCurrentPage((prev) => Math.min(prev + 1, totalPages))
@@ -557,6 +476,193 @@ const ProductsTable: React.FC = () => {
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
       />
+
+      {selectedProduct && (
+        <div
+          className="fixed inset-0 flex items-center justify-center bg-black/60 z-50 transition-opacity duration-300"
+          onClick={() => setSelectedProduct(null)}
+        >
+          <div
+            className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-4xl w-full max-h-[85vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+              <div className="flex items-center space-x-4">
+                <img
+                  src={getProductImageSrc(selectedProduct)}
+                  alt={getSkuFamilyText(selectedProduct.skuFamilyId)}
+                  className="w-16 h-16 object-contain rounded-lg border border-gray-200 dark:border-gray-600 flex-shrink-0"
+                />
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                    {getSkuFamilyText(selectedProduct.skuFamilyId)}
+                  </h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Product Details
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedProduct(null)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-2 flex-shrink-0"
+                title="Close"
+              >
+                <i className="fas fa-times text-xl"></i>
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 p-6">
+              <div className="mb-6">{getStatusBadge(selectedProduct)}</div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                    Basic Information
+                  </h3>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Name
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                      {getSkuFamilyText(selectedProduct.skuFamilyId)}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      SIM Type
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                      {selectedProduct.simType}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Color
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                      {selectedProduct.color}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        RAM
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                        {selectedProduct.ram}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Storage
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                        {selectedProduct.storage}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Condition
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                      {selectedProduct.condition}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Flash Deal
+                      </label>
+                      <p
+                        className={`text-sm font-medium bg-gray-50 dark:bg-gray-800 p-3 rounded-md ${
+                          selectedProduct.isFlashDeal
+                            ? "text-green-600"
+                            : "text-red-600"
+                        }`}
+                      >
+                        {selectedProduct.isFlashDeal ? "Yes" : "No"}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Negotiable
+                      </label>
+                      <p
+                        className={`text-sm font-medium bg-gray-50 dark:bg-gray-800 p-3 rounded-md ${
+                          selectedProduct.isNegotiable
+                            ? "text-green-600"
+                            : "text-red-600"
+                        }`}
+                      >
+                        {selectedProduct.isNegotiable ? "Yes" : "No"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                    Pricing & Inventory
+                  </h3>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Price
+                    </label>
+                    <p className="text-lg text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md font-semibold">
+                      ${formatPrice(selectedProduct.price)}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Stock
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                        {selectedProduct.stock} units
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        MOQ
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                        {selectedProduct.moq} units
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Country
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                      {selectedProduct.country}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Expiry Date
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                      {formatExpiryTime(selectedProduct.expiryTime)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

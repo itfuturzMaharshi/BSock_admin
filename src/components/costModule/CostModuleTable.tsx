@@ -3,7 +3,7 @@ import Swal from "sweetalert2";
 import CostModuleModal from "./CostModuleModal";
 import { CostModuleService } from "../../services/costModule/costModule.services";
 
-// Define the interface for CostModule data
+// Define the interface for CostModule data (output from list, with populated products)
 interface CostModule {
   _id?: string;
   type: "Product" | "Categories" | "Country" | "ExtraDelivery";
@@ -65,7 +65,7 @@ const CostModuleTable: React.FC = () => {
         // Update existing cost module
         const updates = {
           type: newItem.type,
-          products: newItem.products,
+          products: newItem.products.map((p) => p._id),
           categories: newItem.categories,
           countries: newItem.countries,
           remark: newItem.remark,
@@ -77,7 +77,18 @@ const CostModuleTable: React.FC = () => {
         await CostModuleService.updateCostModule(editItem._id, updates);
       } else {
         // Create new cost module
-        await CostModuleService.createCostModule(newItem);
+        await CostModuleService.createCostModule({
+          type: newItem.type,
+          products: newItem.products.map((p) => p._id),
+          categories: newItem.categories,
+          countries: newItem.countries,
+          remark: newItem.remark,
+          costType: newItem.costType,
+          value: newItem.value,
+          minValue: newItem.minValue,
+          maxValue: newItem.maxValue,
+          isDeleted: newItem.isDeleted,
+        });
       }
       // Refresh the list after save
       await fetchCostModules();
@@ -118,19 +129,19 @@ const CostModuleTable: React.FC = () => {
   const paginatedData = costModules;
 
   return (
-    <div className="p-4 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="p-4">
       {/* Table Container */}
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-lg">
+      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-sm">
         {/* Table Header with Controls */}
-        <div className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+        <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
           <div className="flex items-center gap-3">
             {/* Search */}
             <div className="relative">
-              <i className="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+              <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
               <input
                 type="text"
                 placeholder="Search by remark..."
-                className="pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm w-72 shadow-sm"
+                className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-64"
                 value={searchTerm}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                   setSearchTerm(e.target.value);
@@ -141,7 +152,7 @@ const CostModuleTable: React.FC = () => {
           </div>
 
           <button
-            className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-[#0071E0] to-blue-600 text-white px-6 py-3 text-sm font-semibold hover:from-blue-600 hover:to-blue-700 dark:from-blue-500 dark:to-blue-600 dark:hover:from-blue-600 dark:hover:to-blue-700 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+            className="inline-flex items-center gap-2 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
             onClick={() => {
               setEditItem(undefined);
               setIsModalOpen(true);
@@ -155,57 +166,55 @@ const CostModuleTable: React.FC = () => {
         {/* Table */}
         <div className="max-w-full overflow-x-auto">
           <table className="w-full table-auto">
-            <thead className="bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900">
+            <thead className="bg-gray-100 dark:bg-gray-900">
               <tr>
-                <th className="px-6 py-5 text-left text-sm font-bold text-gray-800 dark:text-gray-100 border-b-2 border-gray-300 dark:border-gray-600 align-middle uppercase tracking-wider">
-                  <div className="flex items-center gap-2">Type</div>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                  Type
                 </th>
-                <th className="px-6 py-5 text-left text-sm font-bold text-gray-800 dark:text-gray-100 border-b-2 border-gray-300 dark:border-gray-600 align-middle uppercase tracking-wider">
-                  <div className="flex items-center gap-2">Products</div>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                  Products
                 </th>
-                <th className="px-6 py-5 text-left text-sm font-bold text-gray-800 dark:text-gray-100 border-b-2 border-gray-300 dark:border-gray-600 align-middle uppercase tracking-wider">
-                  <div className="flex items-center gap-2">Categories</div>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                  Categories
                 </th>
-                <th className="px-6 py-5 text-left text-sm font-bold text-gray-800 dark:text-gray-100 border-b-2 border-gray-300 dark:border-gray-600 align-middle uppercase tracking-wider">
-                  <div className="flex items-center gap-2">Countries</div>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                  Countries
                 </th>
-                <th className="px-6 py-5 text-left text-sm font-bold text-gray-800 dark:text-gray-100 border-b-2 border-gray-300 dark:border-gray-600 align-middle uppercase tracking-wider">
-                  <div className="flex items-center gap-2">Remark</div>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                  Remark
                 </th>
-                <th className="px-6 py-5 text-left text-sm font-bold text-gray-800 dark:text-gray-100 border-b-2 border-gray-300 dark:border-gray-600 align-middle uppercase tracking-wider">
-                  <div className="flex items-center gap-2">Cost Type</div>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                  Cost Type
                 </th>
-                <th className="px-6 py-5 text-left text-sm font-bold text-gray-800 dark:text-gray-100 border-b-2 border-gray-300 dark:border-gray-600 align-middle uppercase tracking-wider">
-                  <div className="flex items-center gap-2">Value</div>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                  Value
                 </th>
-                <th className="px-6 py-5 text-left text-sm font-bold text-gray-800 dark:text-gray-100 border-b-2 border-gray-300 dark:border-gray-600 align-middle uppercase tracking-wider">
-                  <div className="flex items-center gap-2">Min Value</div>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                  Min Value
                 </th>
-                <th className="px-6 py-5 text-left text-sm font-bold text-gray-800 dark:text-gray-100 border-b-2 border-gray-300 dark:border-gray-600 align-middle uppercase tracking-wider">
-                  <div className="flex items-center gap-2">Max Value</div>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                  Max Value
                 </th>
-                <th className="px-6 py-5 text-center text-sm font-bold text-gray-800 dark:text-gray-100 border-b-2 border-gray-300 dark:border-gray-600 align-middle uppercase tracking-wider">
-                  <div className="flex items-center justify-center gap-2">Actions</div>
+                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                  Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={10} className="p-16 text-center bg-gray-50 dark:bg-gray-800">
+                  <td colSpan={10} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
-                      <div className="animate-spin rounded-full h-10 w-10 border-t-3 border-blue-600 mx-auto mb-6"></div>
-                      <p className="font-medium">Loading Cost Modules...</p>
+                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
+                      Loading Cost Modules...
                     </div>
                   </td>
                 </tr>
               ) : paginatedData.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="p-16 text-center bg-gray-50 dark:bg-gray-800">
-                    <div className="text-gray-500 dark:text-gray-400">
-                      <i className="fas fa-inbox text-4xl mb-4 text-gray-300 dark:text-gray-600"></i>
-                      <p className="text-lg font-medium mb-2">No cost modules found</p>
-                      <p className="text-sm">Try adjusting your search criteria or add a new cost module.</p>
+                  <td colSpan={10} className="p-12 text-center">
+                    <div className="text-gray-500 dark:text-gray-400 text-lg">
+                      No cost modules found
                     </div>
                   </td>
                 </tr>
@@ -213,39 +222,29 @@ const CostModuleTable: React.FC = () => {
                 paginatedData.map((item: CostModule) => (
                   <tr
                     key={item._id}
-                    className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-gray-700 dark:hover:to-gray-600 transition-all duration-200 group"
+                    className={`transition-colors ${
+                      item.isDeleted
+                        ? "bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30"
+                        : "hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                    }`}
                   >
-                    <td className="px-6 py-5 text-sm">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900 dark:to-indigo-900 rounded-full flex items-center justify-center">
-                          <i className="fas fa-box text-xs text-blue-600 dark:text-blue-400"></i>
-                        </div>
-                        <span className="font-semibold text-gray-900 dark:text-gray-100 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors">
-                          {item.type}
-                        </span>
-                      </div>
+                    <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-gray-200">
+                      {item.type}
                     </td>
-                    <td className="px-6 py-5 text-sm">
-                      <span className="text-gray-700 dark:text-gray-300 font-medium leading-relaxed">
-                        {item.products.map(p => p.specification).join(", ") || "-"}
-                      </span>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      {item.products.map((p) => p.specification).join(", ") ||
+                        "-"}
                     </td>
-                    <td className="px-6 py-5 text-sm">
-                      <span className="text-gray-700 dark:text-gray-300 font-medium leading-relaxed">
-                        {item.categories?.join(", ") || "-"}
-                      </span>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      {item.categories?.join(", ") || "-"}
                     </td>
-                    <td className="px-6 py-5 text-sm">
-                      <span className="text-gray-700 dark:text-gray-300 font-medium leading-relaxed">
-                        {item.countries.join(", ") || "-"}
-                      </span>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      {item.countries.join(", ") || "-"}
                     </td>
-                    <td className="px-6 py-5 text-sm">
-                      <span className="text-gray-700 dark:text-gray-300 font-medium leading-relaxed">
-                        {item.remark}
-                      </span>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      {item.remark}
                     </td>
-                    <td className="px-6 py-5 text-sm">
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                       <span
                         className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider ${
                           item.costType === "Percentage"
@@ -256,36 +255,30 @@ const CostModuleTable: React.FC = () => {
                         {item.costType}
                       </span>
                     </td>
-                    <td className="px-6 py-5 text-sm">
-                      <span className="font-bold text-lg text-emerald-600 dark:text-emerald-400">
-                        {item.value}
-                      </span>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      {item.value}
                     </td>
-                    <td className="px-6 py-5 text-sm">
-                      <span className="text-gray-700 dark:text-gray-300 font-medium leading-relaxed">
-                        {item.minValue !== undefined ? item.minValue : "-"}
-                      </span>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      {item.minValue !== undefined ? item.minValue : "-"}
                     </td>
-                    <td className="px-6 py-5 text-sm">
-                      <span className="text-gray-700 dark:text-gray-300 font-medium leading-relaxed">
-                        {item.maxValue !== undefined ? item.maxValue : "-"}
-                      </span>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      {item.maxValue !== undefined ? item.maxValue : "-"}
                     </td>
-                    <td className="px-6 py-5 text-sm text-center">
-                      <div className="flex items-center justify-center gap-4">
+                    <td className="px-6 py-4 text-sm text-center">
+                      <div className="flex items-center justify-center gap-3">
                         <button
                           onClick={() => handleEdit(item)}
-                          className="p-2 text-blue-600 hover:text-white hover:bg-blue-600 dark:text-blue-400 dark:hover:text-white dark:hover:bg-blue-500 transition-all duration-200 rounded-lg hover:shadow-md transform hover:-translate-y-0.5"
+                          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
                           title="Edit Cost Module"
                         >
-                          <i className="fas fa-edit text-sm"></i>
+                          <i className="fas fa-edit"></i>
                         </button>
                         <button
                           onClick={() => handleDelete(item._id!)}
-                          className="p-2 text-red-600 hover:text-white hover:bg-red-600 dark:text-red-400 dark:hover:text-white dark:hover:bg-red-500 transition-all duration-200 rounded-lg hover:shadow-md transform hover:-translate-y-0.5"
+                          className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
                           title="Delete Cost Module"
                         >
-                          <i className="fas fa-trash text-sm"></i>
+                          <i className="fas fa-trash"></i>
                         </button>
                       </div>
                     </td>
@@ -297,21 +290,20 @@ const CostModuleTable: React.FC = () => {
         </div>
 
         {/* Pagination */}
-        <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-5 border-t border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-          <div className="text-sm text-gray-600 dark:text-gray-400 mb-4 sm:mb-0 font-medium">
-            Showing <span className="font-semibold text-gray-900 dark:text-gray-100">{paginatedData.length}</span> of{" "}
-            <span className="font-semibold text-gray-900 dark:text-gray-100">{totalDocs}</span> items
+        <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+          <div className="text-sm text-gray-600 dark:text-gray-400 mb-4 sm:mb-0">
+            Showing {paginatedData.length} of {totalDocs} items
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-3">
             <button
               onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
-              className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50 text-sm transition-all duration-200 font-medium shadow-sm hover:shadow-md"
+              className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed text-sm transition-colors"
             >
-              <i className="fas fa-chevron-left text-xs mr-2"></i>
               Previous
             </button>
 
+            {/* Page Numbers */}
             <div className="flex space-x-1">
               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                 const pageNum = i + 1;
@@ -319,11 +311,11 @@ const CostModuleTable: React.FC = () => {
                   <button
                     key={pageNum}
                     onClick={() => setCurrentPage(pageNum)}
-                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md ${
+                    className={`px-3 py-2 rounded-lg text-sm ${
                       currentPage === pageNum
-                        ? "bg-gradient-to-r from-[#0071E0] to-blue-600 text-white border border-blue-600 dark:from-blue-500 dark:to-blue-600 dark:border-blue-500 transform scale-105"
-                        : "bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 hover:border-gray-400 dark:hover:border-gray-500"
-                    }`}
+                        ? "bg-[#0071E0] text-white dark:bg-blue-500 dark:text-white border border-blue-600 dark:border-blue-500"
+                        : "bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600"
+                    } transition-colors`}
                   >
                     {pageNum}
                   </button>
@@ -332,12 +324,13 @@ const CostModuleTable: React.FC = () => {
             </div>
 
             <button
-              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+              onClick={() =>
+                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+              }
               disabled={currentPage === totalPages}
-              className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50 text-sm transition-all duration-200 font-medium shadow-sm hover:shadow-md"
+              className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed text-sm transition-colors"
             >
               Next
-              <i className="fas fa-chevron-right text-xs ml-2"></i>
             </button>
           </div>
         </div>

@@ -8,7 +8,7 @@ import CreatableSelect from "react-select/creatable";
 interface CostModule {
   _id?: string;
   type: "Product" | "Categories" | "Country" | "ExtraDelivery";
-  products: string[];
+  products: Product[];
   categories: string[];
   countries: string[];
   remark: string;
@@ -175,7 +175,10 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
     setIsSubmitting(true);
     const newItem: CostModule = {
       type: formData.type,
-      products: formData.products,
+      products: formData.products.map(id => ({
+        _id: id,
+        specification: productsList.find(p => p._id === id)?.specification || 'Unknown',
+      })),
       categories: formData.categories,
       countries: formData.countries,
       remark: formData.remark,
@@ -281,7 +284,7 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50 transition-opacity duration-300">
+    <div className="fixed inset-0 flex  items-center justify-center bg-black/60 z-50 transition-opacity duration-300">
       <div className="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-2xl w-full max-w-[800px] max-h-[88vh] overflow-y-auto transform transition-all duration-300 scale-100">
         {/* Close Icon */}
         <button

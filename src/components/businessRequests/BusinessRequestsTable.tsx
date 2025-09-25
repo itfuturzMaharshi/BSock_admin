@@ -10,6 +10,10 @@ interface BusinessRequest {
   country: string;
   address?: string;
   status: "Approved" | "Pending" | "Rejected";
+  name?: string;
+  email?: string;
+  mobileNumber?: string;
+  whatsappNumber?: string;
 }
 
 const BusinessRequestsTable: React.FC = () => {
@@ -42,6 +46,7 @@ const BusinessRequestsTable: React.FC = () => {
       localStorage.setItem('br_status_overrides', JSON.stringify(statusOverrides));
     } catch {}
   }, [statusOverrides]);
+
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -81,7 +86,7 @@ const BusinessRequestsTable: React.FC = () => {
       const makeAbsoluteUrl = (path?: string | null): string | undefined => {
         if (!path) return undefined;
         if (path.startsWith('http://') || path.startsWith('https://')) return path;
-        if (!baseUrl) return path;
+        if (!baseUrl) return undefined;
         const trimmed = path.startsWith('/') ? path : `/${path}`;
         return `${baseUrl}${trimmed}`;
       };
@@ -98,14 +103,17 @@ const BusinessRequestsTable: React.FC = () => {
           _id: d?._id ?? d?.id,
           logo: makeAbsoluteUrl(bp?.logo),
           certificate: makeAbsoluteUrl(bp?.certificate),
-          businessName: bp?.businessName ?? d?.name ?? "-",
+          businessName: bp?.businessName ?? "-",
           country: bp?.country ?? "-",
           address: bp?.address ?? undefined,
           status,
+          name: d?.name ?? "-",
+          email: d?.email ?? "-",
+          mobileNumber: d?.mobileNumber ?? "-",
+          whatsappNumber: d?.whatsappNumber ?? "-",
         } as BusinessRequest;
       });
 
-      // Apply local overrides when present
       const withOverrides = mapped.map((item) => {
         if (item._id && statusOverrides[item._id]) {
           return { ...item, status: statusOverrides[item._id] };
@@ -113,7 +121,6 @@ const BusinessRequestsTable: React.FC = () => {
         return item;
       });
 
-      // Auto-clear overrides that the server has now persisted (only for Approved)
       try {
         const nextOverrides = { ...statusOverrides };
         for (const item of mapped) {
@@ -152,7 +159,6 @@ const BusinessRequestsTable: React.FC = () => {
     });
 
     if (confirmed.isConfirmed) {
-      // Optimistic UI update + record override
       setStatusOverrides((prev) => ({ ...prev, [id]: newStatus }));
       setBusinessRequests((prev: BusinessRequest[]) =>
         prev.map((item: BusinessRequest) =>
@@ -164,17 +170,45 @@ const BusinessRequestsTable: React.FC = () => {
         const payloadStatus: 'approved' | 'pending' | 'rejected' =
           newStatus === 'Approved' ? 'approved' : newStatus === 'Rejected' ? 'rejected' : 'pending';
         await BusinessRequestsService.updateCustomerStatus(id, payloadStatus);
-        // Clear override if server now reflects our chosen status
         await fetchData();
       } catch (err) {
         console.error("Error updating status:", err);
-        // Revert on error
         await fetchData();
       } finally {
         setOpenDropdownId(null);
         setDropdownPosition(null);
       }
     }
+  };
+
+  const handleView = (item: BusinessRequest) => {
+    Swal.fire({
+      title: "Business Details",
+      html: `
+        <div style="text-align: left; font-size: 14px; line-height: 1.6; padding: 8px 4px;">
+          <p><strong>Name:</strong> ${item.name || '-'}</p>
+          <p><strong>Email:</strong> ${item.email || '-'}</p>
+          <p><strong>Phone Number:</strong> ${item.mobileNumber || '-'}</p>
+          <p><strong>WhatsApp Number:</strong> ${item.whatsappNumber || '-'}</p>
+        </div>
+      `,
+      showConfirmButton: false,
+      showCloseButton: true,
+      customClass: {
+        popup: "rounded-lg shadow-lg",
+        closeButton: "text-gray-600 hover:text-gray-900 absolute right-4 top-4 text-lg"
+      },
+      closeButtonHtml: '<i class="fas fa-times"></i>',
+      didOpen: () => {
+        const closeButton = document.querySelector('.swal2-close');
+        if (closeButton) {
+          closeButton.addEventListener('click', () => {
+            setOpenDropdownId(null);
+            setDropdownPosition(null);
+          });
+        }
+      }
+    });
   };
 
   const totalPages = Math.ceil(totalDocs / itemsPerPage);
@@ -192,6 +226,8 @@ const BusinessRequestsTable: React.FC = () => {
     }
   };
 
+  const placeholderImage = "https://placehold.co/48x48?text=Image";
+
   return (
     <div className="p-4">
       <link
@@ -199,6 +235,7 @@ const BusinessRequestsTable: React.FC = () => {
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
       />
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-sm">
+        {/* Search */}
         <div className="flex flex-col gap-4 p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
           <div className="relative">
             <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
@@ -214,31 +251,19 @@ const BusinessRequestsTable: React.FC = () => {
             />
           </div>
         </div>
+
+        {/* Table */}
         <div className="max-w-full overflow-x-auto">
           <table className="w-full table-auto">
             <thead className="bg-gray-100 dark:bg-gray-900">
               <tr>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Logo
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Certificate
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Business Name
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Country
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Address
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Status
-                </th>
-                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Actions
-                </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b">Logo</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b">Certificate</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b">Business Name</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b">Country</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b">Address</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b">Status</th>
+                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -261,56 +286,35 @@ const BusinessRequestsTable: React.FC = () => {
                 </tr>
               ) : (
                 businessRequests.map((item: BusinessRequest, index: number) => (
-                  <tr
-                    key={item._id || index}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                  >
+                  <tr key={item._id || index} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                     <td className="px-6 py-4">
-                      {item.logo ? (
-                        <img
-                          src={item.logo}
-                          alt="Logo"
-                          className="w-12 h-12 object-contain rounded-md border border-gray-200 dark:border-gray-600 cursor-pointer"
-                          onClick={() => setSelectedImage(item.logo || null)}
-                        />
-                      ) : (
-                        <span className="text-gray-400 dark:text-gray-500">-</span>
-                      )}
+                      <img
+                        src={item.logo || placeholderImage}
+                        alt="Logo"
+                        className="w-12 h-12 object-contain rounded-md border cursor-pointer"
+                        onClick={() => setSelectedImage(item.logo || placeholderImage)}
+                      />
                     </td>
                     <td className="px-6 py-4">
-                      {item.certificate ? (
-                        <img
-                          src={item.certificate}
-                          alt="Certificate"
-                          className="w-12 h-12 object-contain rounded-md border border-gray-200 dark:border-gray-600 cursor-pointer"
-                          onClick={() => setSelectedImage(item.certificate || null)}
-                        />
-                      ) : (
-                        <span className="text-gray-400 dark:text-gray-500">-</span>
-                      )}
+                      <img
+                        src={item.certificate || placeholderImage}
+                        alt="Certificate"
+                        className="w-12 h-12 object-contain rounded-md border cursor-pointer"
+                        onClick={() => setSelectedImage(item.certificate || placeholderImage)}
+                      />
                     </td>
-                    <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-gray-200">
-                      {item.businessName || "-"}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.country || "-"}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 max-w-xs overflow-hidden">
-                      {item.address || "-"}
-                    </td>
+                    <td className="px-6 py-4 text-sm font-medium">{item.businessName || "-"}</td>
+                    <td className="px-6 py-4 text-sm">{item.country || "-"}</td>
+                    <td className="px-6 py-4 text-sm max-w-xs overflow-hidden">{item.address || "-"}</td>
                     <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusStyles(
-                          item.status
-                        )}`}
-                      >
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusStyles(item.status)}`}>
                         {item.status}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-center relative">
                       <div className="dropdown-container relative">
                         <button
-                          className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none"
+                          className="text-gray-600 dark:text-gray-400 hover:text-gray-800 p-1 rounded-full hover:bg-gray-100"
                           onClick={(e) => {
                             e.stopPropagation();
                             if (openDropdownId === item._id) {
@@ -318,59 +322,74 @@ const BusinessRequestsTable: React.FC = () => {
                               setDropdownPosition(null);
                             } else {
                               const rect = e.currentTarget.getBoundingClientRect();
-                              const dropdownWidth = 192; // w-48 = 192px
-                              const dropdownHeight = 120; // approximate height of 3 buttons
-                              
-                              let top = rect.bottom + 8; // 8px margin below button
-                              let left = rect.right - dropdownWidth; // align to right edge of button
-                              
-                              // Check if dropdown would go below viewport
+                              const dropdownWidth = 192;
+                              const dropdownHeight = 120;
+                              let top = rect.bottom + 8;
+                              let left = rect.right - dropdownWidth;
+
                               if (top + dropdownHeight > window.innerHeight) {
-                                top = rect.top - dropdownHeight - 8; // position above button
+                                top = rect.top - dropdownHeight - 8;
                               }
-                              
-                              // Check if dropdown would go beyond left edge
                               if (left < 8) {
-                                left = 8; // 8px margin from left edge
+                                left = 8;
                               }
-                              
-                              // Check if dropdown would go beyond right edge
                               if (left + dropdownWidth > window.innerWidth - 8) {
-                                left = window.innerWidth - dropdownWidth - 8; // 8px margin from right edge
+                                left = window.innerWidth - dropdownWidth - 8;
                               }
-                              
+
                               setDropdownPosition({ top, left });
                               setOpenDropdownId(item._id || null);
                             }
                           }}
-                          aria-label="Toggle actions"
                         >
                           <i className="fas fa-ellipsis-v"></i>
                         </button>
                         {openDropdownId === item._id && dropdownPosition && (
                           <div 
-                            className="fixed w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg origin-top-right"
-                            style={{ 
-                              top: `${dropdownPosition.top}px`, 
-                              left: `${dropdownPosition.left}px`,
-                              zIndex: 9999
-                            }}
+                            className="fixed w-48 bg-white border rounded-md shadow-lg"
+                            style={{ top: `${dropdownPosition.top}px`, left: `${dropdownPosition.left}px`, zIndex: 9999 }}
                           >
                             <button
-                              onClick={() => item._id && handleStatusChange(item._id, "Approved")}
-                              className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleView(item);
+                                setOpenDropdownId(null);
+                                setDropdownPosition(null);
+                              }}
+                              className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                            >
+                              View
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (item._id) handleStatusChange(item._id, "Approved");
+                                setOpenDropdownId(null);
+                                setDropdownPosition(null);
+                              }}
+                              className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
                             >
                               Approved
                             </button>
                             <button
-                              onClick={() => item._id && handleStatusChange(item._id, "Pending")}
-                              className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (item._id) handleStatusChange(item._id, "Pending");
+                                setOpenDropdownId(null);
+                                setDropdownPosition(null);
+                              }}
+                              className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
                             >
                               Pending
                             </button>
                             <button
-                              onClick={() => item._id && handleStatusChange(item._id, "Rejected")}
-                              className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (item._id) handleStatusChange(item._id, "Rejected");
+                                setOpenDropdownId(null);
+                                setDropdownPosition(null);
+                              }}
+                              className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
                             >
                               Rejected
                             </button>
@@ -384,15 +403,15 @@ const BusinessRequestsTable: React.FC = () => {
             </tbody>
           </table>
         </div>
-        <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-          <div className="text-sm text-gray-600 dark:text-gray-400 mb-4 sm:mb-0">
-            Showing {businessRequests.length} of {totalDocs} items
-          </div>
+
+        {/* Pagination */}
+        <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t bg-gray-50">
+          <div className="text-sm">Showing {businessRequests.length} of {totalDocs} items</div>
           <div className="flex items-center space-x-3">
             <button
               onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
-              className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed text-sm transition-colors"
+              className="px-4 py-2 border rounded-lg text-sm disabled:opacity-50"
             >
               Previous
             </button>
@@ -403,11 +422,7 @@ const BusinessRequestsTable: React.FC = () => {
                   <button
                     key={pageNum}
                     onClick={() => setCurrentPage(pageNum)}
-                    className={`px-3 py-2 rounded-lg text-sm ${
-                      currentPage === pageNum
-                        ? "bg-[#0071E0] text-white dark:bg-blue-500 dark:text-white border border-blue-600 dark:border-blue-500"
-                        : "bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600"
-                    } transition-colors`}
+                    className={`px-3 py-2 rounded-lg text-sm ${currentPage === pageNum ? "bg-blue-600 text-white" : "border"}`}
                   >
                     {pageNum}
                   </button>
@@ -415,17 +430,17 @@ const BusinessRequestsTable: React.FC = () => {
               })}
             </div>
             <button
-              onClick={() =>
-                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-              }
+              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
               disabled={currentPage === totalPages}
-              className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed text-sm transition-colors"
+              className="px-4 py-2 border rounded-lg text-sm disabled:opacity-50"
             >
               Next
             </button>
           </div>
         </div>
       </div>
+
+      {/* Enlarged image preview */}
       {selectedImage && (
         <div
           className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
@@ -438,7 +453,7 @@ const BusinessRequestsTable: React.FC = () => {
               className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
             />
             <button
-              className="absolute top-4 right-4 text-white bg-gray-800/70 rounded-full p-2 hover:bg-gray-800 transition-colors"
+              className="absolute top-4 right-4 text-white bg-gray-800/70 rounded-full p-2"
               onClick={() => setSelectedImage(null)}
             >
               <i className="fas fa-times"></i>
