@@ -17,23 +17,30 @@ interface BusinessRequest {
 }
 
 const BusinessRequestsTable: React.FC = () => {
-  const [businessRequests, setBusinessRequests] = useState<BusinessRequest[]>([]);
+  const [businessRequests, setBusinessRequests] = useState<BusinessRequest[]>(
+    []
+  );
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(true);
   const [totalDocs, setTotalDocs] = useState<number>(0);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(null);
-  const [statusOverrides, setStatusOverrides] = useState<Record<string, "Approved" | "Pending" | "Rejected">>({});
+  const [dropdownPosition, setDropdownPosition] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
+  const [statusOverrides, setStatusOverrides] = useState<
+    Record<string, "Approved" | "Pending" | "Rejected">
+  >({});
 
   // Load overrides from localStorage once
   useEffect(() => {
     try {
-      const raw = localStorage.getItem('br_status_overrides');
+      const raw = localStorage.getItem("br_status_overrides");
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (parsed && typeof parsed === 'object') {
+        if (parsed && typeof parsed === "object") {
           setStatusOverrides(parsed);
         }
       }
@@ -43,7 +50,10 @@ const BusinessRequestsTable: React.FC = () => {
   // Persist overrides
   useEffect(() => {
     try {
-      localStorage.setItem('br_status_overrides', JSON.stringify(statusOverrides));
+      localStorage.setItem(
+        "br_status_overrides",
+        JSON.stringify(statusOverrides)
+      );
     } catch {}
   }, [statusOverrides]);
 
@@ -52,7 +62,7 @@ const BusinessRequestsTable: React.FC = () => {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (!event.target) return;
-      if (!(event.target as HTMLElement).closest('.dropdown-container')) {
+      if (!(event.target as HTMLElement).closest(".dropdown-container")) {
         setOpenDropdownId(null);
         setDropdownPosition(null);
       }
@@ -65,39 +75,43 @@ const BusinessRequestsTable: React.FC = () => {
       }
     };
 
-    document.addEventListener('click', handleClickOutside);
-    window.addEventListener('resize', handleResize);
+    document.addEventListener("click", handleClickOutside);
+    window.addEventListener("resize", handleResize);
     return () => {
-      document.removeEventListener('click', handleClickOutside);
-      window.removeEventListener('resize', handleResize);
+      document.removeEventListener("click", handleClickOutside);
+      window.removeEventListener("resize", handleResize);
     };
   }, [openDropdownId]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const { docs, totalDocs } = await BusinessRequestsService.getBusinessRequests(
-        currentPage,
-        itemsPerPage,
-        searchTerm?.trim() || undefined
-      );
+      const { docs, totalDocs } =
+        await BusinessRequestsService.getBusinessRequests(
+          currentPage,
+          itemsPerPage,
+          searchTerm?.trim() || undefined
+        );
 
       const baseUrl = import.meta.env.VITE_BASE_URL as string | undefined;
       const makeAbsoluteUrl = (path?: string | null): string | undefined => {
         if (!path) return undefined;
-        if (path.startsWith('http://') || path.startsWith('https://')) return path;
+        if (path.startsWith("http://") || path.startsWith("https://"))
+          return path;
         if (!baseUrl) return undefined;
-        const trimmed = path.startsWith('/') ? path : `/${path}`;
+        const trimmed = path.startsWith("/") ? path : `/${path}`;
         return `${baseUrl}${trimmed}`;
       };
 
       const mapped: BusinessRequest[] = (docs || []).map((d: any) => {
         const bp = d?.businessProfile || {};
-        const statusStr: string | undefined = (bp?.status || '').toString().toLowerCase();
+        const statusStr: string | undefined = (bp?.status || "")
+          .toString()
+          .toLowerCase();
         let status: "Approved" | "Pending" | "Rejected" = "Pending";
-        if (statusStr === 'approved') status = 'Approved';
-        else if (statusStr === 'rejected') status = 'Rejected';
-        else status = 'Pending';
+        if (statusStr === "approved") status = "Approved";
+        else if (statusStr === "rejected") status = "Rejected";
+        else status = "Pending";
 
         return {
           _id: d?._id ?? d?.id,
@@ -124,7 +138,11 @@ const BusinessRequestsTable: React.FC = () => {
       try {
         const nextOverrides = { ...statusOverrides };
         for (const item of mapped) {
-          if (item._id && nextOverrides[item._id] === 'Approved' && item.status === 'Approved') {
+          if (
+            item._id &&
+            nextOverrides[item._id] === "Approved" &&
+            item.status === "Approved"
+          ) {
             delete nextOverrides[item._id];
           }
         }
@@ -148,7 +166,10 @@ const BusinessRequestsTable: React.FC = () => {
     fetchData();
   }, [fetchData]);
 
-  const handleStatusChange = async (id: string, newStatus: "Approved" | "Pending" | "Rejected") => {
+  const handleStatusChange = async (
+    id: string,
+    newStatus: "Approved" | "Pending" | "Rejected"
+  ) => {
     const confirmed = await Swal.fire({
       title: "Are you sure?",
       text: `Change status to ${newStatus}?`,
@@ -167,8 +188,12 @@ const BusinessRequestsTable: React.FC = () => {
       );
 
       try {
-        const payloadStatus: 'approved' | 'pending' | 'rejected' =
-          newStatus === 'Approved' ? 'approved' : newStatus === 'Rejected' ? 'rejected' : 'pending';
+        const payloadStatus: "approved" | "pending" | "rejected" =
+          newStatus === "Approved"
+            ? "approved"
+            : newStatus === "Rejected"
+            ? "rejected"
+            : "pending";
         await BusinessRequestsService.updateCustomerStatus(id, payloadStatus);
         await fetchData();
       } catch (err) {
@@ -186,28 +211,29 @@ const BusinessRequestsTable: React.FC = () => {
       title: "Business Details",
       html: `
         <div style="text-align: left; font-size: 14px; line-height: 1.6; padding: 8px 4px;">
-          <p><strong>Name:</strong> ${item.name || '-'}</p>
-          <p><strong>Email:</strong> ${item.email || '-'}</p>
-          <p><strong>Phone Number:</strong> ${item.mobileNumber || '-'}</p>
-          <p><strong>WhatsApp Number:</strong> ${item.whatsappNumber || '-'}</p>
+          <p><strong>Name:</strong> ${item.name || "-"}</p>
+          <p><strong>Email:</strong> ${item.email || "-"}</p>
+          <p><strong>Phone Number:</strong> ${item.mobileNumber || "-"}</p>
+          <p><strong>WhatsApp Number:</strong> ${item.whatsappNumber || "-"}</p>
         </div>
       `,
       showConfirmButton: false,
       showCloseButton: true,
       customClass: {
         popup: "rounded-lg shadow-lg",
-        closeButton: "text-gray-600 hover:text-gray-900 absolute right-4 top-4 text-lg"
+        closeButton:
+          "text-gray-600 hover:text-gray-900 absolute right-4 top-4 text-lg",
       },
       closeButtonHtml: '<i class="fas fa-times"></i>',
       didOpen: () => {
-        const closeButton = document.querySelector('.swal2-close');
+        const closeButton = document.querySelector(".swal2-close");
         if (closeButton) {
-          closeButton.addEventListener('click', () => {
+          closeButton.addEventListener("click", () => {
             setOpenDropdownId(null);
             setDropdownPosition(null);
           });
         }
-      }
+      },
     });
   };
 
@@ -226,7 +252,8 @@ const BusinessRequestsTable: React.FC = () => {
     }
   };
 
-  const placeholderImage = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTMmyTPv4M5fFPvYLrMzMQcPD_VO34ByNjouQ&s";
+  const placeholderImage =
+    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTMmyTPv4M5fFPvYLrMzMQcPD_VO34ByNjouQ&s";
 
   return (
     <div className="p-4">
@@ -257,13 +284,27 @@ const BusinessRequestsTable: React.FC = () => {
           <table className="w-full table-auto">
             <thead className="bg-gray-100 dark:bg-gray-900">
               <tr>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b">Logo</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b">Certificate</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b">Business Name</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b">Country</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b">Address</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b">Status</th>
-                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b">Actions</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b">
+                  Logo
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b">
+                  Certificate
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b">
+                  Business Name
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b">
+                  Country
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b">
+                  Address
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b">
+                  Status
+                </th>
+                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -286,13 +327,22 @@ const BusinessRequestsTable: React.FC = () => {
                 </tr>
               ) : (
                 businessRequests.map((item: BusinessRequest, index: number) => (
-                  <tr key={item._id || index} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                  <tr
+                    key={item._id || index}
+                    className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                  >
                     <td className="px-6 py-4">
                       <img
                         src={item.logo || placeholderImage}
                         alt="Logo"
                         className="w-12 h-12 object-contain rounded-md border cursor-pointer"
-                        onClick={() => setSelectedImage(item.logo || placeholderImage)}
+                        onClick={() =>
+                          setSelectedImage(item.logo || placeholderImage)
+                        }
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src =
+                            placeholderImage;
+                        }}
                       />
                     </td>
                     <td className="px-6 py-4">
@@ -300,14 +350,28 @@ const BusinessRequestsTable: React.FC = () => {
                         src={item.certificate || placeholderImage}
                         alt="Certificate"
                         className="w-12 h-12 object-contain rounded-md border cursor-pointer"
-                        onClick={() => setSelectedImage(item.certificate || placeholderImage)}
+                        onClick={() =>
+                          setSelectedImage(item.certificate || placeholderImage)
+                        }
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src =
+                            placeholderImage;
+                        }}
                       />
                     </td>
-                    <td className="px-6 py-4 text-sm font-medium">{item.businessName || "-"}</td>
+                    <td className="px-6 py-4 text-sm font-medium">
+                      {item.businessName || "-"}
+                    </td>
                     <td className="px-6 py-4 text-sm">{item.country || "-"}</td>
-                    <td className="px-6 py-4 text-sm max-w-xs overflow-hidden">{item.address || "-"}</td>
+                    <td className="px-6 py-4 text-sm max-w-xs overflow-hidden">
+                      {item.address || "-"}
+                    </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusStyles(item.status)}`}>
+                      <span
+                        className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusStyles(
+                          item.status
+                        )}`}
+                      >
                         {item.status}
                       </span>
                     </td>
@@ -321,7 +385,8 @@ const BusinessRequestsTable: React.FC = () => {
                               setOpenDropdownId(null);
                               setDropdownPosition(null);
                             } else {
-                              const rect = e.currentTarget.getBoundingClientRect();
+                              const rect =
+                                e.currentTarget.getBoundingClientRect();
                               const dropdownWidth = 192;
                               const dropdownHeight = 120;
                               let top = rect.bottom + 8;
@@ -333,7 +398,10 @@ const BusinessRequestsTable: React.FC = () => {
                               if (left < 8) {
                                 left = 8;
                               }
-                              if (left + dropdownWidth > window.innerWidth - 8) {
+                              if (
+                                left + dropdownWidth >
+                                window.innerWidth - 8
+                              ) {
                                 left = window.innerWidth - dropdownWidth - 8;
                               }
 
@@ -345,9 +413,13 @@ const BusinessRequestsTable: React.FC = () => {
                           <i className="fas fa-ellipsis-v"></i>
                         </button>
                         {openDropdownId === item._id && dropdownPosition && (
-                          <div 
+                          <div
                             className="fixed w-48 bg-white border rounded-md shadow-lg"
-                            style={{ top: `${dropdownPosition.top}px`, left: `${dropdownPosition.left}px`, zIndex: 9999 }}
+                            style={{
+                              top: `${dropdownPosition.top}px`,
+                              left: `${dropdownPosition.left}px`,
+                              zIndex: 9999,
+                            }}
                           >
                             <button
                               onClick={(e) => {
@@ -363,7 +435,8 @@ const BusinessRequestsTable: React.FC = () => {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (item._id) handleStatusChange(item._id, "Approved");
+                                if (item._id)
+                                  handleStatusChange(item._id, "Approved");
                                 setOpenDropdownId(null);
                                 setDropdownPosition(null);
                               }}
@@ -374,7 +447,8 @@ const BusinessRequestsTable: React.FC = () => {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (item._id) handleStatusChange(item._id, "Pending");
+                                if (item._id)
+                                  handleStatusChange(item._id, "Pending");
                                 setOpenDropdownId(null);
                                 setDropdownPosition(null);
                               }}
@@ -385,7 +459,8 @@ const BusinessRequestsTable: React.FC = () => {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (item._id) handleStatusChange(item._id, "Rejected");
+                                if (item._id)
+                                  handleStatusChange(item._id, "Rejected");
                                 setOpenDropdownId(null);
                                 setDropdownPosition(null);
                               }}
@@ -406,7 +481,9 @@ const BusinessRequestsTable: React.FC = () => {
 
         {/* Pagination */}
         <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t bg-gray-50">
-          <div className="text-sm">Showing {businessRequests.length} of {totalDocs} items</div>
+          <div className="text-sm">
+            Showing {businessRequests.length} of {totalDocs} items
+          </div>
           <div className="flex items-center space-x-3">
             <button
               onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
@@ -422,7 +499,11 @@ const BusinessRequestsTable: React.FC = () => {
                   <button
                     key={pageNum}
                     onClick={() => setCurrentPage(pageNum)}
-                    className={`px-3 py-2 rounded-lg text-sm ${currentPage === pageNum ? "bg-blue-600 text-white" : "border"}`}
+                    className={`px-3 py-2 rounded-lg text-sm ${
+                      currentPage === pageNum
+                        ? "bg-blue-600 text-white"
+                        : "border"
+                    }`}
                   >
                     {pageNum}
                   </button>
@@ -430,7 +511,9 @@ const BusinessRequestsTable: React.FC = () => {
               })}
             </div>
             <button
-              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+              onClick={() =>
+                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+              }
               disabled={currentPage === totalPages}
               className="px-4 py-2 border rounded-lg text-sm disabled:opacity-50"
             >
