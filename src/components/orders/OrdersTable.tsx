@@ -12,12 +12,9 @@ const OrdersTable: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [totalDocs, setTotalDocs] = useState<number>(0);
   const [totalPages, setTotalPages] = useState<number>(1);
-  const [editOrderId, setEditOrderId] = useState<string | null>(null);
-  const [selectedStatus, setSelectedStatus] = useState<{ [key: string]: string }>({});
-  const [editedCartItems, setEditedCartItems] = useState<{ [key: string]: OrderItem[] }>({});
   const itemsPerPage = 10;
 
-  const statusOptions = ["request", "verified", "approved", "shipped", "delivered", "cancelled"];
+  const statusOptions = ["request", "verified", "approved", "shipped", "delivered", "cancelled", "accepted"];
 
   useEffect(() => {
     fetchOrders();
@@ -42,65 +39,144 @@ const OrdersTable: React.FC = () => {
     }
   };
 
-  const handleStatusChange = (orderId: string, newStatus: string) => {
-    setSelectedStatus((prev) => ({ ...prev, [orderId]: newStatus }));
-    if (["request", "accepted"].includes(ordersData.find((o) => o._id === orderId)?.status || "") &&
-        ["verified", "approved"].includes(newStatus)) {
-      setEditOrderId(orderId);
-      setEditedCartItems((prev) => ({
-        ...prev,
-        [orderId]: ordersData.find((o) => o._id === orderId)?.cartItems.map((item) => ({ ...item })) || [],
-      }));
-    } else {
-      setEditOrderId(null);
-    }
-  };
+const handleUpdateStatus = async (order: Order) => {
+  const currentStatus = order.status;
+  let selectedStatus = currentStatus;
+  let editedCartItems: OrderItem[] = [...order.cartItems];
+  let message = "";
 
-  const handleQuantityChange = (orderId: string, itemId: string, newQuantity: string) => {
-    setEditedCartItems((prev) => {
-      const updatedItems = prev[orderId].map((item) =>
-        item._id === itemId ? { ...item, quantity: parseInt(newQuantity) || 1 } : item
-      );
-      return { ...prev, [orderId]: updatedItems };
-    });
-  };
+  const modalHtml = `
+    <div style="text-align: left; padding: 20px; font-family: 'Inter', sans-serif; max-height: 500px; overflow-y: auto;">
+      <div style="margin-bottom: 20px;">
+        <label for="statusSelect" style="display: block; font-size: 14px; font-weight: 600; color: #1F2937; margin-bottom: 8px;">Select Status</label>
+        <select id="statusSelect" class="swal2-select" style="width: 100%; padding: 10px; font-size: 14px; margin:0px; border: 1px solid #D1D5DB; border-radius: 6px; background-color: #F9FAFB; color: #1F2937; outline: none; transition: border-color 0.2s;">
+          ${statusOptions
+            .map(
+              (status) =>
+                `<option value="${status}" ${
+                  status === currentStatus ? "selected" : ""
+                }>${status.charAt(0).toUpperCase() + status.slice(1)}</option>`
+            )
+            .join("")}
+        </select>
+      </div>
+      <div id="cartItemsContainer" style="margin-bottom: 20px; display: none;">
+        <h4 style="font-size: 16px; font-weight: 600; color: #1F2937; margin-bottom: 12px;">Edit Quantities</h4>
+        ${order.cartItems
+          .map(
+            (item, index) =>
+              `
+              <div style="margin-bottom: 16px; padding: 12px; background-color: #F9FAFB; border-radius: 6px; border: 1px solid #E5E7EB;">
+                <label style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 6px;">
+                  ${item.skuFamilyId?.name || item.productId.name}
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value="${item.quantity}"
+                  class="swal2-input quantity-input"
+                  data-item-index="${index}"
+                  style="width: 100%; margin:0px; padding: 8px; font-size: 14px; border: 1px solid #D1D5DB; border-radius: 6px; background-color: #FFFFFF; color: #1F2937; outline: none; transition: border-color 0.2s;"
+                />
+              </div>
+              `
+          )
+          .join("")}
+      </div>
+      <div>
+        <label for="messageInput" style="display: block; font-size: 14px; font-weight: 600; color: #1F2937; margin-bottom: 8px;">Message (Optional)</label>
+        <textarea
+          id="messageInput"
+          class="swal2-textarea"
+          placeholder="Enter a message for this status change"
+          style="width: 100%; margin:0px; padding: 10px; font-size: 14px; border: 1px solid #D1D5DB; border-radius: 6px; background-color: #F9FAFB; color: #1F2937; min-height: 100px; resize: vertical; outline: none; transition: border-color 0.2s;"
+        ></textarea>
+      </div>
+    </div>
+  `;
 
-  const handleUpdateStatus = async (order: Order) => {
-    const newStatus = selectedStatus[order._id] || order.status;
-    if (!order._id || newStatus === order.status && !editedCartItems[order._id]) return;
+  const result = await Swal.fire({
+    title: `Update Status for Order`,
+    html: modalHtml,
+    showCancelButton: true,
+    confirmButtonText: "Change Status",
+    cancelButtonText: "Cancel",
+    width: 600,
+    customClass: {
+      popup: "swal2-custom-popup",
+      title: "swal2-custom-title",
+      confirmButton: "swal2-custom-confirm",
+      cancelButton: "swal2-custom-cancel",
+    },
+    preConfirm: () => {
+      const statusSelect = document.getElementById("statusSelect") as HTMLSelectElement;
+      const quantityInputs = document.querySelectorAll(".quantity-input") as NodeListOf<HTMLInputElement>;
+      const messageInput = document.getElementById("messageInput") as HTMLTextAreaElement;
 
-    const confirmed = await Swal.fire({
-      title: "Change Order Status",
-      text: `Are you sure you want to change the status of this order to "${newStatus}"${
-        editedCartItems[order._id] ? " and update quantities" : ""
-      }?`,
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonText: "Yes, update it!",
-      cancelButtonText: "No, cancel!",
-    });
+      selectedStatus = statusSelect.value;
+      message = messageInput.value;
 
-    if (confirmed.isConfirmed) {
-      try {
-        const cartItems = ["request", "accepted"].includes(order.status) && ["verified", "approved"].includes(newStatus)
-          ? editedCartItems[order._id] || order.cartItems
-          : undefined;
-        const result = await AdminOrderService.updateOrderStatus(order._id, newStatus, cartItems);
-        if (result !== false) {
-          toastHelper.showTost(`Order status updated to ${newStatus}!`, "success");
-          setEditOrderId(null);
-          setEditedCartItems((prev) => {
-            const updated = { ...prev };
-            delete updated[order._id];
-            return updated;
-          });
-          fetchOrders();
-        }
-      } catch (error) {
-        console.error("Failed to update order status:", error);
+      if (["verified", "approved"].includes(selectedStatus) && ["request", "accepted"].includes(currentStatus)) {
+        editedCartItems = order.cartItems.map((item, index) => ({
+          ...item,
+          quantity: parseInt(quantityInputs[index]?.value) || item.quantity,
+        }));
+      } else {
+        editedCartItems = order.cartItems;
       }
+
+      return true;
+    },
+    didOpen: () => {
+      const statusSelect = document.getElementById("statusSelect") as HTMLSelectElement;
+      const cartItemsContainer = document.getElementById("cartItemsContainer") as HTMLElement;
+
+      statusSelect.addEventListener("change", () => {
+        const newStatus = statusSelect.value;
+        cartItemsContainer.style.display =
+          ["verified", "approved"].includes(newStatus) && ["request", "accepted"].includes(currentStatus)
+            ? "block"
+            : "none";
+      });
+
+      // Add focus styles for inputs
+      const inputs = document.querySelectorAll(".swal2-input, .swal2-select, .swal2-textarea");
+      inputs.forEach((input) => {
+        input.addEventListener("focus", () => {
+          (input as HTMLElement).style.borderColor = "#3B82F6";
+          (input as HTMLElement).style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+        });
+        input.addEventListener("blur", () => {
+          (input as HTMLElement).style.borderColor = "#D1D5DB";
+          (input as HTMLElement).style.boxShadow = "none";
+        });
+      });
+    },
+  });
+
+  if (result.isConfirmed) {
+    try {
+      const cartItemsToSend =
+        ["request", "accepted"].includes(currentStatus) && ["verified", "approved"].includes(selectedStatus)
+          ? editedCartItems
+          : undefined;
+
+      const response = await AdminOrderService.updateOrderStatus(
+        order._id,
+        selectedStatus,
+        cartItemsToSend,
+        message || undefined
+      );
+
+      if (response !== false) {
+        toastHelper.showTost(`Order status updated to ${selectedStatus}!`, "success");
+        fetchOrders();
+      }
+    } catch (error) {
+      console.error("Failed to update order status:", error);
     }
-  };
+  }
+};
 
   const handleViewTracking = async (orderId: string) => {
     try {
@@ -127,6 +203,7 @@ const OrdersTable: React.FC = () => {
                 <th style="padding: 8px; border: 1px solid #ddd;">Changed By</th>
                 <th style="padding: 8px; border: 1px solid #ddd;">User Type</th>
                 <th style="padding: 8px; border: 1px solid #ddd;">Changed At</th>
+                <th style="padding: 8px; border: 1px solid #ddd;">Message</th>
               </tr>
             </thead>
             <tbody>
@@ -138,13 +215,16 @@ const OrdersTable: React.FC = () => {
                         ${item.status.charAt(0).toUpperCase() + item.status.slice(1)}
                       </td>
                       <td style="padding: 8px; border: 1px solid #ddd;">
-                        ${item.changedBy || "-"}
+                        ${item?.changedBy?.name || "-"}
                       </td>
                       <td style="padding: 8px; border: 1px solid #ddd;">
                         ${item.userType}
                       </td>
                       <td style="padding: 8px; border: 1px solid #ddd;">
                         ${format(new Date(item.changedAt), "yyyy-MM-dd HH:mm")}
+                      </td>
+                      <td style="padding: 8px; border: 1px solid #ddd;">
+                        ${item.message || "-"}
                       </td>
                     </tr>
                   `
@@ -306,29 +386,11 @@ const OrdersTable: React.FC = () => {
                       {order.customerId.name || order.customerId.email || order.customerId._id}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {editOrderId === order._id &&
-                      ["request", "accepted"].includes(order.status) &&
-                      ["verified", "approved"].includes(selectedStatus[order._id] || "") ? (
-                        editedCartItems[order._id]?.map((item) => (
-                          <div key={item._id} className="flex items-center gap-2 mb-2">
-                            <span>{item.skuFamilyId?.name || item.productId.name} (x</span>
-                            <input
-                              type="number"
-                              min="1"
-                              value={item.quantity}
-                              onChange={(e) => handleQuantityChange(order._id, item._id, e.target.value)}
-                              className="w-16 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-sm"
-                            />
-                            <span>)</span>
-                          </div>
-                        ))
-                      ) : (
-                        order.cartItems.map((item) => (
-                          <div key={item._id}>
-                            {item.skuFamilyId?.name || item.productId.name} (x{item.quantity})
-                          </div>
-                        ))
-                      )}
+                      {order.cartItems.map((item) => (
+                        <div key={item.productId._id}>
+                          {item.skuFamilyId?.name || item.productId.name} (x{item.quantity})
+                        </div>
+                      ))}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                       ${formatPrice(order.totalAmount)}
@@ -340,26 +402,13 @@ const OrdersTable: React.FC = () => {
                       {getStatusBadge(order)}
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
-                      <div className="flex items-center gap-2">
-                        <select
-                          value={selectedStatus[order._id] || order.status}
-                          onChange={(e) => handleStatusChange(order._id, e.target.value)}
-                          className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                        >
-                          {statusOptions.map((status) => (
-                            <option key={status} value={status}>
-                              {status.charAt(0).toUpperCase() + status.slice(1)}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          onClick={() => handleUpdateStatus(order)}
-                          className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-400 text-sm"
-                          disabled={!selectedStatus[order._id] && !editedCartItems[order._id]}
-                        >
-                          Submit
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => handleUpdateStatus(order)}
+                        className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                        title="Update Status"
+                      >
+                        <i className="fas fa-edit"></i>
+                      </button>
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
                       <button
