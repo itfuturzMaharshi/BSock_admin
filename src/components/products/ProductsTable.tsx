@@ -11,7 +11,7 @@ import {
 
 // Assuming loggedInAdminId is available (e.g., from context, prop, or auth service)
 interface ProductsTableProps {
-  loggedInAdminId: string; // Add this prop or fetch it from context
+  loggedInAdminId?: string; // Add this prop or fetch it from context
 }
 
 const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
