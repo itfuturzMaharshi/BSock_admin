@@ -26,6 +26,8 @@ import WalletAmount from "./pages/WalletAmount/WalletAmount";
 import CustomerCart from "./pages/Customer/CustomerCart";
 import BusinessRequests from "./pages/BusinessRequests/BusinessRequests";
 import Orders from "./pages/Orders/Orders";
+import Payment from "./pages/Payment/Payment";
+import CustomerPaymentConfig from "./pages/Payment/CustomerPaymentConfig";
 export default function App() {
   return (
     <>
@@ -51,6 +53,8 @@ export default function App() {
             <Route path="/cost-module" element={<CostModule />} />
             <Route path="/wallet-amount" element={<WalletAmount />} />
             <Route path="/customer-cart" element={<CustomerCart />} />
+            <Route path="/payments" element={<Payment />}></Route>
+            <Route path="/customer-payment-config" element={<CustomerPaymentConfig />}></Route>
 
             {/* Forms */}
             <Route path="/form-elements" element={<FormElements />} />
