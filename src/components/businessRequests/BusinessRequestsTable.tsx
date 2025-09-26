@@ -573,7 +573,7 @@ const BusinessRequestsTable: React.FC = () => {
               className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
             />
             <button
-              className="absolute top-4 right-4 text-white bg-gray-800/70 rounded-full p-2"
+              className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center text-white bg-gray-800/70 rounded-full p-2"
               onClick={() => setSelectedImage(null)}
             >
               <i className="fas fa-times"></i>
