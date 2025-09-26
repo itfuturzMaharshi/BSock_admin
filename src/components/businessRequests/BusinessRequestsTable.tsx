@@ -20,7 +20,11 @@ const BusinessRequestsTable: React.FC = () => {
   const [businessRequests, setBusinessRequests] = useState<BusinessRequest[]>(
     []
   );
+  const [filteredRequests, setFilteredRequests] = useState<BusinessRequest[]>(
+    []
+  );
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("All");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(true);
   const [totalDocs, setTotalDocs] = useState<number>(0);
@@ -88,11 +92,12 @@ const BusinessRequestsTable: React.FC = () => {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
+      // Remove search term from API call since we'll filter locally
       const { docs, totalDocs } =
         await BusinessRequestsService.getBusinessRequests(
-          currentPage,
-          itemsPerPage,
-          searchTerm?.trim() || undefined
+          1, // Always fetch first page to get all data
+          1000, // Fetch more items to handle local filtering
+          undefined // Remove search term from API call
         );
 
       const baseUrl = import.meta.env.VITE_BASE_URL as string | undefined;
@@ -162,7 +167,27 @@ const BusinessRequestsTable: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, itemsPerPage, searchTerm, statusOverrides]);
+  }, [statusOverrides]);
+
+  // Filter and search logic
+  useEffect(() => {
+    let filtered = businessRequests;
+
+    // Apply search filter
+    if (searchTerm.trim()) {
+      filtered = filtered.filter((item) =>
+        item.businessName.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Apply status filter
+    if (statusFilter !== "All") {
+      filtered = filtered.filter((item) => item.status === statusFilter);
+    }
+
+    setFilteredRequests(filtered);
+    setCurrentPage(1); // Reset to first page when filters change
+  }, [businessRequests, searchTerm, statusFilter]);
 
   useEffect(() => {
     fetchData();
@@ -214,7 +239,11 @@ const BusinessRequestsTable: React.FC = () => {
     setDropdownPosition(null);
   };
 
-  const totalPages = Math.ceil(totalDocs / itemsPerPage);
+  // Calculate pagination for filtered results
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedRequests = filteredRequests.slice(startIndex, endIndex);
+  const totalPages = Math.ceil(filteredRequests.length / itemsPerPage);
 
   const getStatusStyles = (status: "Approved" | "Pending" | "Rejected") => {
     switch (status) {
@@ -239,20 +268,36 @@ const BusinessRequestsTable: React.FC = () => {
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
       />
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-sm">
-        {/* Search */}
+        {/* Search and Filter */}
         <div className="flex flex-col gap-4 p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-          <div className="relative">
-            <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-            <input
-              type="text"
-              placeholder="Search by business name..."
-              className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-64"
-              value={searchTerm}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(1);
-              }}
-            />
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+            {/* Search Input */}
+            <div className="relative">
+              <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+              <input
+                type="text"
+                placeholder="Search by business name..."
+                className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-64"
+                value={searchTerm}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  setSearchTerm(e.target.value);
+                }}
+              />
+            </div>
+
+            {/* Status Filter Dropdown */}
+            <div className="relative">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm min-w-[120px]"
+              >
+                <option value="All">All Status</option>
+                <option value="Approved">Approved</option>
+                <option value="Pending">Pending</option>
+                <option value="Rejected">Rejected</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -294,7 +339,7 @@ const BusinessRequestsTable: React.FC = () => {
                     </div>
                   </td>
                 </tr>
-              ) : !businessRequests || businessRequests.length === 0 ? (
+              ) : !paginatedRequests || paginatedRequests.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
@@ -303,7 +348,7 @@ const BusinessRequestsTable: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                businessRequests.map((item: BusinessRequest, index: number) => (
+                paginatedRequests.map((item: BusinessRequest, index: number) => (
                   <tr
                     key={item._id || index}
                     className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
@@ -457,7 +502,10 @@ const BusinessRequestsTable: React.FC = () => {
         {/* Pagination */}
         <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t bg-gray-50">
           <div className="text-sm">
-            Showing {businessRequests.length} of {totalDocs} items
+            Showing {paginatedRequests.length} of {filteredRequests.length} items
+            {filteredRequests.length !== totalDocs && (
+              <span className="text-gray-500"> (filtered from {totalDocs} total)</span>
+            )}
           </div>
           <div className="flex items-center space-x-3">
             <button
@@ -468,8 +516,16 @@ const BusinessRequestsTable: React.FC = () => {
               Previous
             </button>
             <div className="flex space-x-1">
-              {Array.from({ length: totalPages }, (_, i) => {
-                const pageNum = i + 1;
+              {Array.from({ length: Math.min(totalPages, 10) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 10) {
+                  pageNum = i + 1;
+                } else {
+                  const start = Math.max(1, currentPage - 5);
+                  pageNum = start + i;
+                  if (pageNum > totalPages) return null;
+                }
+                
                 return (
                   <button
                     key={pageNum}

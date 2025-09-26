@@ -17,6 +17,7 @@ interface ProductsTableProps {
 const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
   const [productsData, setProductsData] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
@@ -27,10 +28,10 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const itemsPerPage = 10;
 
-  // Fetch products on component mount and when page/search changes
+  // Fetch products on component mount and when page/search/filter changes
   useEffect(() => {
     fetchProducts();
-  }, [currentPage, searchTerm]);
+  }, [currentPage, searchTerm, statusFilter]);
 
   const fetchProducts = async () => {
     try {
@@ -40,9 +41,26 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
         itemsPerPage,
         searchTerm
       );
-      setProductsData(response.data.docs);
-      setTotalDocs(response.data.totalDocs);
-      setTotalPages(response.data.totalPages);
+
+      let filteredData = response.data.docs;
+
+      // Apply status filter
+      if (statusFilter !== "all") {
+        filteredData = response.data.docs.filter((product: Product) => {
+          if (statusFilter === "approved") {
+            return product.isApproved;
+          } else if (statusFilter === "pending") {
+            return product.isVerified && !product.isApproved;
+          } else if (statusFilter === "verification") {
+            return !product.isVerified;
+          }
+          return true;
+        });
+      }
+
+      setProductsData(filteredData);
+      setTotalDocs(filteredData.length);
+      setTotalPages(Math.ceil(filteredData.length / itemsPerPage));
     } catch (error) {
       console.error("Failed to fetch products:", error);
     } finally {
@@ -256,6 +274,22 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                 }}
               />
             </div>
+            <div className="relative">
+              <select
+                value={statusFilter}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                  setStatusFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="pl-3 pr-8 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm appearance-none cursor-pointer"
+              >
+                <option value="all">All Status</option>
+                <option value="approved">Approved</option>
+                <option value="pending">Pending Approval</option>
+                <option value="verification">Under Verification</option>
+              </select>
+              <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -345,7 +379,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                         className="w-12 h-12 object-contain rounded-md border border-gray-200 dark:border-gray-600"
                         onError={(e) => {
                           (e.currentTarget as HTMLImageElement).src =
-                            placeholderImage; 
+                            placeholderImage;
                         }}
                       />
                     </td>
