@@ -383,12 +383,12 @@ const handleUpdateStatus = async (order: Order) => {
                       {order._id}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {order.customerId.name || order.customerId.email || order.customerId._id}
+                      {order?.customerId?.name || order?.customerId?.email || order?.customerId?._id}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                       {order.cartItems.map((item) => (
-                        <div key={item.productId._id}>
-                          {item.skuFamilyId?.name || item.productId.name} (x{item.quantity})
+                        <div key={item?.productId?._id}>
+                          {item?.skuFamilyId?.name || item?.productId?.name} (x{item.quantity})
                         </div>
                       ))}
                     </td>

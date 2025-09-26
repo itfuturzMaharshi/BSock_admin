@@ -54,6 +54,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
   const [skuError, setSkuError] = useState<string | null>(null);
   const [dateError, setDateError] = useState<string | null>(null);
   const [moqError, setMoqError] = useState<string | null>(null);
+  const [priceError, setPriceError] = useState<string | null>(null);
 
   const colorOptions = ["Graphite", "Silver", "Gold", "Sierra Blue", "Mixed"];
   const countryOptions = ["Hongkong", "Dubai", "Singapore"];
@@ -121,6 +122,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
         });
       }
       setDateError(null);
+      setPriceError(null);
     }
   }, [isOpen, editItem]);
 
@@ -141,6 +143,12 @@ const ProductModal: React.FC<ProductModalProps> = ({
 
       // Start with previous, then apply the change
       let next = { ...previous, [name]: updatedValue } as FormData;
+
+      // If isFlashDeal becomes "false", clear expiryTime
+      if (name === "isFlashDeal" && updatedValue === "false") {
+        next.expiryTime = "";
+        setDateError(null);
+      }
 
       // If purchaseType switches to 'full', sync moq to stock
       if (name === "purchaseType" && updatedValue === "full") {
@@ -172,7 +180,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
   };
 
   const handleDateChange = (date: Date | null) => {
-    if (date && !isNaN(date.getTime())) {
+    if (date && date > new Date() && !isNaN(date.getTime())) {
       setFormData((prev) => ({
         ...prev,
         expiryTime: date.toISOString(),
@@ -183,7 +191,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
         ...prev,
         expiryTime: "",
       }));
-      setDateError("Please select a valid date and time");
+      setDateError("Please select a valid future date and time");
     }
   };
 
@@ -231,6 +239,16 @@ const ProductModal: React.FC<ProductModalProps> = ({
 
       return next;
     });
+
+    // Validate price if changed
+    if (name === "price") {
+      const numeric = parseFloat(value) || 0;
+      if (value !== "" && numeric <= 0) {
+        setPriceError("Price must be greater than 0");
+      } else {
+        setPriceError(null);
+      }
+    }
   };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -239,8 +257,13 @@ const ProductModal: React.FC<ProductModalProps> = ({
       alert("Please select a SKU Family");
       return;
     }
-    if (!formData.expiryTime) {
-      setDateError("Expiry time is required");
+    const numericPrice = parseFloat(String(formData.price)) || 0;
+    if (numericPrice <= 0) {
+      setPriceError("Please enter a valid price greater than 0");
+      return;
+    }
+    if (formData.isFlashDeal === "true" && !formData.expiryTime) {
+      setDateError("Expiry time is required for Flash Deals");
       return;
     }
     // Final MOQ validation before submit
@@ -462,6 +485,9 @@ const ProductModal: React.FC<ProductModalProps> = ({
                 placeholder="Enter Price"
                 required
               />
+              {priceError && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{priceError}</p>
+              )}
             </div>
           </div>
 
@@ -547,25 +573,28 @@ const ProductModal: React.FC<ProductModalProps> = ({
                 Is Flash Deal
               </label>
             </div>
-            <div>
-              <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
-                Expiry Time
-              </label>
-              <DatePicker
-                selected={formData.expiryTime ? new Date(formData.expiryTime) : null}
-                onChange={handleDateChange}
-                showTimeSelect
-                timeFormat="HH:mm"
-                timeIntervals={15}
-                dateFormat="yyyy-MM-dd HH:mm"
-                placeholderText="Select date and time"
-                className="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
-                required
-              />
-              {dateError && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{dateError}</p>
-              )}
-            </div>
+            {formData.isFlashDeal === "true" && (
+              <div>
+                <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
+                  Expiry Time
+                </label>
+                <DatePicker
+                  selected={formData.expiryTime ? new Date(formData.expiryTime) : null}
+                  onChange={handleDateChange}
+                  showTimeSelect
+                  timeFormat="HH:mm"
+                  timeIntervals={15}
+                  dateFormat="yyyy-MM-dd HH:mm"
+                  placeholderText="Select date and time"
+                  className="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
+                  minDate={new Date()}
+                  required
+                />
+                {dateError && (
+                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{dateError}</p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end gap-4 pt-6">
@@ -579,7 +608,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
             <button
               type="submit"
               className="px-6 py-2.5 bg-[#0071E0] text-white rounded-lg hover:bg-blue-600 transition duration-200 transform hover:scale-105"
-              disabled={skuLoading || skuError !== null || !!dateError || !!moqError}
+              disabled={skuLoading || skuError !== null || !!dateError || !!moqError || !!priceError}
             >
               {editItem ? "Update Product" : "Create Product"}
             </button>

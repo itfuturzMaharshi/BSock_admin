@@ -27,11 +27,40 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
   const [totalPages, setTotalPages] = useState<number>(1);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const itemsPerPage = 10;
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [dropdownPosition, setDropdownPosition] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
 
   // Fetch products on component mount and when page/search/filter changes
   useEffect(() => {
     fetchProducts();
   }, [currentPage, searchTerm, statusFilter]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!event.target) return;
+      if (!(event.target as HTMLElement).closest(".dropdown-container")) {
+        setOpenDropdownId(null);
+        setDropdownPosition(null);
+      }
+    };
+
+    const handleResize = () => {
+      if (openDropdownId) {
+        setOpenDropdownId(null);
+        setDropdownPosition(null);
+      }
+    };
+
+    document.addEventListener("click", handleClickOutside);
+    window.addEventListener("resize", handleResize);
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [openDropdownId]);
 
   const fetchProducts = async () => {
     try {
@@ -104,6 +133,8 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
   const handleEdit = (product: Product) => {
     setEditProduct(product);
     setIsModalOpen(true);
+    setOpenDropdownId(null);
+    setDropdownPosition(null);
   };
 
   const handleDelete = async (product: Product) => {
@@ -127,6 +158,8 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
         console.error("Failed to delete product:", error);
       }
     }
+    setOpenDropdownId(null);
+    setDropdownPosition(null);
   };
 
   const handleVerify = async (product: Product) => {
@@ -151,6 +184,8 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
         console.error("Failed to verify product:", error);
       }
     }
+    setOpenDropdownId(null);
+    setDropdownPosition(null);
   };
 
   const handleApprove = async (product: Product) => {
@@ -175,10 +210,14 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
         console.error("Failed to approve product:", error);
       }
     }
+    setOpenDropdownId(null);
+    setDropdownPosition(null);
   };
 
   const handleView = (product: Product) => {
     setSelectedProduct(product);
+    setOpenDropdownId(null);
+    setDropdownPosition(null);
   };
 
   const getSkuFamilyText = (skuFamilyId: any): string => {
@@ -407,51 +446,110 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                     <td className="px-6 py-4 text-sm text-center">
                       {getStatusBadge(item)}
                     </td>
-                    <td className="px-6 py-4 text-sm text-center">
-                      <div className="flex items-center justify-center gap-3">
-                        {/* Verify button: Show only if canVerify is true and the admin hasn't verified it */}
-                        {item.canVerify &&
-                          item.verifiedBy !== loggedInAdminId && (
+                    <td className="px-6 py-4 text-sm text-center relative">
+                      <div className="dropdown-container relative">
+                        <button
+                          className="text-gray-600 dark:text-gray-400 hover:text-gray-800 p-1 rounded-full hover:bg-gray-100"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (openDropdownId === item._id) {
+                              setOpenDropdownId(null);
+                              setDropdownPosition(null);
+                            } else {
+                              const rect =
+                                e.currentTarget.getBoundingClientRect();
+                              const dropdownWidth = 192;
+                              const dropdownHeight = 200; // Adjusted for more options
+                              let top = rect.bottom + 8;
+                              let left = rect.right - dropdownWidth;
+
+                              if (top + dropdownHeight > window.innerHeight) {
+                                top = rect.top - dropdownHeight - 8;
+                              }
+                              if (left < 8) {
+                                left = 8;
+                              }
+                              if (
+                                left + dropdownWidth >
+                                window.innerWidth - 8
+                              ) {
+                                left = window.innerWidth - dropdownWidth - 8;
+                              }
+
+                              setDropdownPosition({ top, left });
+                              setOpenDropdownId(item._id || null);
+                            }
+                          }}
+                        >
+                          <i className="fas fa-ellipsis-v"></i>
+                        </button>
+                        {openDropdownId === item._id && dropdownPosition && (
+                          <div
+                            className="fixed w-48 bg-white border rounded-md shadow-lg"
+                            style={{
+                              top: `${dropdownPosition.top}px`,
+                              left: `${dropdownPosition.left}px`,
+                              zIndex: 9999,
+                            }}
+                          >
+                            {item.canVerify &&
+                              item.verifiedBy !== loggedInAdminId && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleVerify(item);
+                                  }}
+                                  className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-green-600"
+                                >
+                                  <i className="fas fa-check"></i>
+                                  Verify
+                                </button>
+                              )}
                             <button
-                              onClick={() => handleVerify(item)}
-                              className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors"
-                              title="Verify Product"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleView(item);
+                              }}
+                              className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-blue-600"
                             >
-                              <i className="fas fa-check"></i>
+                              <i className="fas fa-eye"></i>
+                              View
                             </button>
-                          )}
-                        <button
-                          onClick={() => handleView(item)}
-                          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                          title="View"
-                        >
-                          <i className="fas fa-eye"></i>
-                        </button>
-                        {/* Approve button: Show only if canApprove is true and the admin hasn't verified it */}
-                        {item.canApprove &&
-                          item.verifiedBy !== loggedInAdminId && (
+                            {item.canApprove &&
+                              item.verifiedBy !== loggedInAdminId && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleApprove(item);
+                                  }}
+                                  className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-blue-600"
+                                >
+                                  <i className="fas fa-thumbs-up"></i>
+                                  Approve
+                                </button>
+                              )}
                             <button
-                              onClick={() => handleApprove(item)}
-                              className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                              title="Approve Product"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEdit(item);
+                              }}
+                              className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-yellow-600"
                             >
-                              <i className="fas fa-thumbs-up"></i>
+                              <i className="fas fa-edit"></i>
+                              Edit
                             </button>
-                          )}
-                        <button
-                          onClick={() => handleEdit(item)}
-                          className="text-yellow-600 hover:text-yellow-800 dark:text-yellow-400 dark:hover:text-yellow-300 transition-colors"
-                          title="Edit Product"
-                        >
-                          <i className="fas fa-edit"></i>
-                        </button>
-                        <button
-                          onClick={() => handleDelete(item)}
-                          className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
-                          title="Delete Product"
-                        >
-                          <i className="fas fa-trash"></i>
-                        </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(item);
+                              }}
+                              className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-red-600"
+                            >
+                              <i className="fas fa-trash"></i>
+                              Delete
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </td>
                   </tr>
