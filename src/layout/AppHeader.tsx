@@ -4,7 +4,7 @@ import { Link } from "react-router";
 import { Handshake } from "lucide-react";
 import { useSidebar } from "../context/SidebarContext";
 import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
-import NotificationDropdown from "../components/header/NotificationDropdown";
+// import NotificationDropdown from "../components/header/NotificationDropdown";
 import UserDropdown from "../components/header/UserDropdown";
 import NegotiationModal from "../components/negotiation/NegotiationModal";
 
