@@ -26,6 +26,8 @@ const BusinessRequestsTable: React.FC = () => {
   const [totalDocs, setTotalDocs] = useState<number>(0);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedProduct, setSelectedProduct] =
+    useState<BusinessRequest | null>(null);
   const [dropdownPosition, setDropdownPosition] = useState<{
     top: number;
     left: number;
@@ -207,34 +209,9 @@ const BusinessRequestsTable: React.FC = () => {
   };
 
   const handleView = (item: BusinessRequest) => {
-    Swal.fire({
-      title: "Business Details",
-      html: `
-        <div style="text-align: left; font-size: 14px; line-height: 1.6; padding: 8px 4px;">
-          <p><strong>Name:</strong> ${item.name || "-"}</p>
-          <p><strong>Email:</strong> ${item.email || "-"}</p>
-          <p><strong>Phone Number:</strong> ${item.mobileNumber || "-"}</p>
-          <p><strong>WhatsApp Number:</strong> ${item.whatsappNumber || "-"}</p>
-        </div>
-      `,
-      showConfirmButton: false,
-      showCloseButton: true,
-      customClass: {
-        popup: "rounded-lg shadow-lg",
-        closeButton:
-          "text-gray-600 hover:text-gray-900 absolute right-4 top-4 text-lg",
-      },
-      closeButtonHtml: '<i class="fas fa-times"></i>',
-      didOpen: () => {
-        const closeButton = document.querySelector(".swal2-close");
-        if (closeButton) {
-          closeButton.addEventListener("click", () => {
-            setOpenDropdownId(null);
-            setDropdownPosition(null);
-          });
-        }
-      },
-    });
+    setSelectedProduct(item);
+    setOpenDropdownId(null);
+    setDropdownPosition(null);
   };
 
   const totalPages = Math.ceil(totalDocs / itemsPerPage);
@@ -425,8 +402,6 @@ const BusinessRequestsTable: React.FC = () => {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleView(item);
-                                setOpenDropdownId(null);
-                                setDropdownPosition(null);
                               }}
                               className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
                             >
@@ -522,6 +497,68 @@ const BusinessRequestsTable: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Professional Business Details Modal */}
+      {selectedProduct && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50 transition-opacity duration-300">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl max-w-md w-full mx-4">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-600">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                Business Details
+              </h2>
+              <button
+                onClick={() => setSelectedProduct(null)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-2 flex-shrink-0"
+                title="Close"
+              >
+                <i className="fas fa-times text-xl"></i>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Name
+                  </label>
+                  <p className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-md">
+                    {selectedProduct.name || "-"}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Email
+                  </label>
+                  <p className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-md">
+                    {selectedProduct.email || "-"}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Phone Number
+                  </label>
+                  <p className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-md">
+                    {selectedProduct.mobileNumber || "-"}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    WhatsApp Number
+                  </label>
+                  <p className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-md">
+                    {selectedProduct.whatsappNumber || "-"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Enlarged image preview */}
       {selectedImage && (
