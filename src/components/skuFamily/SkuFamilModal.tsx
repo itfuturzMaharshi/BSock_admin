@@ -129,6 +129,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     setFormErrors((prev) => ({ ...prev, [name]: "" }));
+    console.log(formErrors)
     
     // Validate the field if it's been touched
     if (touched[name as keyof TouchedFields]) {

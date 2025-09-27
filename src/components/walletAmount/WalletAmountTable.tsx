@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import Swal from "sweetalert2";
 import toastHelper from "../../utils/toastHelper";
 import WalletAmountModal from "./WalletAmountModal";
 import { walletAmountService, CustomerWalletData, WalletTransaction, ListTransactionsRequest } from "../../services/walletAmount/walletAmountService";
@@ -172,38 +171,38 @@ const WalletAmountTable: React.FC = () => {
   };
 
   // Handle editing a transaction
-  const handleEdit = (index: number) => {
-    setEditIndex(index);
-    setIsModalOpen(true);
-  };
+  // const handleEdit = (index: number) => {
+  //   setEditIndex(index);
+  //   setIsModalOpen(true);
+  // };
 
-  // Handle deleting a transaction
-  const handleDelete = async (index: number) => {
-    const transaction = transactions[index];
-    if (!transaction) return;
+  // // Handle deleting a transaction
+  // const handleDelete = async (index: number) => {
+  //   const transaction = transactions[index];
+  //   if (!transaction) return;
 
-    const confirmed = await Swal.fire({
-      title: "Are you sure?",
-      text: "This will permanently delete the transaction!",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Yes, delete!",
-      cancelButtonText: "No, cancel!",
-    });
+  //   const confirmed = await Swal.fire({
+  //     title: "Are you sure?",
+  //     text: "This will permanently delete the transaction!",
+  //     icon: "warning",
+  //     showCancelButton: true,
+  //     confirmButtonText: "Yes, delete!",
+  //     cancelButtonText: "No, cancel!",
+  //   });
 
-    if (confirmed.isConfirmed) {
-      try {
-        // Note: There's no delete API in the provided wallet APIs
-        // This would need to be implemented on the backend
-        toastHelper.showTost("Delete functionality not available", "warning");
-        // For now, just refresh the data
-        fetchTransactions();
-      } catch (error) {
-        console.error('Failed to delete transaction:', error);
-        toastHelper.showTost('Failed to delete transaction', 'error');
-      }
-    }
-  };
+  //   if (confirmed.isConfirmed) {
+  //     try {
+  //       // Note: There's no delete API in the provided wallet APIs
+  //       // This would need to be implemented on the backend
+  //       toastHelper.showTost("Delete functionality not available", "warning");
+  //       // For now, just refresh the data
+  //       fetchTransactions();
+  //     } catch (error) {
+  //       console.error('Failed to delete transaction:', error);
+  //       toastHelper.showTost('Failed to delete transaction', 'error');
+  //     }
+  //   }
+  // };
   // Utility function to convert a string to title case
 const toTitleCase = (str: string): string => {
   return str
@@ -403,7 +402,7 @@ const toTitleCase = (str: string): string => {
               ) : (
                 paginatedData.map((item: CustomerWalletData, index: number) => (
                   <tr
-                    key={item._id}
+                    key={index}
                     className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                   >
                     <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-gray-200">
