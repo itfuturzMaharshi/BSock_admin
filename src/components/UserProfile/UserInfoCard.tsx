@@ -91,20 +91,22 @@ export default function UserInfoCard({
     setIsModalOpen(true);
   };
 
-  const openUpdateModal = (settings: any) => {
-    setModalMode("update");
-    setSelectedSettings({
-      _id: settings._id,
-      bidWalletAllowancePer: settings.bidWalletAllowancePer?.toString() || "",
-      readyStockAllowancePer: settings.readyStockAllowancePer?.toString() || "",
-      readyStockOrderProcess:
-        JSON.stringify(settings.readyStockOrderProcess) || "",
-      reportTime: settings.reportTime || "",
-      timezone: settings.timezone || "Asia/Kolkata",
-    });
-    setIsModalOpen(true);
-  };
+const openUpdateModal = (settings: any) => {
+  setModalMode("update");
+  setSelectedSettings({
+    _id: settings._id,
+    bidWalletAllowancePer: settings.bidWalletAllowancePer?.toString() || "",
+    readyStockAllowancePer: settings.readyStockAllowancePer?.toString() || "",
+    readyStockOrderProcess: JSON.stringify(settings.readyStockOrderProcess) || "",
+    reportTime: settings.reportTime || "",
+    timezone: settings.timezone || "Asia/Kolkata",
+    percentage: settings.percentage?.toString() || "", // ✅ prefill percentage
+  });
+  setIsModalOpen(true);
+};
 
+
+  
   const closeModal = () => {
     setIsModalOpen(false);
     setSelectedSettings(null);

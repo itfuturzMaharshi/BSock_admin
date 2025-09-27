@@ -1,5 +1,5 @@
 // src/components/SettingsModal.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import toastHelper from '../../utils/toastHelper';
 import { UserProfileService } from "../../services/adminProfile/adminProfile.services";
 
@@ -34,6 +34,30 @@ export default function SettingsModal({
     timezone: initialData?.timezone || "Asia/Kolkata",
     percentage: initialData?.percentage || "", // ✅ added in state
   });
+
+  // Update form data when initialData changes
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        bidWalletAllowancePer: initialData.bidWalletAllowancePer || "",
+        readyStockAllowancePer: initialData.readyStockAllowancePer || "",
+        readyStockOrderProcess: initialData.readyStockOrderProcess || "",
+        reportTime: initialData.reportTime || "",
+        timezone: initialData.timezone || "Asia/Kolkata",
+        percentage: initialData.percentage || "",
+      });
+    } else {
+      // Reset form for create mode
+      setFormData({
+        bidWalletAllowancePer: "",
+        readyStockAllowancePer: "",
+        readyStockOrderProcess: "",
+        reportTime: "",
+        timezone: "Asia/Kolkata",
+        percentage: "",
+      });
+    }
+  }, [initialData]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
