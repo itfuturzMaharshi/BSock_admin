@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { AdminService, CreateAdminRequest } from "../../services/admin/admin.services";
+import { AdminService, CreateAdminRequest, UpdateAdminRequest, Admin } from "../../services/admin/admin.services";
 
 // Define the interface for form data
 interface FormData {
@@ -20,12 +20,14 @@ interface AdminModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: () => void; // Changed to void since we'll handle API calls internally
+  editAdmin?: Admin | null; // Admin to edit, null for create mode
 }
 
 const AdminsModal: React.FC<AdminModalProps> = ({
   isOpen,
   onClose,
   onSave,
+  editAdmin,
 }) => {
   const [formData, setFormData] = useState<FormData>({
     name: "",
@@ -40,17 +42,28 @@ const AdminsModal: React.FC<AdminModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      setFormData({
-        name: "",
-        email: "",
-        password: "",
-        isActive: true,
-      });
+      if (editAdmin) {
+        // Edit mode - populate form with existing admin data
+        setFormData({
+          name: editAdmin.name,
+          email: editAdmin.email,
+          password: "", // Don't populate password for security
+          isActive: editAdmin.isActive,
+        });
+      } else {
+        // Create mode - reset form
+        setFormData({
+          name: "",
+          email: "",
+          password: "",
+          isActive: true,
+        });
+      }
       setShowPassword(false);
       setValidationErrors({});
       setTouched({});
     }
-  }, [isOpen]);
+  }, [isOpen, editAdmin]);
 
   // Validation functions
   const validateField = (name: string, value: string): string | undefined => {
@@ -65,7 +78,7 @@ const AdminsModal: React.FC<AdminModalProps> = ({
         if (!emailRegex.test(value)) return 'Please enter a valid email address';
         return undefined;
       case 'password':
-        if (!value.trim()) return 'Password is required';
+        if (!editAdmin && !value.trim()) return 'Password is required'; // Only required for new admins
         if (value && value.length < 6) return 'Password must be at least 6 characters';
         return undefined;
       default:
@@ -116,8 +129,11 @@ const AdminsModal: React.FC<AdminModalProps> = ({
     const emailError = validateField('email', formData.email);
     if (emailError) errors.email = emailError;
     
-    const passwordError = validateField('password', formData.password);
-    if (passwordError) errors.password = passwordError;
+    // Only validate password for new admins or if password is provided for existing admins
+    if (!editAdmin || formData.password) {
+      const passwordError = validateField('password', formData.password);
+      if (passwordError) errors.password = passwordError;
+    }
     
     setValidationErrors(errors);
     setTouched({ name: true, email: true, password: true });
@@ -125,9 +141,6 @@ const AdminsModal: React.FC<AdminModalProps> = ({
     return Object.keys(errors).length === 0;
   };
 
-  const togglePasswordVisibility = () => {
-    setShowPassword((prev) => !prev);
-  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -139,19 +152,36 @@ const AdminsModal: React.FC<AdminModalProps> = ({
     setIsSubmitting(true);
     
     try {
-      // Create new admin
-      const createData: CreateAdminRequest = {
-        name: formData.name,
-        email: formData.email,
-        password: formData.password,
-      };
-      
-      await AdminService.createAdmin(createData);
+      if (editAdmin) {
+        // Update existing admin
+        const updateData: UpdateAdminRequest = {
+          id: editAdmin._id,
+          name: formData.name,
+          email: formData.email,
+          isActive: formData.isActive,
+        };
+        
+        // Only include password if it's provided for existing admins
+        if (formData.password) {
+          updateData.password = formData.password;
+        }
+        
+        await AdminService.updateAdmin(updateData);
+      } else {
+        // Create new admin
+        const createData: CreateAdminRequest = {
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+        };
+        
+        await AdminService.createAdmin(createData);
+      }
       
       onSave(); // Refresh the parent component
       onClose();
     } catch (error) {
-      console.error('Error creating admin:', error);
+      console.error('Error saving admin:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -159,7 +189,7 @@ const AdminsModal: React.FC<AdminModalProps> = ({
 
   if (!isOpen) return null;
 
-  const title = "Create Admin";
+  const title = editAdmin ? "Edit Admin" : "Create Admin";
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50 transition-opacity duration-300">
@@ -212,30 +242,32 @@ const AdminsModal: React.FC<AdminModalProps> = ({
             )}
           </div>
 
-          {/* Email and Password Row */}
-          <div className="grid grid-cols-1 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                Email *
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                onBlur={handleBlur}
-                className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 ${
-                  touched.email && validationErrors.email
-                    ? 'border-red-500 focus:ring-red-500'
-                    : 'border-gray-200 dark:border-gray-700'
-                }`}
-                placeholder="Enter Email"
-                required
-              />
-              {touched.email && validationErrors.email && (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{validationErrors.email}</p>
-              )}
-            </div>
+          {/* Email Field */}
+          <div>
+            <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+              Email *
+            </label>
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleInputChange}
+              onBlur={handleBlur}
+              className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 ${
+                touched.email && validationErrors.email
+                  ? 'border-red-500 focus:ring-red-500'
+                  : 'border-gray-200 dark:border-gray-700'
+              }`}
+              placeholder="Enter Email"
+              required
+            />
+            {touched.email && validationErrors.email && (
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{validationErrors.email}</p>
+            )}
+          </div>
+
+          {/* Password Field (only for creating new admins) */}
+          {!editAdmin && (
             <div className="relative">
               <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                 Password *
@@ -258,7 +290,7 @@ const AdminsModal: React.FC<AdminModalProps> = ({
                 />
                 <button
                   type="button"
-                  onClick={togglePasswordVisibility}
+                  onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
                 >
                   <i
@@ -272,7 +304,8 @@ const AdminsModal: React.FC<AdminModalProps> = ({
                 <p className="mt-1 text-xs text-red-600 dark:text-red-400">{validationErrors.password}</p>
               )}
             </div>
-          </div>
+          )}
+
 
           {/* Active Status */}
           <div className="flex items-center">
@@ -306,7 +339,7 @@ const AdminsModal: React.FC<AdminModalProps> = ({
               {isSubmitting && (
                 <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-white"></div>
               )}
-              Create Admin
+              {editAdmin ? "Update Admin" : "Create Admin"}
             </button>
           </div>
         </form>

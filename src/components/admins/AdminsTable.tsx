@@ -2,16 +2,18 @@ import React, { useState, useEffect } from "react";
 import Swal from "sweetalert2";
 import toastHelper from "../../utils/toastHelper";
 import AdminsModal from "./AdminsModal";
-import { AdminService, Admin } from "../../services/admin/admin.services";
+import { AdminService, Admin, UpdateAdminRequest } from "../../services/admin/admin.services";
 
 const AdminsTable: React.FC = () => {
   const [adminsData, setAdminsData] = useState<Admin[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [editingAdmin, setEditingAdmin] = useState<Admin | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [totalDocs, setTotalDocs] = useState<number>(0);
+  const [resettingPassword, setResettingPassword] = useState<string | null>(null);
   const itemsPerPage = 10;
 
   // Fetch admins data
@@ -62,6 +64,71 @@ const AdminsTable: React.FC = () => {
     // Refresh the data after save
     fetchAdmins();
     setIsModalOpen(false);
+    setEditingAdmin(null);
+  };
+
+  const handleEdit = (admin: Admin) => {
+    setEditingAdmin(admin);
+    setIsModalOpen(true);
+  };
+
+  const handleResetPassword = async (admin: Admin) => {
+    const confirmed = await Swal.fire({
+      title: "Reset Password?",
+      html: `
+        <div class="text-center">
+          <p class="mb-3">Are you sure you want to reset the password for <strong>${admin.name}</strong>?</p>
+          <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
+            <p class="text-sm text-yellow-800">
+              <i class="fas fa-exclamation-triangle mr-2"></i>
+              <strong>Warning:</strong> The new password will be set to <code class="bg-yellow-100 px-1 rounded">user@1234</code>
+            </p>
+          </div>
+          <p class="text-sm text-gray-600">The admin will need to change this password on their next login.</p>
+        </div>
+      `,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, reset password!",
+      cancelButtonText: "No, cancel!",
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#6b7280",
+      focusCancel: true,
+    });
+
+    if (confirmed.isConfirmed) {
+      setResettingPassword(admin._id);
+      try {
+        const updateData: UpdateAdminRequest = {
+          id: admin._id,
+          name: admin.name,
+          email: admin.email,
+          isActive: admin.isActive,
+          password: "user@1234", // Default password
+        };
+        
+        await AdminService.updateAdmin(updateData);
+        
+        Swal.fire({
+          title: "Password Reset!",
+          text: `Password has been reset to "user@1234" for ${admin.name}`,
+          icon: "success",
+          confirmButtonColor: "#10b981",
+        });
+        
+        fetchAdmins(); // Refresh the data
+      } catch (error) {
+        console.error('Error resetting password:', error);
+        Swal.fire({
+          title: "Error!",
+          text: "Failed to reset password. Please try again.",
+          icon: "error",
+          confirmButtonColor: "#dc2626",
+        });
+      } finally {
+        setResettingPassword(null);
+      }
+    }
   };
 
   const handleDelete = async (admin: Admin) => {
@@ -186,7 +253,26 @@ const AdminsTable: React.FC = () => {
                       {new Date(item.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
-                      <div className="flex items-center justify-center gap-3">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => handleEdit(item)}
+                          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                          title="Edit Admin"
+                        >
+                          <i className="fas fa-edit"></i>
+                        </button>
+                        <button
+                          onClick={() => handleResetPassword(item)}
+                          disabled={resettingPassword === item._id}
+                          className="text-yellow-600 hover:text-yellow-800 dark:text-yellow-400 dark:hover:text-yellow-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Reset Password"
+                        >
+                          {resettingPassword === item._id ? (
+                            <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-yellow-600"></div>
+                          ) : (
+                            <i className="fas fa-key"></i>
+                          )}
+                        </button>
                         <button
                           onClick={() => handleDelete(item)}
                           className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
@@ -255,8 +341,10 @@ const AdminsTable: React.FC = () => {
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);
+          setEditingAdmin(null);
         }}
         onSave={handleSave}
+        editAdmin={editingAdmin}
       />
     </div>
   );
