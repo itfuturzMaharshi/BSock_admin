@@ -1,28 +1,39 @@
 import React, { useState, useEffect } from "react";
 import Select from "react-select";
+import { walletAmountService, ManageWalletRequest, CustomerWalletData } from "../../services/walletAmount/walletAmountService";
+import { CustomerService, Customer } from "../../services/customer/customerService";
+import toastHelper from "../../utils/toastHelper";
 
 // Define the interface for Transaction data
 interface Transaction {
-  customer: string;
+  _id: string;
+  customerId: string;
+  customerName: string;
   type: "credit" | "debit";
   amount: number;
-  description: string;
-  date: Date;
+  remark: string;
+  createdAt: string;
+  createdBy: {
+    _id: string;
+    name: string;
+    email: string;
+  };
 }
 
 // Define the interface for form data
 interface FormData {
-  customer: string;
+  customerId: string;
   type: "credit" | "debit";
   amount: string;
-  description: string;
+  remark: string;
 }
 
 interface WalletAmountModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (newItem: Transaction) => void;
+  onSave: () => void; // Changed to void since we'll refresh data after save
   editItem?: Transaction;
+  editCustomer?: CustomerWalletData | null;
 }
 
 const WalletAmountModal: React.FC<WalletAmountModalProps> = ({
@@ -30,39 +41,68 @@ const WalletAmountModal: React.FC<WalletAmountModalProps> = ({
   onClose,
   onSave,
   editItem,
+  editCustomer,
 }) => {
   const [formData, setFormData] = useState<FormData>({
-    customer: "",
+    customerId: "",
     type: "credit",
     amount: "",
-    description: "",
+    remark: "",
   });
-
-  // Sample customers
-  const customers = ["customer1", "customer2", "customer3", "customer4", "customer5"];
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [submitting, setSubmitting] = useState<boolean>(false);
 
   // Convert customers array to react-select options
-  const customerOptions = customers.map((c) => ({ label: c, value: c }));
+  const customerOptions = customers.map((c) => ({ 
+    label: `${c.name} (${c.email})`, 
+    value: c._id 
+  }));
 
+  // Fetch customers when modal opens
   useEffect(() => {
     if (isOpen) {
+      fetchCustomers();
       if (editItem) {
+        // Editing a transaction
         setFormData({
-          customer: editItem.customer,
+          customerId: editItem.customerId,
           type: editItem.type,
           amount: editItem.amount.toString(),
-          description: editItem.description,
+          remark: editItem.remark,
         });
-      } else {
+      } else if (editCustomer) {
+        // Editing customer wallet - pre-fill customer ID
         setFormData({
-          customer: "",
+          customerId: editCustomer._id,
           type: "credit",
           amount: "",
-          description: "",
+          remark: "",
+        });
+      } else {
+        // Creating new transaction
+        setFormData({
+          customerId: "",
+          type: "credit",
+          amount: "",
+          remark: "",
         });
       }
     }
-  }, [isOpen, editItem]);
+  }, [isOpen, editItem, editCustomer]);
+
+  const fetchCustomers = async () => {
+    try {
+      setLoading(true);
+      const customerList = await CustomerService.getAllCustomers();
+      setCustomers(customerList);
+    } catch (error) {
+      console.error('Failed to fetch customers:', error);
+      toastHelper.showTost('Failed to fetch customers', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -77,26 +117,46 @@ const WalletAmountModal: React.FC<WalletAmountModalProps> = ({
   const handleCustomerChange = (option: any) => {
     setFormData((prev) => ({
       ...prev,
-      customer: option ? option.value : "",
+      customerId: option ? option.value : "",
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const newItem: Transaction = {
-      customer: formData.customer,
-      type: formData.type as "credit" | "debit",
-      amount: parseFloat(formData.amount) || 0,
-      description: formData.description,
-      date: editItem ? editItem.date : new Date(),
-    };
-    onSave(newItem);
-    onClose();
+    
+    if (!formData.customerId || !formData.amount) {
+      toastHelper.showTost('Please fill in all required fields', 'error');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const requestData: ManageWalletRequest = {
+        customerId: formData.customerId,
+        amount: parseFloat(formData.amount),
+        type: formData.type as "credit" | "debit",
+        remark: formData.remark,
+      };
+
+      await walletAmountService.manageWallet(requestData);
+      
+      const action = formData.type === 'credit' ? 'added to' : 'deducted from';
+      toastHelper.showTost(`Amount ${action} wallet successfully!`, 'success');
+      
+      onSave(); // Refresh the parent component data
+      onClose();
+    } catch (error: any) {
+      console.error('Failed to manage wallet:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to manage wallet';
+      toastHelper.showTost(errorMessage, 'error');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (!isOpen) return null;
 
-  const title = editItem ? "Edit Transaction" : "Create Transaction";
+  const title = editItem ? "Edit Transaction" : editCustomer ? "Manage Wallet" : "Create Transaction";
 
   // Custom styles for react-select (matching your design)
 const customSelectStyles = {
@@ -180,19 +240,26 @@ const customSelectStyles = {
               <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
                 Customer
               </label>
-              <Select
-                options={customerOptions}
-                value={
-                  formData.customer
-                    ? { label: formData.customer, value: formData.customer }
-                    : null
-                }
-                onChange={handleCustomerChange}
-                placeholder="Select Customer"
-                isClearable
-                isSearchable
-                styles={customSelectStyles}
-              />
+              {editCustomer ? (
+                <div className="w-full p-3 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-800 dark:text-gray-200">
+                  {editCustomer.name} ({editCustomer.mobileNumber || 'No mobile'})
+                </div>
+              ) : (
+                <Select
+                  options={customerOptions}
+                  value={
+                    formData.customerId
+                      ? customerOptions.find(option => option.value === formData.customerId)
+                      : null
+                  }
+                  onChange={handleCustomerChange}
+                  placeholder={loading ? "Loading customers..." : "Select Customer"}
+                  isClearable
+                  isSearchable
+                  isLoading={loading}
+                  styles={customSelectStyles}
+                />
+              )}
             </div>
             <div>
               <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
@@ -228,17 +295,17 @@ const customSelectStyles = {
             />
           </div>
 
-          {/* Description */}
+          {/* Remark */}
           <div>
             <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
-              Description
+              Remark
             </label>
             <textarea
-              name="description"
-              value={formData.description}
+              name="remark"
+              value={formData.remark}
               onChange={handleInputChange}
               className="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
-              placeholder="Enter Description"
+              placeholder="Enter Remark"
               rows={4}
               required
             />
@@ -255,9 +322,17 @@ const customSelectStyles = {
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 bg-[#0071E0] text-white rounded-lg hover:bg-blue-600 transition duration-200 transform hover:scale-105"
+              disabled={submitting}
+              className="px-6 py-2.5 bg-[#0071E0] text-white rounded-lg hover:bg-blue-600 transition duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
-              {editItem ? "Update Transaction" : "Create Transaction"}
+              {submitting ? (
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white"></div>
+                  Processing...
+                </div>
+              ) : (
+                editItem ? "Update Transaction" : "Create Transaction"
+              )}
             </button>
           </div>
         </form>

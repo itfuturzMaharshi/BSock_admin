@@ -48,11 +48,11 @@ const navItems: NavItem[] = [
     name: "Cost Module",
     path: "/cost-module",
   },
-  // {
-  //   icon: <i className="fas fa-wallet"></i>,
-  //   name: "Wallet Amount",
-  //   path: "/wallet-amount",
-  // },
+  {
+    icon: <i className="fas fa-wallet"></i>,
+    name: "Wallet Amount",
+    path: "/wallet-amount",
+  },
   {
     icon: <i className="fas fa-cart-shopping"></i>,
     name: "Customer Cart",
