@@ -38,6 +38,32 @@ interface Product {
   specification: string;
 }
 
+interface ValidationErrors {
+  type?: string;
+  products?: string;
+  categories?: string;
+  countries?: string;
+  remark?: string;
+  costType?: string;
+  value?: string;
+  minValue?: string;
+  maxValue?: string;
+  isDeleted?: string;
+}
+
+interface TouchedFields {
+  type: boolean;
+  products: boolean;
+  categories: boolean;
+  countries: boolean;
+  remark: boolean;
+  costType: boolean;
+  value: boolean;
+  minValue: boolean;
+  maxValue: boolean;
+  isDeleted: boolean;
+}
+
 interface CostModuleModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -66,6 +92,19 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [productsList, setProductsList] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState<boolean>(false);
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
+  const [touched, setTouched] = useState<TouchedFields>({
+    type: false,
+    products: false,
+    categories: false,
+    countries: false,
+    remark: false,
+    costType: false,
+    value: false,
+    minValue: false,
+    maxValue: false,
+    isDeleted: false,
+  });
 
   // Static countries list
   const countriesList = ["Hongkong", "Dubai", "Singapore"];
@@ -135,6 +174,12 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
       ...prev,
       [name]: value,
     }));
+    
+    // Validate the field if it's been touched
+    if (touched[name as keyof TouchedFields]) {
+      const error = validateField(name as keyof FormData, value);
+      setValidationErrors(prev => ({ ...prev, [name]: error }));
+    }
   };
 
   // Handle product selection change for react-select
@@ -159,17 +204,136 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
     }));
   };
 
+  const validateField = (name: keyof FormData, value: any): string | undefined => {
+    switch (name) {
+      case 'type':
+        return !value ? 'Type is required' : undefined;
+      case 'products':
+        return formData.type === 'Product' && (!value || (Array.isArray(value) && value.length === 0)) ? 'At least one product is required' : undefined;
+      case 'categories':
+        return formData.type === 'Categories' && (!value || (Array.isArray(value) && value.length === 0)) ? 'At least one category is required' : undefined;
+      case 'countries':
+        return formData.type === 'Country' && (!value || (Array.isArray(value) && value.length === 0)) ? 'At least one country is required' : undefined;
+      case 'remark':
+        return !value || value.trim() === '' ? 'Remark is required' : undefined;
+      case 'costType':
+        return !value ? 'Cost Type is required' : undefined;
+      case 'value':
+        if (!value || value.trim() === '') return 'Value is required';
+        const numericValue = parseFloat(String(value));
+        return isNaN(numericValue) ? 'Value must be a valid number' : numericValue <= 0 ? 'Value must be greater than 0' : undefined;
+      case 'minValue':
+        if (value && value.trim() !== '') {
+          const numericMinValue = parseFloat(String(value));
+          if (isNaN(numericMinValue)) return 'Min Value must be a valid number';
+          if (numericMinValue < 0) return 'Min Value must be greater than or equal to 0';
+        }
+        return undefined;
+      case 'maxValue':
+        if (value && value.trim() !== '') {
+          const numericMaxValue = parseFloat(String(value));
+          if (isNaN(numericMaxValue)) return 'Max Value must be a valid number';
+          if (numericMaxValue < 0) return 'Max Value must be greater than or equal to 0';
+        }
+        return undefined;
+      default:
+        return undefined;
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const errors: ValidationErrors = {};
+    let isValid = true;
+
+    // Only validate required fields
+    const requiredFields: (keyof FormData)[] = [
+      'type', 'remark', 'costType', 'value'
+    ];
+
+    requiredFields.forEach((fieldName) => {
+      const error = validateField(fieldName, formData[fieldName]);
+      if (error) {
+        errors[fieldName] = error;
+        isValid = false;
+      }
+    });
+
+    // Conditional validation based on type
+    if (formData.type === 'Product') {
+      const error = validateField('products', formData.products);
+      if (error) {
+        errors.products = error;
+        isValid = false;
+      }
+    } else if (formData.type === 'Categories') {
+      const error = validateField('categories', formData.categories);
+      if (error) {
+        errors.categories = error;
+        isValid = false;
+      }
+    } else if (formData.type === 'Country') {
+      const error = validateField('countries', formData.countries);
+      if (error) {
+        errors.countries = error;
+        isValid = false;
+      }
+    }
+
+    // Validate min/max values
+    const minError = validateField('minValue', formData.minValue);
+    if (minError) {
+      errors.minValue = minError;
+      isValid = false;
+    }
+
+    const maxError = validateField('maxValue', formData.maxValue);
+    if (maxError) {
+      errors.maxValue = maxError;
+      isValid = false;
+    }
+
+    // Additional validation: minValue should be less than maxValue if both are provided
+    if (formData.minValue && formData.maxValue && formData.minValue.trim() !== '' && formData.maxValue.trim() !== '') {
+      const numericMinValue = parseFloat(String(formData.minValue));
+      const numericMaxValue = parseFloat(String(formData.maxValue));
+      if (!isNaN(numericMinValue) && !isNaN(numericMaxValue) && numericMinValue >= numericMaxValue) {
+        errors.maxValue = 'Max Value must be greater than Min Value';
+        isValid = false;
+      }
+    }
+
+    setValidationErrors(errors);
+    return isValid;
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name } = e.target;
+    setTouched(prev => ({ ...prev, [name]: true }));
+    
+    const error = validateField(name as keyof FormData, formData[name as keyof FormData]);
+    setValidationErrors(prev => ({ ...prev, [name]: error }));
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const type = formData.type;
-    let valid = !!formData.value;
-    if (type === 'Product' && formData.products.length === 0) valid = false;
-    if (type === 'Categories' && formData.categories.length === 0) valid = false;
-    if (['Country', 'ExtraDelivery'].includes(type) && formData.countries.length === 0) valid = false;
-    if (!valid) {
-      toastHelper.error(
-        "Please fill all required fields."
-      );
+    
+    // Mark all fields as touched
+    setTouched({
+      type: true,
+      products: true,
+      categories: true,
+      countries: true,
+      remark: true,
+      costType: true,
+      value: true,
+      minValue: true,
+      maxValue: true,
+      isDeleted: true,
+    });
+
+    const isValid = validateForm();
+    if (!isValid) {
+      toastHelper.error("Please fill all required fields");
       return;
     }
     setIsSubmitting(true);
@@ -284,33 +448,41 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 flex  items-center justify-center bg-black/60 z-50 transition-opacity duration-300">
-      <div className="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-2xl w-full max-w-[800px] max-h-[88vh] overflow-y-auto transform transition-all duration-300 scale-100">
-        {/* Close Icon */}
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-transform duration-200 hover:scale-110"
-          disabled={isSubmitting}
-        >
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
-        </button>
-        <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-8">
-          {title}
-        </h2>
-        <form onSubmit={handleSubmit} className="space-y-8">
+    <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50 transition-opacity duration-300">
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-[800px] max-h-[80vh] transform transition-all duration-300 scale-100 flex flex-col">
+        
+        {/* Sticky Header */}
+        <div className="sticky top-0 bg-white dark:bg-gray-900 p-6 pb-4 border-b border-gray-200 dark:border-gray-700 rounded-t-xl">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
+              {title}
+            </h2>
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-transform duration-200 hover:scale-110"
+              disabled={isSubmitting}
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto p-6">
+          <form id="cost-module-form" onSubmit={handleSubmit} className="space-y-8">
           {/* Type and Cost Type Row */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
@@ -321,7 +493,12 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
                 name="type"
                 value={formData.type}
                 onChange={handleInputChange}
-                className="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
+                onBlur={handleBlur}
+                className={`w-full p-3 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 ${
+                  touched.type && validationErrors.type
+                    ? 'border-red-500 focus:ring-red-500'
+                    : 'border-gray-200 dark:border-gray-700'
+                }`}
                 required
                 disabled={isSubmitting}
               >
@@ -330,6 +507,9 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
                 <option value="Country">Country</option>
                 <option value="ExtraDelivery">Extra Delivery</option>
               </select>
+              {touched.type && validationErrors.type && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{validationErrors.type}</p>
+              )}
             </div>
             <div>
               <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
@@ -339,13 +519,21 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
                 name="costType"
                 value={formData.costType}
                 onChange={handleInputChange}
-                className="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
+                onBlur={handleBlur}
+                className={`w-full p-3 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 ${
+                  touched.costType && validationErrors.costType
+                    ? 'border-red-500 focus:ring-red-500'
+                    : 'border-gray-200 dark:border-gray-700'
+                }`}
                 required
                 disabled={isSubmitting}
               >
                 <option value="Percentage">Percentage</option>
                 <option value="Fixed">Fixed</option>
               </select>
+              {touched.costType && validationErrors.costType && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{validationErrors.costType}</p>
+              )}
             </div>
           </div>
 
@@ -425,11 +613,20 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
               name="remark"
               value={formData.remark}
               onChange={handleInputChange}
-              className="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
+              onBlur={handleBlur}
+              className={`w-full p-3 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 ${
+                touched.remark && validationErrors.remark
+                  ? 'border-red-500 focus:ring-red-500'
+                  : 'border-gray-200 dark:border-gray-700'
+              }`}
               placeholder="Enter Remark"
               rows={4}
+              required
               disabled={isSubmitting}
             />
+            {touched.remark && validationErrors.remark && (
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{validationErrors.remark}</p>
+            )}
           </div>
 
           {/* Value, Min Value, Max Value */}
@@ -443,12 +640,20 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
                 name="value"
                 value={formData.value}
                 onChange={handleInputChange}
-                className="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
+                onBlur={handleBlur}
+                className={`w-full p-3 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 ${
+                  touched.value && validationErrors.value
+                    ? 'border-red-500 focus:ring-red-500'
+                    : 'border-gray-200 dark:border-gray-700'
+                }`}
                 placeholder="Enter Value"
                 required
                 step="0.01"
                 disabled={isSubmitting}
               />
+              {touched.value && validationErrors.value && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{validationErrors.value}</p>
+              )}
             </div>
             <div>
               <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
@@ -459,11 +664,19 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
                 name="minValue"
                 value={formData.minValue}
                 onChange={handleInputChange}
-                className="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
+                onBlur={handleBlur}
+                className={`w-full p-3 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 ${
+                  touched.minValue && validationErrors.minValue
+                    ? 'border-red-500 focus:ring-red-500'
+                    : 'border-gray-200 dark:border-gray-700'
+                }`}
                 placeholder="Enter Min Value"
                 step="0.01"
                 disabled={isSubmitting}
               />
+              {touched.minValue && validationErrors.minValue && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{validationErrors.minValue}</p>
+              )}
             </div>
             <div>
               <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
@@ -474,27 +687,40 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
                 name="maxValue"
                 value={formData.maxValue}
                 onChange={handleInputChange}
-                className="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
+                onBlur={handleBlur}
+                className={`w-full p-3 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 ${
+                  touched.maxValue && validationErrors.maxValue
+                    ? 'border-red-500 focus:ring-red-500'
+                    : 'border-gray-200 dark:border-gray-700'
+                }`}
                 placeholder="Enter Max Value"
                 step="0.01"
                 disabled={isSubmitting}
               />
+              {touched.maxValue && validationErrors.maxValue && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{validationErrors.maxValue}</p>
+              )}
             </div>
           </div>
 
-          {/* Buttons */}
-          <div className="flex justify-end gap-4 pt-6">
+          </form>
+        </div>
+
+        {/* Sticky Footer */}
+        <div className="sticky bottom-0 bg-white dark:bg-gray-900 p-6 pt-4 border-t border-gray-200 dark:border-gray-700 rounded-b-xl">
+          <div className="flex justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-2.5 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition duration-200 transform hover:scale-105"
+              className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition duration-200 text-sm"
               disabled={isSubmitting}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className={`px-6 py-2.5 bg-[#0071E0] text-white rounded-lg hover:bg-blue-600 transition duration-200 transform hover:scale-105 ${
+              form="cost-module-form"
+              className={`px-4 py-2 bg-[#0071E0] text-white rounded-lg hover:bg-blue-600 transition duration-200 text-sm ${
                 isSubmitting ? "opacity-50 cursor-not-allowed" : ""
               }`}
               disabled={isSubmitting}
@@ -506,7 +732,7 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
                 : "Create Cost Module"}
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );
