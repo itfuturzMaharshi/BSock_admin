@@ -17,11 +17,11 @@ const navItems: NavItem[] = [
     // subItems: [{ name: "Ecommerce", path: "/", pro: false }],
   },
 
-  // {
-  //   icon: <i className="fas fa-user-shield"></i>,
-  //   name: "Admins",
-  //   path: "/admin",
-  // },
+  {
+    icon: <i className="fas fa-user-shield"></i>,
+    name: "Admins",
+    path: "/admin",
+  },
   {
     icon: <i className="fa-solid fa-building"></i>,
     name: "Business Requests",
