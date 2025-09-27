@@ -161,15 +161,15 @@ const ProductModal: React.FC<ProductModalProps> = ({
       }
 
       // Validate MOQ vs Stock for 'partial' type
-      const numericStock = parseFloat(String(name === "stock" ? updatedValue : previous.stock)) || 0;
-      const numericMoq = parseFloat(String(name === "moq" ? updatedValue : previous.moq)) || 0;
+      // const numericStock = parseFloat(String(name === "stock" ? updatedValue : previous.stock)) || 0;
+      // const numericMoq = parseFloat(String(name === "moq" ? updatedValue : previous.moq)) || 0;
       const purchaseType = String(name === "purchaseType" ? updatedValue : previous.purchaseType);
       if (purchaseType === "partial") {
-        if (numericMoq >= numericStock) {
-          setMoqError("MOQ must be less than Stock");
-        } else {
+        // if (numericMoq >= numericStock) {
+        //   setMoqError("MOQ must be less than Stock");
+        // } else {
           setMoqError(null);
-        }
+        // }
       } else {
         // For 'full', equality is enforced elsewhere; no error
         setMoqError(null);
@@ -225,14 +225,14 @@ const ProductModal: React.FC<ProductModalProps> = ({
       }
 
       // Validate MOQ vs Stock for 'partial' type
-      const numericStock = parseFloat(String(name === "stock" ? value : previous.stock)) || 0;
-      const numericMoq = parseFloat(String(name === "moq" ? value : previous.moq)) || 0;
+      // const numericStock = parseFloat(String(name === "stock" ? value : previous.stock)) || 0;
+      // const numericMoq = parseFloat(String(name === "moq" ? value : previous.moq)) || 0;
       if (previous.purchaseType === "partial") {
-        if (numericMoq >= numericStock) {
-          setMoqError("MOQ must be less than Stock");
-        } else {
+        // if (numericMoq >= numericStock) {
+        //   setMoqError("MOQ must be less than Stock");
+        // } else {
           setMoqError(null);
-        }
+        // }
       } else {
         setMoqError(null);
       }
@@ -267,12 +267,12 @@ const ProductModal: React.FC<ProductModalProps> = ({
       return;
     }
     // Final MOQ validation before submit
-    const numericStock = parseFloat(String(formData.stock)) || 0;
-    const numericMoq = parseFloat(String(formData.moq)) || 0;
-    if (formData.purchaseType === "partial" && numericMoq >= numericStock) {
-      setMoqError("MOQ must be less than Stock");
-      return;
-    }
+    // const numericStock = parseFloat(String(formData.stock)) || 0;
+    // const numericMoq = parseFloat(String(formData.moq)) || 0;
+    // if (formData.purchaseType === "partial" && numericMoq >= numericStock) {
+    //   setMoqError("MOQ must be less than Stock");
+    //   return;
+    // }
     onSave(formData);
   };
 
