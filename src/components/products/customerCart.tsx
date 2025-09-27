@@ -255,14 +255,14 @@ const CustomerCart: React.FC = () => {
           {/* <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">
             Customer Cart Management
           </h2> */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="flex items-center gap-3 flex-1">
             {/* Search */}
-            <div className="relative">
+            <div className="relative flex-1">
               <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
               <input
                 type="text"
                 placeholder="Search by product title..."
-                className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-64"
+                className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full"
                 value={searchTerm}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                   setSearchTerm(e.target.value);
@@ -270,27 +270,26 @@ const CustomerCart: React.FC = () => {
                 }}
               />
             </div>
-
-            {/* Customer Filter */}
-            <div className="relative">
-              <i className="fas fa-user absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-              <select
-                className="pl-10 pr-8 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm min-w-48 appearance-none"
-                value={selectedCustomer}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                  setSelectedCustomer(e.target.value);
-                  setCurrentPage(1);
-                }}
-              >
-                <option value="">All Customers</option>
-                {customers.map((customer) => (
-                  <option key={customer._id} value={customer._id}>
-                    {customer.name}
-                  </option>
-                ))}
-              </select>
-              <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"></i>
-            </div>
+          </div>
+          {/* Customer Filter */}
+          <div className="relative">
+            <i className="fas fa-user absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+            <select
+              className="pl-10 pr-8 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm min-w-48 appearance-none cursor-pointer"
+              value={selectedCustomer}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                setSelectedCustomer(e.target.value);
+                setCurrentPage(1);
+              }}
+            >
+              <option value="">All Customers</option>
+              {customers.map((customer) => (
+                <option key={customer._id} value={customer._id}>
+                  {customer.name}
+                </option>
+              ))}
+            </select>
+            <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
           </div>
         </div>
 
