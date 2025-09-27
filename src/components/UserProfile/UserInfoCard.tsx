@@ -1,6 +1,6 @@
 // src/components/UserInfoCard.tsx
 import { useState, useEffect } from "react";
-import toastHelper from '../../utils/toastHelper';
+import toastHelper from "../../utils/toastHelper";
 import { UserProfileService } from "../../services/adminProfile/adminProfile.services";
 import SettingsModal from "./SettingsModal";
 
@@ -18,8 +18,14 @@ interface UserInfoCardProps {
   setFormData: React.Dispatch<React.SetStateAction<FormData>>;
 }
 
-export default function UserInfoCard({ formData, handleChange, setFormData }: UserInfoCardProps) {
-  const [activeTab, setActiveTab] = useState<"profile" | "account" | "settings">("profile");
+export default function UserInfoCard({
+  formData,
+  handleChange,
+  setFormData,
+}: UserInfoCardProps) {
+  const [activeTab, setActiveTab] = useState<
+    "profile" | "account" | "settings"
+  >("profile");
   const [showPassword, setShowPassword] = useState<{
     current: boolean;
     new: boolean;
@@ -91,7 +97,8 @@ export default function UserInfoCard({ formData, handleChange, setFormData }: Us
       _id: settings._id,
       bidWalletAllowancePer: settings.bidWalletAllowancePer?.toString() || "",
       readyStockAllowancePer: settings.readyStockAllowancePer?.toString() || "",
-      readyStockOrderProcess: JSON.stringify(settings.readyStockOrderProcess) || "",
+      readyStockOrderProcess:
+        JSON.stringify(settings.readyStockOrderProcess) || "",
       reportTime: settings.reportTime || "",
       timezone: settings.timezone || "Asia/Kolkata",
     });
@@ -267,6 +274,9 @@ export default function UserInfoCard({ formData, handleChange, setFormData }: Us
                 <thead className="bg-gray-50 dark:bg-gray-800">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Wallet Percentage
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Bid Wallet Allowance
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -285,18 +295,24 @@ export default function UserInfoCard({ formData, handleChange, setFormData }: Us
                 </thead>
                 <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                   {settingsList.map((settings) => (
-                    <tr key={settings._id} className="hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <tr
+                      key={settings._id}
+                      className="hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-white/90">
-                        {settings.bidWalletAllowancePer || 'N/A'}%
+                        {settings.percentage ?? "N/A"}%
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-white/90">
-                        {settings.readyStockAllowancePer || 'N/A'}%
+                        {settings.bidWalletAllowancePer || "N/A"}%
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-white/90">
-                        {settings.reportTime || 'N/A'}
+                        {settings.readyStockAllowancePer || "N/A"}%
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-white/90">
-                        {settings.timezone || 'N/A'}
+                        {settings.reportTime || "N/A"}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-white/90">
+                        {settings.timezone || "N/A"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <button
@@ -312,7 +328,9 @@ export default function UserInfoCard({ formData, handleChange, setFormData }: Us
               </table>
             </div>
           ) : (
-            <p className="text-sm text-gray-600 dark:text-gray-400 text-center">No settings found.</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
+              No settings found.
+            </p>
           )}
         </div>
       )}
