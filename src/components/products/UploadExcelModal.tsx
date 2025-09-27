@@ -12,13 +12,43 @@ const UploadExcelModal: React.FC<UploadExcelModalProps> = ({ isOpen, onClose }) 
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleDownloadSample = () => {
-    // Replace with actual sample Excel file URL or generate dynamically
-    const sampleUrl = "https://example.com/sample-product-template.xlsx";
-    const link = document.createElement("a");
-    link.href = sampleUrl;
-    link.download = "sample-product-template.xlsx";
-    link.click();
+  const handleDownloadSample = async () => {
+    try {
+      // Get the base URL from the current location
+      const baseUrl = window.location.pathname.includes('/adminapp') ? '/adminapp' : '';
+      
+      // Try to download the sample Excel file, first from public root, then from public/files
+      let response = await fetch(`${baseUrl}/sample-template.xlsx`);
+      
+      if (!response.ok) {
+        // Fallback to files subdirectory
+        response = await fetch(`${baseUrl}/files/sample-template.xlsx`);
+      }
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "sample-product-template.xlsx";
+      link.style.display = "none";
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up the blob URL
+      window.URL.revokeObjectURL(url);
+      
+      toastHelper.showTost("Sample Excel file downloaded successfully!", "success");
+    } catch (error) {
+      console.error("Download failed:", error);
+      toastHelper.showTost("Failed to download sample file. Please try again.", "error");
+    }
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
