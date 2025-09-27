@@ -484,55 +484,61 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
         <div className="flex-1 overflow-y-auto p-6">
           <form id="cost-module-form" onSubmit={handleSubmit} className="space-y-8">
           {/* Type and Cost Type Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
+              <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                 Type
               </label>
-              <select
-                name="type"
-                value={formData.type}
-                onChange={handleInputChange}
-                onBlur={handleBlur}
-                className={`w-full p-3 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 ${
-                  touched.type && validationErrors.type
-                    ? 'border-red-500 focus:ring-red-500'
-                    : 'border-gray-200 dark:border-gray-700'
-                }`}
-                required
-                disabled={isSubmitting}
-              >
-                <option value="Product">Product</option>
-                <option value="Categories">Categories</option>
-                <option value="Country">Country</option>
-                <option value="ExtraDelivery">Extra Delivery</option>
-              </select>
+              <div className="relative">
+                <select
+                  name="type"
+                  value={formData.type}
+                  onChange={handleInputChange}
+                  onBlur={handleBlur}
+                  className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
+                    touched.type && validationErrors.type
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'border-gray-200 dark:border-gray-700'
+                  }`}
+                  required
+                  disabled={isSubmitting}
+                >
+                  <option value="Product">Product</option>
+                  <option value="Categories">Categories</option>
+                  <option value="Country">Country</option>
+                  <option value="ExtraDelivery">Extra Delivery</option>
+                </select>
+                <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+              </div>
               {touched.type && validationErrors.type && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{validationErrors.type}</p>
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{validationErrors.type}</p>
               )}
             </div>
             <div>
-              <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
+              <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                 Cost Type
               </label>
-              <select
-                name="costType"
-                value={formData.costType}
-                onChange={handleInputChange}
-                onBlur={handleBlur}
-                className={`w-full p-3 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 ${
-                  touched.costType && validationErrors.costType
-                    ? 'border-red-500 focus:ring-red-500'
-                    : 'border-gray-200 dark:border-gray-700'
-                }`}
-                required
-                disabled={isSubmitting}
-              >
-                <option value="Percentage">Percentage</option>
-                <option value="Fixed">Fixed</option>
-              </select>
+              <div className="relative">
+                <select
+                  name="costType"
+                  value={formData.costType}
+                  onChange={handleInputChange}
+                  onBlur={handleBlur}
+                  className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
+                    touched.costType && validationErrors.costType
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'border-gray-200 dark:border-gray-700'
+                  }`}
+                  required
+                  disabled={isSubmitting}
+                >
+                  <option value="Percentage">Percentage</option>
+                  <option value="Fixed">Fixed</option>
+                </select>
+                <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+              </div>
               {touched.costType && validationErrors.costType && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{validationErrors.costType}</p>
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{validationErrors.costType}</p>
               )}
             </div>
           </div>
@@ -540,7 +546,7 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
           {/* Conditional Fields */}
           {formData.type === "Product" && (
             <div>
-              <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
+              <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                 Product
               </label>
               <div className="w-full">
@@ -564,7 +570,7 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
           )}
           {formData.type === "Categories" && (
             <div>
-              <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
+              <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                 Categories
               </label>
               <div className="w-full">
@@ -584,7 +590,7 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
           )}
           {["Country", "ExtraDelivery"].includes(formData.type) && (
             <div>
-              <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
+              <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                 Countries
               </label>
               <div className="w-full">
@@ -606,7 +612,7 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
 
           {/* Remark */}
           <div>
-            <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
+            <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
               Remark
             </label>
             <textarea
@@ -614,7 +620,7 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
               value={formData.remark}
               onChange={handleInputChange}
               onBlur={handleBlur}
-              className={`w-full p-3 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 ${
+              className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm ${
                 touched.remark && validationErrors.remark
                   ? 'border-red-500 focus:ring-red-500'
                   : 'border-gray-200 dark:border-gray-700'
@@ -625,14 +631,14 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
               disabled={isSubmitting}
             />
             {touched.remark && validationErrors.remark && (
-              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{validationErrors.remark}</p>
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{validationErrors.remark}</p>
             )}
           </div>
 
           {/* Value, Min Value, Max Value */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
+              <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                 Value
               </label>
               <input
@@ -641,7 +647,7 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
                 value={formData.value}
                 onChange={handleInputChange}
                 onBlur={handleBlur}
-                className={`w-full p-3 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 ${
+                className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm ${
                   touched.value && validationErrors.value
                     ? 'border-red-500 focus:ring-red-500'
                     : 'border-gray-200 dark:border-gray-700'
@@ -652,11 +658,11 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
                 disabled={isSubmitting}
               />
               {touched.value && validationErrors.value && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{validationErrors.value}</p>
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{validationErrors.value}</p>
               )}
             </div>
             <div>
-              <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
+              <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                 Min Value
               </label>
               <input
@@ -665,7 +671,7 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
                 value={formData.minValue}
                 onChange={handleInputChange}
                 onBlur={handleBlur}
-                className={`w-full p-3 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 ${
+                className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm ${
                   touched.minValue && validationErrors.minValue
                     ? 'border-red-500 focus:ring-red-500'
                     : 'border-gray-200 dark:border-gray-700'
@@ -675,11 +681,11 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
                 disabled={isSubmitting}
               />
               {touched.minValue && validationErrors.minValue && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{validationErrors.minValue}</p>
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{validationErrors.minValue}</p>
               )}
             </div>
             <div>
-              <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
+              <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                 Max Value
               </label>
               <input
@@ -688,7 +694,7 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
                 value={formData.maxValue}
                 onChange={handleInputChange}
                 onBlur={handleBlur}
-                className={`w-full p-3 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 ${
+                className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm ${
                   touched.maxValue && validationErrors.maxValue
                     ? 'border-red-500 focus:ring-red-500'
                     : 'border-gray-200 dark:border-gray-700'
@@ -698,7 +704,7 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
                 disabled={isSubmitting}
               />
               {touched.maxValue && validationErrors.maxValue && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{validationErrors.maxValue}</p>
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{validationErrors.maxValue}</p>
               )}
             </div>
           </div>
@@ -720,9 +726,7 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
             <button
               type="submit"
               form="cost-module-form"
-              className={`px-4 py-2 bg-[#0071E0] text-white rounded-lg hover:bg-blue-600 transition duration-200 text-sm ${
-                isSubmitting ? "opacity-50 cursor-not-allowed" : ""
-              }`}
+              className="px-4 py-2 bg-[#0071E0] text-white rounded-lg hover:bg-blue-600 transition duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={isSubmitting}
             >
               {isSubmitting
