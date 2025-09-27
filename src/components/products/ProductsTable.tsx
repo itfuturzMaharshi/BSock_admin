@@ -299,13 +299,13 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
     <div className="p-4">
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-sm">
         <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-          <div className="flex items-center gap-3">
-            <div className="relative">
+          <div className="flex items-center gap-3 flex-1">
+            <div className="relative flex-1">
               <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
               <input
                 type="text"
                 placeholder="Search by SKU Family ID or other..."
-                className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-64"
+                className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full"
                 value={searchTerm}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                   setSearchTerm(e.target.value);
@@ -313,6 +313,8 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                 }}
               />
             </div>
+          </div>
+          <div className="flex items-center gap-3">
             <div className="relative">
               <select
                 value={statusFilter}
@@ -329,25 +331,25 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
               </select>
               <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
             </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              className="inline-flex items-center gap-2 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
-              onClick={() => setIsUploadModalOpen(true)}
-            >
-              <i className="fas fa-upload text-xs"></i>
-              Upload File
-            </button>
-            <button
-              className="inline-flex items-center gap-2 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
-              onClick={() => {
-                setEditProduct(null);
-                setIsModalOpen(true);
-              }}
-            >
-              <i className="fas fa-plus text-xs"></i>
-              Add Product
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
+                onClick={() => setIsUploadModalOpen(true)}
+              >
+                <i className="fas fa-upload text-xs"></i>
+                Upload File
+              </button>
+              <button
+                className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
+                onClick={() => {
+                  setEditProduct(null);
+                  setIsModalOpen(true);
+                }}
+              >
+                <i className="fas fa-plus text-xs"></i>
+                Add Product
+              </button>
+            </div>
           </div>
         </div>
 
