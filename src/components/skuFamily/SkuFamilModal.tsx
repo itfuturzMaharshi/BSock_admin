@@ -1,3 +1,4 @@
+// SkuFamilyModal.tsx
 import React, { useState, useEffect, useRef } from "react";
 import Swal from "sweetalert2";
 
@@ -42,10 +43,11 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
     description: "",
     colorVariant: "",
     country: "",
-    simType: [] as string[], // Temporary array for checkbox handling
+    simType: [] as string[],
     networkBands: "",
   });
-  const [images, setImages] = useState<File[]>([]);
+  const [newImages, setNewImages] = useState<File[]>([]);
+  const [existingImages, setExistingImages] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [imageError, setImageError] = useState<string>("");
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
@@ -58,10 +60,32 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
   const simOptions = ["E-Sim", "Physical Sim"];
   const networkOptions = ["TMobile", "AT&T"];
   const MAX_IMAGES = 5;
+  const placeholderImage =
+    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTMmyTPv4M5fFPvYLrMzMQcPD_VO34ByNjouQ&s";
+  
+  // Move base URL to the top level so it's available everywhere
+  const base = (import.meta as any).env?.VITE_BASE_URL || "";
+
+  const getImageUrl = (path: string): string => {
+    if (!path) return placeholderImage;
+    const isAbsolute = /^https?:\/\//i.test(path);
+    return isAbsolute ? path : `${base}${path.startsWith("/") ? "" : "/"}${path}`;
+  };
 
   useEffect(() => {
+    console.log("useEffect triggered - isOpen:", isOpen, "editItem:", editItem);
+    
     if (isOpen) {
+      // Always reset states first
+      setNewImages([]);
+      setImageError("");
+      setFormErrors({});
+      setApiError("");
+      
       if (editItem) {
+        console.log("Edit item received:", editItem); // Debug log
+        console.log("Edit item images:", editItem.images); // Debug log
+        
         setFormData({
           name: editItem.name || "",
           code: editItem.code || "",
@@ -72,6 +96,13 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
           simType: editItem.simType ? editItem.simType.split(", ") : [],
           networkBands: editItem.networkBands || "",
         });
+        
+        // Handle existing images properly - ensure it's always an array
+        const images = editItem.images || [];
+        console.log("Setting existing images:", images); // Debug log
+        const imageArray = Array.isArray(images) ? images.filter(img => img && img.trim() !== "") : [];
+        console.log("Filtered existing images:", imageArray); // Debug log
+        setExistingImages(imageArray);
       } else {
         setFormData({
           name: "",
@@ -83,8 +114,22 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
           simType: [],
           networkBands: "",
         });
+        setExistingImages([]);
       }
-      setImages([]);
+    } else {
+      // Clean up when modal closes
+      setFormData({
+        name: "",
+        code: "",
+        brand: "",
+        description: "",
+        colorVariant: "",
+        country: "",
+        simType: [],
+        networkBands: "",
+      });
+      setExistingImages([]);
+      setNewImages([]);
       setImageError("");
       setFormErrors({});
       setApiError("");
@@ -153,37 +198,40 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
     const files = Array.from(e.dataTransfer.files).filter((file) =>
       file.type.startsWith("image/")
     );
-    const totalImages = images.length + files.length;
+    const totalImages = existingImages.length + newImages.length + files.length;
     if (totalImages > MAX_IMAGES) {
       setImageError(`Maximum ${MAX_IMAGES} images allowed`);
       return;
     }
     if (files.length > 0) {
       setImageError("");
-      setImages((prev) => [...prev, ...files]);
+      setNewImages((prev) => [...prev, ...files]);
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files ? Array.from(e.target.files) : [];
-    const totalImages = images.length + files.length;
+    const totalImages = existingImages.length + newImages.length + files.length;
     if (totalImages > MAX_IMAGES) {
       setImageError(`Maximum ${MAX_IMAGES} images allowed`);
       return;
     }
     setImageError("");
-    setImages((prev) => [...prev, ...files]);
+    setNewImages((prev) => [...prev, ...files]);
   };
 
   const handleClick = () => {
     fileInputRef.current?.click();
   };
 
-  const handleRemoveImage = (index: number) => {
-    setImages((prev) => prev.filter((_, i) => i !== index));
-    if (images.length <= MAX_IMAGES) {
-      setImageError("");
-    }
+  const handleRemoveExisting = (index: number) => {
+    setExistingImages((prev) => prev.filter((_, i) => i !== index));
+    setImageError("");
+  };
+
+  const handleRemoveNew = (index: number) => {
+    setNewImages((prev) => prev.filter((_, i) => i !== index));
+    setImageError("");
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -206,9 +254,12 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
       formDataToSend.append("country", formData.country);
       formDataToSend.append("simType", formData.simType.join(", "));
       formDataToSend.append("networkBands", formData.networkBands);
-      images.forEach((image) => {
+      newImages.forEach((image) => {
         formDataToSend.append("images", image);
       });
+      if (editItem && existingImages.length > 0) {
+        formDataToSend.append("keptImages", JSON.stringify(existingImages));
+      }
 
       await onSave(formDataToSend);
       onClose();
@@ -228,6 +279,8 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
   if (!isOpen) return null;
 
   const title = editItem ? "Edit SKU Family" : "Create SKU Family";
+
+  console.log("Rendering modal with existing images:", existingImages); // Debug log
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50 transition-opacity duration-300">
@@ -342,11 +395,6 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
             <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
               Images
             </label>
-            {editItem && editItem.images.length > 0 && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                Current images: {editItem.images.join(", ") || "None"}
-              </p>
-            )}
             <div
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
@@ -365,10 +413,34 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                 className="hidden"
                 disabled={isLoading}
               />
-              {images.length > 0 ? (
+              {existingImages.length + newImages.length > 0 ? (
                 <div className="flex flex-wrap gap-3 justify-start">
-                  {images.map((image, index) => (
-                    <div key={index} className="relative w-20 h-20">
+                  {existingImages.map((url, index) => (
+                    <div key={`existing-${index}`} className="relative w-20 h-20">
+                      <img
+                        src={getImageUrl(url)}
+                        alt={`Existing ${index}`}
+                        className="w-full h-full object-cover rounded-md border border-gray-200 dark:border-gray-600"
+                        onError={(e) => {
+                          console.log("Image load error for URL:", url); // Debug log
+                          (e.currentTarget as HTMLImageElement).src = placeholderImage;
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveExisting(index);
+                        }}
+                        className="absolute top-1 right-1 bg-red-500 text-white w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-600 transition-colors shadow-md"
+                        disabled={isLoading}
+                      >
+                        <i className="fas fa-trash text-xs"></i>
+                      </button>
+                    </div>
+                  ))}
+                  {newImages.map((image, index) => (
+                    <div key={`new-${index}`} className="relative w-20 h-20">
                       <img
                         src={URL.createObjectURL(image)}
                         alt={`Uploaded ${index}`}
@@ -378,7 +450,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleRemoveImage(index);
+                          handleRemoveNew(index);
                         }}
                         className="absolute top-1 right-1 bg-red-500 text-white w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-600 transition-colors shadow-md"
                         disabled={isLoading}

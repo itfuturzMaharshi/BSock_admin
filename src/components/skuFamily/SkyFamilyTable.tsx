@@ -1,3 +1,4 @@
+// SkuFamilyTable.tsx
 import React, { useState, useEffect } from "react";
 import Swal from "sweetalert2";
 import { SkuFamilyService } from "../../services/skuFamily/skuFamily.services";
@@ -48,6 +49,7 @@ const SkuFamilyTable: React.FC = () => {
         searchTerm.trim()
       );
       if (response.data?.docs) {
+        console.log("Fetched SKU Family data:", response.data.docs); // Debug log
         setSkuFamilyData(response.data.docs);
         setTotalDocs(response.data.totalDocs || 0);
       } else {
@@ -81,8 +83,19 @@ const SkuFamilyTable: React.FC = () => {
   };
 
   const handleEdit = (id: string) => {
-    setEditId(id);
-    setIsModalOpen(true);
+    console.log("HandleEdit called with ID:", id);
+    const selectedItem = skuFamilyData.find((item) => item._id === id);
+    console.log("Selected item for edit:", selectedItem); // Debug log
+    
+    // Close modal first to reset state
+    setIsModalOpen(false);
+    setEditId(null);
+    
+    // Use setTimeout to ensure state is reset before opening again
+    setTimeout(() => {
+      setEditId(id);
+      setIsModalOpen(true);
+    }, 50);
   };
 
   const handleDelete = async (id: string) => {

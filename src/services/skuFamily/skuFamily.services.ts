@@ -101,6 +101,7 @@ export class SkuFamilyService {
 
     try {
       const res = await api.post(url, body);
+      console.log("API response for getSkuFamilyList:", res.data); // Debug log
       return res.data;
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Failed to fetch SKU Families';
