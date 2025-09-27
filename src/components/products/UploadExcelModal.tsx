@@ -17,13 +17,8 @@ const UploadExcelModal: React.FC<UploadExcelModalProps> = ({ isOpen, onClose }) 
       // Get the base URL from the current location
       const baseUrl = window.location.pathname.includes('/adminapp') ? '/adminapp' : '';
       
-      // Try to download the sample Excel file, first from public root, then from public/files
-      let response = await fetch(`${baseUrl}/sample-template.xlsx`);
-      
-      if (!response.ok) {
-        // Fallback to files subdirectory
-        response = await fetch(`${baseUrl}/files/sample-template.xlsx`);
-      }
+      // Download the sample Excel file from public root
+      const response = await fetch(`${baseUrl}/sample-template.xlsx`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
