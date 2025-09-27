@@ -115,11 +115,9 @@ export const walletAmountService = {
       const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
       const url = `${baseUrl}/api/${adminRoute}/wallet/transactions`;
       
-      console.log('Wallet transactions URL:', url);
-      console.log('Wallet transactions data:', data);
-      
       const response = await api.post(url, data);
       return response.data.data;
+      
     } catch (error) {
       console.error('Error listing transactions:', error);
       throw error;
