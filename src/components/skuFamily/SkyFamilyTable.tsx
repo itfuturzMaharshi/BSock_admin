@@ -3,6 +3,8 @@ import Swal from "sweetalert2";
 import { SkuFamilyService } from "../../services/skuFamily/skuFamily.services";
 import toastHelper from "../../utils/toastHelper";
 import SkuFamilyModal from "./SkuFamilModal";
+import placeholderImage from "../../../public/images/product/noimage.jpg";
+
 
 interface SkuFamily {
   _id?: string;
@@ -108,8 +110,8 @@ const SkuFamilyTable: React.FC = () => {
 
   const totalPages = Math.ceil(totalDocs / itemsPerPage);
 
-  const placeholderImage =
-    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTMmyTPv4M5fFPvYLrMzMQcPD_VO34ByNjouQ&s";
+  // const placeholderImage =
+  //   "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTMmyTPv4M5fFPvYLrMzMQcPD_VO34ByNjouQ&s";
 
   return (
     <div className="p-4">

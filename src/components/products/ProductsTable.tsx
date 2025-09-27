@@ -8,6 +8,8 @@ import {
   ProductService,
   Product,
 } from "../../services/product/product.services";
+import placeholderImage from "../../../public/images/product/noimage.jpg";
+
 
 // Assuming loggedInAdminId is available (e.g., from context, prop, or auth service)
 interface ProductsTableProps {
@@ -292,8 +294,8 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
     }
   };
 
-  const placeholderImage =
-    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTMmyTPv4M5fFPvYLrMzMQcPD_VO34ByNjouQ&s";
+  // const placeholderImage =
+  //   "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTMmyTPv4M5fFPvYLrMzMQcPD_VO34ByNjouQ&s";
 
   return (
     <div className="p-4">
@@ -417,7 +419,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                       <img
                         src={getProductImageSrc(item) || placeholderImage}
                         alt={getSkuFamilyText(item?.skuFamilyId) || "Product"}
-                        className="w-12 h-12 object-contain rounded-md border border-gray-200 dark:border-gray-600"
+                        className="w-12 h-12 object-cover rounded-md border border-gray-200 dark:border-gray-600"
                         onError={(e) => {
                           (e.currentTarget as HTMLImageElement).src =
                             placeholderImage;
@@ -632,7 +634,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                 <img
                   src={getProductImageSrc(selectedProduct)}
                   alt={getSkuFamilyText(selectedProduct?.skuFamilyId)}
-                  className="w-16 h-16 object-contain rounded-lg border border-gray-200 dark:border-gray-600 flex-shrink-0"
+                  className="w-16 h-16 object-cover rounded-lg border border-gray-200 dark:border-gray-600 flex-shrink-0"
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).src =
                       placeholderImage;
