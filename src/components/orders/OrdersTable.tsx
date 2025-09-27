@@ -330,9 +330,9 @@ const handleUpdateStatus = async (order: Order) => {
           <table className="w-full table-auto">
             <thead className="bg-gray-100 dark:bg-gray-900">
               <tr>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
+                {/* <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
                   Order ID
-                </th>
+                </th> */}
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
                   Customer
                 </th>
@@ -380,9 +380,9 @@ const handleUpdateStatus = async (order: Order) => {
                     key={order._id}
                     className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                   >
-                    <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-gray-200">
+                    {/* <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-gray-200">
                       {order._id}
-                    </td>
+                    </td> */}
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                       {order?.customerId?.name || order?.customerId?.email || order?.customerId?._id}
                     </td>

@@ -159,7 +159,7 @@ const CostModuleTable: React.FC = () => {
             }}
           >
             <i className="fas fa-plus text-xs"></i>
-            Add Cost Module
+            Add Cost
           </button>
         </div>
 
