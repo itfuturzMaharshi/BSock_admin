@@ -26,6 +26,7 @@ import WalletAmount from "./pages/WalletAmount/WalletAmount";
 import CustomerCart from "./pages/Customer/CustomerCart";
 import BusinessRequests from "./pages/BusinessRequests/BusinessRequests";
 import Orders from "./pages/Orders/Orders";
+import CurrencyConversion from "./pages/CurrencyConversion/CurrencyConversion";
 export default function App() {
   return (
     <>
@@ -44,6 +45,7 @@ export default function App() {
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/blank" element={<Blank />} />
             <Route path="/admin" element={<Admins />} />
+            <Route path="/currency-conversion" element={<CurrencyConversion />} />
             <Route path="/business-requests" element={<BusinessRequests />} />
             <Route path="/sku-family" element={<SkuFamily />} />
             <Route path="/products" element={<Products />} />
