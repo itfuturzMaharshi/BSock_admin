@@ -9,7 +9,7 @@ const CostModule = () => {
         title="React.js Sku Family Dashboard | TailAdmin - Next.js Admin Dashboard Template"
         description="This is React.js Sku Family Dashboard page for TailAdmin - React.js Tailwind CSS Admin Dashboard Template"
       />
-      <PageBreadcrumb pageTitle="Cost Module" />
+      <PageBreadcrumb pageTitle="Cost Management" />
       <div className="space-y-6">
         <CostModuleTable />
       </div>

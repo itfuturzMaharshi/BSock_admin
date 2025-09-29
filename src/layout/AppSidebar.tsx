@@ -45,7 +45,7 @@ const navItems: NavItem[] = [
   },
   {
     icon: <i className="fas fa-calculator"></i>,
-    name: "Cost Module",
+    name: "Cost Management",
     path: "/cost-module",
   },
   {
