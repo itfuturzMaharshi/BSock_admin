@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { ProductService, Product } from "../../services/product/product.services";
+import {
+  ProductService,
+  Product,
+} from "../../services/product/product.services";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
@@ -83,13 +86,17 @@ const ProductModal: React.FC<ProductModalProps> = ({
     isFlashDeal: "false",
     expiryTime: "",
   });
-  const [skuFamilies, setSkuFamilies] = useState<{ _id: string; name: string }[]>([]);
+  const [skuFamilies, setSkuFamilies] = useState<
+    { _id: string; name: string }[]
+  >([]);
   const [skuLoading, setSkuLoading] = useState<boolean>(false);
   const [skuError, setSkuError] = useState<string | null>(null);
   const [dateError, setDateError] = useState<string | null>(null);
   const [moqError, setMoqError] = useState<string | null>(null);
   const [priceError, setPriceError] = useState<string | null>(null);
-  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>(
+    {}
+  );
   const [touched, setTouched] = useState<TouchedFields>({
     skuFamilyId: false,
     simType: false,
@@ -135,9 +142,10 @@ const ProductModal: React.FC<ProductModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       if (editItem) {
-        const skuId = typeof editItem.skuFamilyId === "object"
-          ? (editItem.skuFamilyId._id || "")
-          : (editItem.skuFamilyId || "");
+        const skuId =
+          typeof editItem.skuFamilyId === "object"
+            ? editItem.skuFamilyId._id || ""
+            : editItem.skuFamilyId || "";
         setFormData({
           skuFamilyId: skuId,
           simType: editItem.simType,
@@ -178,14 +186,17 @@ const ProductModal: React.FC<ProductModalProps> = ({
   }, [isOpen, editItem]);
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
   ) => {
     const { name, value, type } = e.target;
     setFormData((previous) => {
       let updatedValue: any;
       if (type === "checkbox") {
         const checked = (e.target as HTMLInputElement).checked;
-        updatedValue = name === "isFlashDeal" ? (checked ? "true" : "false") : checked;
+        updatedValue =
+          name === "isFlashDeal" ? (checked ? "true" : "false") : checked;
       } else if (type === "number") {
         updatedValue = parseFloat(value) || 0;
       } else {
@@ -208,18 +219,23 @@ const ProductModal: React.FC<ProductModalProps> = ({
 
       // If stock changes and purchaseType is 'full', keep moq in sync
       if (name === "stock" && previous.purchaseType === "full") {
-        next.moq = typeof updatedValue === "number" ? updatedValue : parseFloat(String(updatedValue)) || 0;
+        next.moq =
+          typeof updatedValue === "number"
+            ? updatedValue
+            : parseFloat(String(updatedValue)) || 0;
       }
 
       // Validate MOQ vs Stock for 'partial' type
       // const numericStock = parseFloat(String(name === "stock" ? updatedValue : previous.stock)) || 0;
       // const numericMoq = parseFloat(String(name === "moq" ? updatedValue : previous.moq)) || 0;
-      const purchaseType = String(name === "purchaseType" ? updatedValue : previous.purchaseType);
+      const purchaseType = String(
+        name === "purchaseType" ? updatedValue : previous.purchaseType
+      );
       if (purchaseType === "partial") {
         // if (numericMoq >= numericStock) {
         //   setMoqError("MOQ must be less than Stock");
         // } else {
-          setMoqError(null);
+        setMoqError(null);
         // }
       } else {
         // For 'full', equality is enforced elsewhere; no error
@@ -232,7 +248,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
     // Validate the field if it's been touched
     if (touched[name as keyof TouchedFields]) {
       const error = validateField(name as keyof FormData, value);
-      setValidationErrors(prev => ({ ...prev, [name]: error }));
+      setValidationErrors((prev) => ({ ...prev, [name]: error }));
     }
   };
 
@@ -243,11 +259,11 @@ const ProductModal: React.FC<ProductModalProps> = ({
         expiryTime: date.toISOString(),
       }));
       setDateError(null);
-      
+
       // Validate the field if it's been touched
       if (touched.expiryTime) {
-        const error = validateField('expiryTime', date.toISOString());
-        setValidationErrors(prev => ({ ...prev, expiryTime: error }));
+        const error = validateField("expiryTime", date.toISOString());
+        setValidationErrors((prev) => ({ ...prev, expiryTime: error }));
       }
     } else {
       setFormData((prev) => ({
@@ -255,11 +271,11 @@ const ProductModal: React.FC<ProductModalProps> = ({
         expiryTime: "",
       }));
       setDateError("Please select a valid future date and time");
-      
+
       // Validate the field if it's been touched
       if (touched.expiryTime) {
-        const error = validateField('expiryTime', "");
-        setValidationErrors(prev => ({ ...prev, expiryTime: error }));
+        const error = validateField("expiryTime", "");
+        setValidationErrors((prev) => ({ ...prev, expiryTime: error }));
       }
     }
   };
@@ -300,7 +316,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
         // if (numericMoq >= numericStock) {
         //   setMoqError("MOQ must be less than Stock");
         // } else {
-          setMoqError(null);
+        setMoqError(null);
         // }
       } else {
         setMoqError(null);
@@ -320,38 +336,58 @@ const ProductModal: React.FC<ProductModalProps> = ({
     }
   };
 
-  const validateField = (name: keyof FormData, value: any): string | undefined => {
+  const validateField = (
+    name: keyof FormData,
+    value: any
+  ): string | undefined => {
     switch (name) {
-      case 'skuFamilyId':
-        return !value ? 'SKU Family is required' : undefined;
-      case 'simType':
-        return !value ? 'SIM Type is required' : undefined;
-      case 'color':
-        return !value ? 'Color is required' : undefined;
-      case 'ram':
-        return !value ? 'RAM is required' : undefined;
-      case 'storage':
-        return !value ? 'Storage is required' : undefined;
-      case 'condition':
-        return !value ? 'Condition is required' : undefined;
-      case 'price':
-        if (value === '' || value === null || value === undefined) return 'Price is required';
+      case "skuFamilyId":
+        return !value ? "SKU Family is required" : undefined;
+      case "simType":
+        return !value ? "SIM Type is required" : undefined;
+      case "color":
+        return !value ? "Color is required" : undefined;
+      case "ram":
+        return !value ? "RAM is required" : undefined;
+      case "storage":
+        return !value ? "Storage is required" : undefined;
+      case "condition":
+        return !value ? "Condition is required" : undefined;
+      case "price":
+        if (value === "" || value === null || value === undefined)
+          return "Price is required";
         const numericPrice = parseFloat(String(value));
-        return isNaN(numericPrice) ? 'Price must be a valid number' : numericPrice <= 0 ? 'Price must be greater than 0' : undefined;
-      case 'stock':
-        if (value === '' || value === null || value === undefined) return 'Stock is required';
+        return isNaN(numericPrice)
+          ? "Price must be a valid number"
+          : numericPrice <= 0
+          ? "Price must be greater than 0"
+          : undefined;
+      case "stock":
+        if (value === "" || value === null || value === undefined)
+          return "Stock is required";
         const numericStock = parseFloat(String(value));
-        return isNaN(numericStock) ? 'Stock must be a valid number' : numericStock <= 0 ? 'Stock must be greater than 0' : undefined;
-      case 'country':
-        return !value ? 'Country is required' : undefined;
-      case 'moq':
-        if (value === '' || value === null || value === undefined) return 'MOQ is required';
+        return isNaN(numericStock)
+          ? "Stock must be a valid number"
+          : numericStock <= 0
+          ? "Stock must be greater than 0"
+          : undefined;
+      case "country":
+        return !value ? "Country is required" : undefined;
+      case "moq":
+        if (value === "" || value === null || value === undefined)
+          return "MOQ is required";
         const numericMoq = parseFloat(String(value));
-        return isNaN(numericMoq) ? 'MOQ must be a valid number' : numericMoq <= 0 ? 'MOQ must be greater than 0' : undefined;
-      case 'purchaseType':
-        return !value ? 'Purchase Type is required' : undefined;
-      case 'expiryTime':
-        return formData.isFlashDeal === 'true' && !value ? 'Expiry time is required for Flash Deals' : undefined;
+        return isNaN(numericMoq)
+          ? "MOQ must be a valid number"
+          : numericMoq <= 0
+          ? "MOQ must be greater than 0"
+          : undefined;
+      case "purchaseType":
+        return !value ? "Purchase Type is required" : undefined;
+      case "expiryTime":
+        return formData.isFlashDeal === "true" && !value
+          ? "Expiry time is required for Flash Deals"
+          : undefined;
       default:
         return undefined;
     }
@@ -363,8 +399,17 @@ const ProductModal: React.FC<ProductModalProps> = ({
 
     // Only validate required fields
     const requiredFields: (keyof FormData)[] = [
-      'skuFamilyId', 'simType', 'color', 'ram', 'storage', 
-      'condition', 'price', 'stock', 'country', 'moq', 'purchaseType'
+      "skuFamilyId",
+      "simType",
+      "color",
+      "ram",
+      "storage",
+      "condition",
+      "price",
+      "stock",
+      "country",
+      "moq",
+      "purchaseType",
     ];
 
     requiredFields.forEach((fieldName) => {
@@ -376,8 +421,8 @@ const ProductModal: React.FC<ProductModalProps> = ({
     });
 
     // Validate expiry time only if flash deal is enabled
-    if (formData.isFlashDeal === 'true') {
-      const error = validateField('expiryTime', formData.expiryTime);
+    if (formData.isFlashDeal === "true") {
+      const error = validateField("expiryTime", formData.expiryTime);
       if (error) {
         errors.expiryTime = error;
         isValid = false;
@@ -387,8 +432,13 @@ const ProductModal: React.FC<ProductModalProps> = ({
     // Additional MOQ validation
     const numericStock = parseFloat(String(formData.stock));
     const numericMoq = parseFloat(String(formData.moq));
-    if (formData.purchaseType === 'partial' && !isNaN(numericStock) && !isNaN(numericMoq) && numericMoq >= numericStock) {
-      errors.moq = 'MOQ must be less than Stock';
+    if (
+      formData.purchaseType === "partial" &&
+      !isNaN(numericStock) &&
+      !isNaN(numericMoq) &&
+      numericMoq >= numericStock
+    ) {
+      errors.moq = "MOQ must be less than Stock";
       isValid = false;
     }
 
@@ -396,17 +446,22 @@ const ProductModal: React.FC<ProductModalProps> = ({
     return isValid;
   };
 
-  const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleBlur = (
+    e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
     const { name } = e.target;
-    setTouched(prev => ({ ...prev, [name]: true }));
-    
-    const error = validateField(name as keyof FormData, formData[name as keyof FormData]);
-    setValidationErrors(prev => ({ ...prev, [name]: error }));
+    setTouched((prev) => ({ ...prev, [name]: true }));
+
+    const error = validateField(
+      name as keyof FormData,
+      formData[name as keyof FormData]
+    );
+    setValidationErrors((prev) => ({ ...prev, [name]: error }));
   };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
+
     // Mark all fields as touched
     setTouched({
       skuFamilyId: true,
@@ -426,16 +481,16 @@ const ProductModal: React.FC<ProductModalProps> = ({
     });
 
     const isValid = validateForm();
-    console.log('Form validation result:', isValid);
-    console.log('Current validation errors:', validationErrors);
-    console.log('Form data:', formData);
+    console.log("Form validation result:", isValid);
+    console.log("Current validation errors:", validationErrors);
+    console.log("Form data:", formData);
 
     if (!isValid) {
-      console.log('Form validation failed, not submitting');
+      console.log("Form validation failed, not submitting");
       return;
     }
 
-    console.log('Form is valid, submitting...');
+    console.log("Form is valid, submitting...");
     onSave(formData);
   };
 
@@ -477,419 +532,465 @@ const ProductModal: React.FC<ProductModalProps> = ({
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-6">
           <form id="product-form" onSubmit={handleSubmit} className="space-y-6">
-          {/* SKU Family ID, Country, and Sim Type Row */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                SKU Family ID
-              </label>
-              <div className="relative">
-                <select
-                  name="skuFamilyId"
-                  value={formData.skuFamilyId}
-                  onChange={handleInputChange}
-                  onBlur={handleBlur}
-                  className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
-                    touched.skuFamilyId && validationErrors.skuFamilyId
-                      ? 'border-red-500 focus:ring-red-500'
-                      : 'border-gray-200 dark:border-gray-700'
-                  }`}
-                  required
-                  disabled={skuLoading || skuError !== null}
-                >
-                  <option value="" disabled>
-                    {skuLoading ? "Loading SKU Families..." : skuError ? "Error loading SKU Families" : "Select SKU Family"}
-                  </option>
-                  {skuFamilies.map((sku) => (
-                    <option key={sku._id} value={sku._id}>
-                      {sku.name}
+            {/* SKU Family ID, Country, and Sim Type Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                  SKU Family ID
+                </label>
+                <div className="relative">
+                  <select
+                    name="skuFamilyId"
+                    value={formData.skuFamilyId}
+                    onChange={handleInputChange}
+                    onBlur={handleBlur}
+                    className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
+                      touched.skuFamilyId && validationErrors.skuFamilyId
+                        ? "border-red-500 focus:ring-red-500"
+                        : "border-gray-200 dark:border-gray-700"
+                    }`}
+                    required
+                    disabled={skuLoading || skuError !== null}
+                  >
+                    <option value="" disabled>
+                      {skuLoading
+                        ? "Loading SKU Families..."
+                        : skuError
+                        ? "Error loading SKU Families"
+                        : "Select SKU Family"}
                     </option>
-                  ))}
-                </select>
-                <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+                    {skuFamilies.map((sku) => (
+                      <option key={sku._id} value={sku._id}>
+                        {sku.name}
+                      </option>
+                    ))}
+                  </select>
+                  <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+                </div>
+                {touched.skuFamilyId && validationErrors.skuFamilyId && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {validationErrors.skuFamilyId}
+                  </p>
+                )}
+                {skuError && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {skuError}
+                  </p>
+                )}
               </div>
-              {touched.skuFamilyId && validationErrors.skuFamilyId && (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{validationErrors.skuFamilyId}</p>
-              )}
-              {skuError && (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{skuError}</p>
-              )}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                Country
-              </label>
-              <div className="relative">
-                <select
-                  name="country"
-                  value={formData.country}
-                  onChange={handleInputChange}
-                  onBlur={handleBlur}
-                  className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
-                    touched.country && validationErrors.country
-                      ? 'border-red-500 focus:ring-red-500'
-                      : 'border-gray-200 dark:border-gray-700'
-                  }`}
-                  required
-                >
-                  <option value="" disabled>
-                    Select Country
-                  </option>
-                  {countryOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
+              <div>
+                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                  Country
+                </label>
+                <div className="relative">
+                  <select
+                    name="country"
+                    value={formData.country}
+                    onChange={handleInputChange}
+                    onBlur={handleBlur}
+                    className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
+                      touched.country && validationErrors.country
+                        ? "border-red-500 focus:ring-red-500"
+                        : "border-gray-200 dark:border-gray-700"
+                    }`}
+                    required
+                  >
+                    <option value="" disabled>
+                      Select Country
                     </option>
-                  ))}
-                </select>
-                <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+                    {countryOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                  <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+                </div>
+                {touched.country && validationErrors.country && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {validationErrors.country}
+                  </p>
+                )}
               </div>
-              {touched.country && validationErrors.country && (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{validationErrors.country}</p>
-              )}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                SIM Type
-              </label>
-              <div className="relative">
-                <select
-                  name="simType"
-                  value={formData.simType}
-                  onChange={handleInputChange}
-                  onBlur={handleBlur}
-                  className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
-                    touched.simType && validationErrors.simType
-                      ? 'border-red-500 focus:ring-red-500'
-                      : 'border-gray-200 dark:border-gray-700'
-                  }`}
-                  required
-                >
-                  <option value="" disabled>
-                    Select SIM Type
-                  </option>
-                  {simOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
+              <div>
+                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                  SIM Type
+                </label>
+                <div className="relative">
+                  <select
+                    name="simType"
+                    value={formData.simType}
+                    onChange={handleInputChange}
+                    onBlur={handleBlur}
+                    className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
+                      touched.simType && validationErrors.simType
+                        ? "border-red-500 focus:ring-red-500"
+                        : "border-gray-200 dark:border-gray-700"
+                    }`}
+                    required
+                  >
+                    <option value="" disabled>
+                      Select SIM Type
                     </option>
-                  ))}
-                </select>
-                <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+                    {simOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                  <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+                </div>
+                {touched.simType && validationErrors.simType && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {validationErrors.simType}
+                  </p>
+                )}
               </div>
-              {touched.simType && validationErrors.simType && (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{validationErrors.simType}</p>
-              )}
             </div>
-          </div>
 
-          {/* Color, RAM, and Storage Row */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                Color
-              </label>
-              <div className="relative">
-                <select
-                  name="color"
-                  value={formData.color}
-                  onChange={handleInputChange}
-                  onBlur={handleBlur}
-                  className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
-                    touched.color && validationErrors.color
-                      ? 'border-red-500 focus:ring-red-500'
-                      : 'border-gray-200 dark:border-gray-700'
-                  }`}
-                  required
-                >
-                  <option value="" disabled>
-                    Select Color
-                  </option>
-                  {colorOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
+            {/* Color, RAM, and Storage Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                  Color
+                </label>
+                <div className="relative">
+                  <select
+                    name="color"
+                    value={formData.color}
+                    onChange={handleInputChange}
+                    onBlur={handleBlur}
+                    className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
+                      touched.color && validationErrors.color
+                        ? "border-red-500 focus:ring-red-500"
+                        : "border-gray-200 dark:border-gray-700"
+                    }`}
+                    required
+                  >
+                    <option value="" disabled>
+                      Select Color
                     </option>
-                  ))}
-                </select>
-                <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+                    {colorOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                  <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+                </div>
+                {touched.color && validationErrors.color && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {validationErrors.color}
+                  </p>
+                )}
               </div>
-              {touched.color && validationErrors.color && (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{validationErrors.color}</p>
-              )}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                RAM
-              </label>
-              <div className="relative">
-                <select
-                  name="ram"
-                  value={formData.ram}
-                  onChange={handleInputChange}
-                  onBlur={handleBlur}
-                  className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
-                    touched.ram && validationErrors.ram
-                      ? 'border-red-500 focus:ring-red-500'
-                      : 'border-gray-200 dark:border-gray-700'
-                  }`}
-                  required
-                >
-                  <option value="" disabled>
-                    Select RAM
-                  </option>
-                  {ramOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
+              <div>
+                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                  RAM
+                </label>
+                <div className="relative">
+                  <select
+                    name="ram"
+                    value={formData.ram}
+                    onChange={handleInputChange}
+                    onBlur={handleBlur}
+                    className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
+                      touched.ram && validationErrors.ram
+                        ? "border-red-500 focus:ring-red-500"
+                        : "border-gray-200 dark:border-gray-700"
+                    }`}
+                    required
+                  >
+                    <option value="" disabled>
+                      Select RAM
                     </option>
-                  ))}
-                </select>
-                <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+                    {ramOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                  <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+                </div>
+                {touched.ram && validationErrors.ram && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {validationErrors.ram}
+                  </p>
+                )}
               </div>
-              {touched.ram && validationErrors.ram && (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{validationErrors.ram}</p>
-              )}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                Storage
-              </label>
-              <div className="relative">
-                <select
-                  name="storage"
-                  value={formData.storage}
-                  onChange={handleInputChange}
-                  onBlur={handleBlur}
-                  className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
-                    touched.storage && validationErrors.storage
-                      ? 'border-red-500 focus:ring-red-500'
-                      : 'border-gray-200 dark:border-gray-700'
-                  }`}
-                  required
-                >
-                  <option value="" disabled>
-                    Select Storage
-                  </option>
-                  {storageOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
+              <div>
+                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                  Storage
+                </label>
+                <div className="relative">
+                  <select
+                    name="storage"
+                    value={formData.storage}
+                    onChange={handleInputChange}
+                    onBlur={handleBlur}
+                    className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
+                      touched.storage && validationErrors.storage
+                        ? "border-red-500 focus:ring-red-500"
+                        : "border-gray-200 dark:border-gray-700"
+                    }`}
+                    required
+                  >
+                    <option value="" disabled>
+                      Select Storage
                     </option>
-                  ))}
-                </select>
-                <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+                    {storageOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                  <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+                </div>
+                {touched.storage && validationErrors.storage && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {validationErrors.storage}
+                  </p>
+                )}
               </div>
-              {touched.storage && validationErrors.storage && (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{validationErrors.storage}</p>
-              )}
             </div>
-          </div>
 
-          {/* Condition, Price, and Stock Row */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                Condition
-              </label>
-              <div className="relative">
-                <select
-                  name="condition"
-                  value={formData.condition}
-                  onChange={handleInputChange}
-                  onBlur={handleBlur}
-                  className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
-                    touched.condition && validationErrors.condition
-                      ? 'border-red-500 focus:ring-red-500'
-                      : 'border-gray-200 dark:border-gray-700'
-                  }`}
-                  required
-                >
-                  <option value="" disabled>
-                    Select Condition
-                  </option>
-                  {conditionOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
+            {/* Condition, Price, and Stock Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                  Condition
+                </label>
+                <div className="relative">
+                  <select
+                    name="condition"
+                    value={formData.condition}
+                    onChange={handleInputChange}
+                    onBlur={handleBlur}
+                    className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
+                      touched.condition && validationErrors.condition
+                        ? "border-red-500 focus:ring-red-500"
+                        : "border-gray-200 dark:border-gray-700"
+                    }`}
+                    required
+                  >
+                    <option value="" disabled>
+                      Select Condition
                     </option>
-                  ))}
-                </select>
-                <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+                    {conditionOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                  <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+                </div>
+                {touched.condition && validationErrors.condition && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {validationErrors.condition}
+                  </p>
+                )}
               </div>
-              {touched.condition && validationErrors.condition && (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{validationErrors.condition}</p>
-              )}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                Price
-              </label>
-              <input
-                type="text"
-                name="price"
-                value={formData.price}
-                onChange={(e) => handleNumericChange("price", e, true)}
-                onBlur={handleBlur}
-                inputMode="decimal"
-                className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm ${
-                  touched.price && validationErrors.price
-                    ? 'border-red-500 focus:ring-red-500'
-                    : 'border-gray-200 dark:border-gray-700'
-                }`}
-                placeholder="Enter Price"
-                required
-              />
-              {touched.price && validationErrors.price && (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{validationErrors.price}</p>
-              )}
-              {priceError && (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{priceError}</p>
-              )}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                Stock
-              </label>
-              <input
-                type="text"
-                name="stock"
-                value={formData.stock}
-                onChange={(e) => handleNumericChange("stock", e, false)}
-                onBlur={handleBlur}
-                inputMode="numeric"
-                className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm ${
-                  touched.stock && validationErrors.stock
-                    ? 'border-red-500 focus:ring-red-500'
-                    : 'border-gray-200 dark:border-gray-700'
-                }`}
-                placeholder="Enter Stock"
-                required
-              />
-              {touched.stock && validationErrors.stock && (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{validationErrors.stock}</p>
-              )}
-            </div>
-          </div>
-
-          {/* MOQ and Purchase Type Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                MOQ
-              </label>
-              <input
-                type="text"
-                name="moq"
-                value={formData.moq}
-                onChange={(e) => handleNumericChange("moq", e, false)}
-                onBlur={handleBlur}
-                inputMode="numeric"
-                className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm ${
-                  touched.moq && validationErrors.moq
-                    ? 'border-red-500 focus:ring-red-500'
-                    : 'border-gray-200 dark:border-gray-700'
-                }`}
-                placeholder="Enter Minimum Order Quantity"
-                required
-                disabled={formData.purchaseType === "full"}
-              />
-              {touched.moq && validationErrors.moq && (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{validationErrors.moq}</p>
-              )}
-              {moqError && formData.purchaseType === "partial" && (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{moqError}</p>
-              )}
-              {formData.purchaseType === "full" && (
-                <p className="mt-1 text-xs text-gray-500">MOQ equals Stock for Full purchase type.</p>
-              )}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                Purchase Type
-              </label>
-              <div className="relative">
-                <select
-                  name="purchaseType"
-                  value={formData.purchaseType}
-                  onChange={handleInputChange}
+              <div>
+                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                  Price
+                </label>
+                <input
+                  type="text"
+                  name="price"
+                  value={formData.price}
+                  onChange={(e) => handleNumericChange("price", e, true)}
                   onBlur={handleBlur}
-                  className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
-                    touched.purchaseType && validationErrors.purchaseType
-                      ? 'border-red-500 focus:ring-red-500'
-                      : 'border-gray-200 dark:border-gray-700'
+                  inputMode="decimal"
+                  className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm ${
+                    touched.price && validationErrors.price
+                      ? "border-red-500 focus:ring-red-500"
+                      : "border-gray-200 dark:border-gray-700"
                   }`}
+                  placeholder="Enter Price"
                   required
-                >
-                  <option value="partial">Partial</option>
-                  <option value="full">Full</option>
-                </select>
-                <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+                />
+                {touched.price && validationErrors.price && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {validationErrors.price}
+                  </p>
+                )}
+                {priceError && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {priceError}
+                  </p>
+                )}
               </div>
-              {touched.purchaseType && validationErrors.purchaseType && (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{validationErrors.purchaseType}</p>
-              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                  Stock
+                </label>
+                <input
+                  type="text"
+                  name="stock"
+                  value={formData.stock}
+                  onChange={(e) => handleNumericChange("stock", e, false)}
+                  onBlur={handleBlur}
+                  inputMode="numeric"
+                  className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm ${
+                    touched.stock && validationErrors.stock
+                      ? "border-red-500 focus:ring-red-500"
+                      : "border-gray-200 dark:border-gray-700"
+                  }`}
+                  placeholder="Enter Stock"
+                  required
+                />
+                {touched.stock && validationErrors.stock && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {validationErrors.stock}
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
 
-          {/* Expiry Time, Is Negotiable, and Is Flash Deal Row */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Flash Deal Expiry Time */}
-            <div>
-              <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                Expiry Time
-              </label>
-              <DatePicker
-                selected={formData.expiryTime ? new Date(formData.expiryTime) : null}
-                onChange={handleDateChange}
-                onBlur={() => {
-                  setTouched(prev => ({ ...prev, expiryTime: true }));
-                  const error = validateField('expiryTime', formData.expiryTime);
-                  setValidationErrors(prev => ({ ...prev, expiryTime: error }));
-                }}
-                showTimeSelect
-                timeFormat="HH:mm"
-                timeIntervals={15}
-                dateFormat="yyyy-MM-dd HH:mm"
-                placeholderText="Select date and time"
-                className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm ${
-                  touched.expiryTime && validationErrors.expiryTime
-                    ? 'border-red-500 focus:ring-red-500'
-                    : 'border-gray-200 dark:border-gray-700'
-                }`}
-                minDate={new Date()}
-                required={formData.isFlashDeal === "true"}
-              />
-              {touched.expiryTime && validationErrors.expiryTime && (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{validationErrors.expiryTime}</p>
-              )}
-              {dateError && (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{dateError}</p>
-              )}
+            {/* MOQ and Purchase Type Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                  MOQ
+                </label>
+                <input
+                  type="text"
+                  name="moq"
+                  value={formData.moq}
+                  onChange={(e) => handleNumericChange("moq", e, false)}
+                  onBlur={handleBlur}
+                  inputMode="numeric"
+                  className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm ${
+                    touched.moq && validationErrors.moq
+                      ? "border-red-500 focus:ring-red-500"
+                      : "border-gray-200 dark:border-gray-700"
+                  }`}
+                  placeholder="Enter Minimum Order Quantity"
+                  required
+                  disabled={formData.purchaseType === "full"}
+                />
+                {touched.moq && validationErrors.moq && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {validationErrors.moq}
+                  </p>
+                )}
+                {moqError && formData.purchaseType === "partial" && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {moqError}
+                  </p>
+                )}
+                {formData.purchaseType === "full" && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    MOQ equals Stock for Full purchase type.
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                  Purchase Type
+                </label>
+                <div className="relative">
+                  <select
+                    name="purchaseType"
+                    value={formData.purchaseType}
+                    onChange={handleInputChange}
+                    onBlur={handleBlur}
+                    className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
+                      touched.purchaseType && validationErrors.purchaseType
+                        ? "border-red-500 focus:ring-red-500"
+                        : "border-gray-200 dark:border-gray-700"
+                    }`}
+                    required
+                  >
+                    <option value="partial">Partial</option>
+                    <option value="full">Full</option>
+                  </select>
+                  <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+                </div>
+                {touched.purchaseType && validationErrors.purchaseType && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {validationErrors.purchaseType}
+                  </p>
+                )}
+              </div>
             </div>
-            
-            {/* Is Negotiable Checkbox */}
-            <div className="flex items-center mt-6">
-              <input
-                type="checkbox"
-                name="isNegotiable"
-                checked={formData.isNegotiable}
-                onChange={handleInputChange}
-                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 transition duration-200"
-              />
-              <label className="ml-2 text-sm font-medium text-gray-950 dark:text-gray-200">
-                Is Negotiable
-              </label>
+
+            {/* Expiry Time, Is Negotiable, and Is Flash Deal Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Flash Deal Expiry Time */}
+              <div>
+                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                  Expiry Time
+                </label>
+                <DatePicker
+                  selected={
+                    formData.expiryTime ? new Date(formData.expiryTime) : null
+                  }
+                  onChange={handleDateChange}
+                  onBlur={() => {
+                    setTouched((prev) => ({ ...prev, expiryTime: true }));
+                    const error = validateField(
+                      "expiryTime",
+                      formData.expiryTime
+                    );
+                    setValidationErrors((prev) => ({
+                      ...prev,
+                      expiryTime: error,
+                    }));
+                  }}
+                  showTimeSelect
+                  timeFormat="HH:mm"
+                  timeIntervals={15}
+                  dateFormat="yyyy-MM-dd HH:mm"
+                  placeholderText="Select date and time"
+                  className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm ${
+                    touched.expiryTime && validationErrors.expiryTime
+                      ? "border-red-500 focus:ring-red-500"
+                      : "border-gray-200 dark:border-gray-700"
+                  }`}
+                  minDate={new Date()}
+                  required={formData.isFlashDeal === "true"}
+                />
+                {touched.expiryTime && validationErrors.expiryTime && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {validationErrors.expiryTime}
+                  </p>
+                )}
+                {dateError && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {dateError}
+                  </p>
+                )}
+              </div>
+
+              {/* Is Negotiable Checkbox */}
+              <div className="flex items-center mt-6">
+                <input
+                  type="checkbox"
+                  name="isNegotiable"
+                  checked={formData.isNegotiable}
+                  onChange={handleInputChange}
+                  className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 transition duration-200"
+                />
+                <label className="ml-2 text-sm font-medium text-gray-950 dark:text-gray-200">
+                  Is Negotiable
+                </label>
+              </div>
+
+              {/* Is Flash Deal Checkbox */}
+              <div className="flex items-center mt-6">
+                <input
+                  type="checkbox"
+                  name="isFlashDeal"
+                  checked={formData.isFlashDeal === "true"}
+                  onChange={handleInputChange}
+                  className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 transition duration-200"
+                />
+                <label className="ml-2 text-sm font-medium text-gray-950 dark:text-gray-200">
+                  Is Flash Deal
+                </label>
+              </div>
             </div>
-            
-            {/* Is Flash Deal Checkbox */}
-            <div className="flex items-center mt-6">
-              <input
-                type="checkbox"
-                name="isFlashDeal"
-                checked={formData.isFlashDeal === "true"}
-                onChange={handleInputChange}
-                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 transition duration-200"
-              />
-              <label className="ml-2 text-sm font-medium text-gray-950 dark:text-gray-200">
-                Is Flash Deal
-              </label>
-            </div>
-          </div>
           </form>
         </div>
 
@@ -906,10 +1007,38 @@ const ProductModal: React.FC<ProductModalProps> = ({
             <button
               type="submit"
               form="product-form"
-              className="px-4 py-2 bg-[#0071E0] text-white rounded-lg hover:bg-blue-600 transition duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              className="min-w-[160px] px-4 py-2 bg-[#0071E0] text-white rounded-lg hover:bg-blue-600 transition duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
               disabled={skuLoading || skuError !== null}
             >
-              {editItem ? "Update Product" : "Create Product"}
+              {skuLoading ? (
+                <svg
+                  className="animate-spin h-4 w-4 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 
+           0 5.373 0 12h4zm2 5.291A7.962 
+           7.962 0 014 12H0c0 3.042 1.135 
+           5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+              ) : editItem ? (
+                "Update Product"
+              ) : (
+                "Create Product"
+              )}
             </button>
           </div>
         </div>

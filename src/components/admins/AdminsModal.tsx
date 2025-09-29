@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { AdminService, CreateAdminRequest, UpdateAdminRequest, Admin } from "../../services/admin/admin.services";
+import {
+  AdminService,
+  CreateAdminRequest,
+  UpdateAdminRequest,
+  Admin,
+} from "../../services/admin/admin.services";
 
 // Define the interface for form data
 interface FormData {
@@ -35,7 +40,9 @@ const AdminsModal: React.FC<AdminModalProps> = ({
     password: "",
     isActive: true,
   });
-  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>(
+    {}
+  );
   const [touched, setTouched] = useState<{ [key: string]: boolean }>({});
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -68,18 +75,21 @@ const AdminsModal: React.FC<AdminModalProps> = ({
   // Validation functions
   const validateField = (name: string, value: string): string | undefined => {
     switch (name) {
-      case 'name':
-        if (!value.trim()) return 'Name is required';
-        if (value.trim().length < 2) return 'Name must be at least 2 characters';
+      case "name":
+        if (!value.trim()) return "Name is required";
+        if (value.trim().length < 2)
+          return "Name must be at least 2 characters";
         return undefined;
-      case 'email':
-        if (!value.trim()) return 'Email is required';
+      case "email":
+        if (!value.trim()) return "Email is required";
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(value)) return 'Please enter a valid email address';
+        if (!emailRegex.test(value))
+          return "Please enter a valid email address";
         return undefined;
-      case 'password':
-        if (!editAdmin && !value.trim()) return 'Password is required'; // Only required for new admins
-        if (value && value.length < 6) return 'Password must be at least 6 characters';
+      case "password":
+        if (!editAdmin && !value.trim()) return "Password is required"; // Only required for new admins
+        if (value && value.length < 6)
+          return "Password must be at least 6 characters";
         return undefined;
       default:
         return undefined;
@@ -89,7 +99,7 @@ const AdminsModal: React.FC<AdminModalProps> = ({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
     const fieldValue = type === "checkbox" ? checked : value;
-    
+
     setFormData((prev) => ({
       ...prev,
       [name]: fieldValue,
@@ -122,35 +132,34 @@ const AdminsModal: React.FC<AdminModalProps> = ({
   // Validate entire form
   const validateForm = (): boolean => {
     const errors: ValidationErrors = {};
-    
-    const nameError = validateField('name', formData.name);
+
+    const nameError = validateField("name", formData.name);
     if (nameError) errors.name = nameError;
-    
-    const emailError = validateField('email', formData.email);
+
+    const emailError = validateField("email", formData.email);
     if (emailError) errors.email = emailError;
-    
+
     // Only validate password for new admins or if password is provided for existing admins
     if (!editAdmin || formData.password) {
-      const passwordError = validateField('password', formData.password);
+      const passwordError = validateField("password", formData.password);
       if (passwordError) errors.password = passwordError;
     }
-    
+
     setValidationErrors(errors);
     setTouched({ name: true, email: true, password: true });
-    
+
     return Object.keys(errors).length === 0;
   };
 
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
 
     setIsSubmitting(true);
-    
+
     try {
       if (editAdmin) {
         // Update existing admin
@@ -160,12 +169,12 @@ const AdminsModal: React.FC<AdminModalProps> = ({
           email: formData.email,
           isActive: formData.isActive,
         };
-        
+
         // Only include password if it's provided for existing admins
         if (formData.password) {
           updateData.password = formData.password;
         }
-        
+
         await AdminService.updateAdmin(updateData);
       } else {
         // Create new admin
@@ -174,14 +183,14 @@ const AdminsModal: React.FC<AdminModalProps> = ({
           email: formData.email,
           password: formData.password,
         };
-        
+
         await AdminService.createAdmin(createData);
       }
-      
+
       onSave(); // Refresh the parent component
       onClose();
     } catch (error) {
-      console.error('Error saving admin:', error);
+      console.error("Error saving admin:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -231,14 +240,16 @@ const AdminsModal: React.FC<AdminModalProps> = ({
               onBlur={handleBlur}
               className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 ${
                 touched.name && validationErrors.name
-                  ? 'border-red-500 focus:ring-red-500'
-                  : 'border-gray-200 dark:border-gray-700'
+                  ? "border-red-500 focus:ring-red-500"
+                  : "border-gray-200 dark:border-gray-700"
               }`}
               placeholder="Enter Name"
               required
             />
             {touched.name && validationErrors.name && (
-              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{validationErrors.name}</p>
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                {validationErrors.name}
+              </p>
             )}
           </div>
 
@@ -255,14 +266,16 @@ const AdminsModal: React.FC<AdminModalProps> = ({
               onBlur={handleBlur}
               className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 ${
                 touched.email && validationErrors.email
-                  ? 'border-red-500 focus:ring-red-500'
-                  : 'border-gray-200 dark:border-gray-700'
+                  ? "border-red-500 focus:ring-red-500"
+                  : "border-gray-200 dark:border-gray-700"
               }`}
               placeholder="Enter Email"
               required
             />
             {touched.email && validationErrors.email && (
-              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{validationErrors.email}</p>
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                {validationErrors.email}
+              </p>
             )}
           </div>
 
@@ -282,8 +295,8 @@ const AdminsModal: React.FC<AdminModalProps> = ({
                   onBlur={handleBlur}
                   className={`w-full pl-10 pr-10 p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 ${
                     touched.password && validationErrors.password
-                      ? 'border-red-500 focus:ring-red-500'
-                      : 'border-gray-200 dark:border-gray-700'
+                      ? "border-red-500 focus:ring-red-500"
+                      : "border-gray-200 dark:border-gray-700"
                   }`}
                   placeholder="Enter Password"
                   required
@@ -301,11 +314,12 @@ const AdminsModal: React.FC<AdminModalProps> = ({
                 </button>
               </div>
               {touched.password && validationErrors.password && (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{validationErrors.password}</p>
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                  {validationErrors.password}
+                </p>
               )}
             </div>
           )}
-
 
           {/* Active Status */}
           <div className="flex items-center">
@@ -334,12 +348,37 @@ const AdminsModal: React.FC<AdminModalProps> = ({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-4 py-2 bg-[#0071E0] text-white rounded-lg hover:bg-blue-600 transition duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center gap-2 text-sm"
+              className="min-w-[140px] px-4 py-2 bg-[#0071E0] text-white rounded-lg hover:bg-blue-600 transition duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-sm"
             >
-              {isSubmitting && (
-                <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-white"></div>
+              {isSubmitting ? (
+                <svg
+                  className="animate-spin h-4 w-4 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 
+           0 5.373 0 12h4zm2 5.291A7.962 
+           7.962 0 014 12H0c0 3.042 1.135 
+           5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+              ) : editAdmin ? (
+                "Update Admin"
+              ) : (
+                "Create Admin"
               )}
-              {editAdmin ? "Update Admin" : "Create Admin"}
             </button>
           </div>
         </form>
