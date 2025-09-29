@@ -8,6 +8,8 @@ import {
   ProductService,
   Product,
 } from "../../services/product/product.services";
+import placeholderImage from "../../../public/images/product/noimage.jpg";
+
 
 // Assuming loggedInAdminId is available (e.g., from context, prop, or auth service)
 interface ProductsTableProps {
@@ -17,6 +19,7 @@ interface ProductsTableProps {
 const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
   const [productsData, setProductsData] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
@@ -26,11 +29,40 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
   const [totalPages, setTotalPages] = useState<number>(1);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const itemsPerPage = 10;
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [dropdownPosition, setDropdownPosition] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
 
-  // Fetch products on component mount and when page/search changes
+  // Fetch products on component mount and when page/search/filter changes
   useEffect(() => {
     fetchProducts();
-  }, [currentPage, searchTerm]);
+  }, [currentPage, searchTerm, statusFilter]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!event.target) return;
+      if (!(event.target as HTMLElement).closest(".dropdown-container")) {
+        setOpenDropdownId(null);
+        setDropdownPosition(null);
+      }
+    };
+
+    const handleResize = () => {
+      if (openDropdownId) {
+        setOpenDropdownId(null);
+        setDropdownPosition(null);
+      }
+    };
+
+    document.addEventListener("click", handleClickOutside);
+    window.addEventListener("resize", handleResize);
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [openDropdownId]);
 
   const fetchProducts = async () => {
     try {
@@ -40,9 +72,26 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
         itemsPerPage,
         searchTerm
       );
-      setProductsData(response.data.docs);
-      setTotalDocs(response.data.totalDocs);
-      setTotalPages(response.data.totalPages);
+
+      let filteredData = response.data.docs;
+
+      // Apply status filter
+      if (statusFilter !== "all") {
+        filteredData = response.data.docs.filter((product: Product) => {
+          if (statusFilter === "approved") {
+            return product.isApproved;
+          } else if (statusFilter === "pending") {
+            return product.isVerified && !product.isApproved;
+          } else if (statusFilter === "verification") {
+            return !product.isVerified;
+          }
+          return true;
+        });
+      }
+
+      setProductsData(filteredData);
+      setTotalDocs(filteredData.length);
+      setTotalPages(Math.ceil(filteredData.length / itemsPerPage));
     } catch (error) {
       console.error("Failed to fetch products:", error);
     } finally {
@@ -86,6 +135,8 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
   const handleEdit = (product: Product) => {
     setEditProduct(product);
     setIsModalOpen(true);
+    setOpenDropdownId(null);
+    setDropdownPosition(null);
   };
 
   const handleDelete = async (product: Product) => {
@@ -109,6 +160,8 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
         console.error("Failed to delete product:", error);
       }
     }
+    setOpenDropdownId(null);
+    setDropdownPosition(null);
   };
 
   const handleVerify = async (product: Product) => {
@@ -133,6 +186,8 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
         console.error("Failed to verify product:", error);
       }
     }
+    setOpenDropdownId(null);
+    setDropdownPosition(null);
   };
 
   const handleApprove = async (product: Product) => {
@@ -157,10 +212,14 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
         console.error("Failed to approve product:", error);
       }
     }
+    setOpenDropdownId(null);
+    setDropdownPosition(null);
   };
 
   const handleView = (product: Product) => {
     setSelectedProduct(product);
+    setOpenDropdownId(null);
+    setDropdownPosition(null);
   };
 
   const getSkuFamilyText = (skuFamilyId: any): string => {
@@ -235,20 +294,20 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
     }
   };
 
-  const placeholderImage =
-    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTMmyTPv4M5fFPvYLrMzMQcPD_VO34ByNjouQ&s";
+  // const placeholderImage =
+  //   "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTMmyTPv4M5fFPvYLrMzMQcPD_VO34ByNjouQ&s";
 
   return (
     <div className="p-4">
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-sm">
         <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-          <div className="flex items-center gap-3">
-            <div className="relative">
+          <div className="flex items-center gap-3 flex-1">
+            <div className="relative flex-1">
               <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
               <input
                 type="text"
                 placeholder="Search by SKU Family ID or other..."
-                className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-64"
+                className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full"
                 value={searchTerm}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                   setSearchTerm(e.target.value);
@@ -258,23 +317,41 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              className="inline-flex items-center gap-2 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
-              onClick={() => setIsUploadModalOpen(true)}
-            >
-              <i className="fas fa-upload text-xs"></i>
-              Upload File
-            </button>
-            <button
-              className="inline-flex items-center gap-2 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
-              onClick={() => {
-                setEditProduct(null);
-                setIsModalOpen(true);
-              }}
-            >
-              <i className="fas fa-plus text-xs"></i>
-              Add Product
-            </button>
+            <div className="relative">
+              <select
+                value={statusFilter}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                  setStatusFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="pl-3 pr-8 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm appearance-none cursor-pointer"
+              >
+                <option value="all">All Status</option>
+                <option value="approved">Approved</option>
+                <option value="pending">Pending Approval</option>
+                <option value="verification">Under Verification</option>
+              </select>
+              <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
+                onClick={() => setIsUploadModalOpen(true)}
+              >
+                <i className="fas fa-upload text-xs"></i>
+                Upload File
+              </button>
+              <button
+                className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
+                onClick={() => {
+                  setEditProduct(null);
+                  setIsModalOpen(true);
+                }}
+              >
+                <i className="fas fa-plus text-xs"></i>
+                Add Product
+              </button>
+            </div>
           </div>
         </div>
 
@@ -342,10 +419,10 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                       <img
                         src={getProductImageSrc(item) || placeholderImage}
                         alt={getSkuFamilyText(item?.skuFamilyId) || "Product"}
-                        className="w-12 h-12 object-contain rounded-md border border-gray-200 dark:border-gray-600"
+                        className="w-12 h-12 object-cover rounded-md border border-gray-200 dark:border-gray-600"
                         onError={(e) => {
                           (e.currentTarget as HTMLImageElement).src =
-                            placeholderImage; 
+                            placeholderImage;
                         }}
                       />
                     </td>
@@ -373,51 +450,110 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                     <td className="px-6 py-4 text-sm text-center">
                       {getStatusBadge(item)}
                     </td>
-                    <td className="px-6 py-4 text-sm text-center">
-                      <div className="flex items-center justify-center gap-3">
-                        {/* Verify button: Show only if canVerify is true and the admin hasn't verified it */}
-                        {item.canVerify &&
-                          item.verifiedBy !== loggedInAdminId && (
+                    <td className="px-6 py-4 text-sm text-center relative">
+                      <div className="dropdown-container relative">
+                        <button
+                          className="text-gray-600 dark:text-gray-400 hover:text-gray-800 p-1 rounded-full hover:bg-gray-100"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (openDropdownId === item._id) {
+                              setOpenDropdownId(null);
+                              setDropdownPosition(null);
+                            } else {
+                              const rect =
+                                e.currentTarget.getBoundingClientRect();
+                              const dropdownWidth = 192;
+                              const dropdownHeight = 200; // Adjusted for more options
+                              let top = rect.bottom + 8;
+                              let left = rect.right - dropdownWidth;
+
+                              if (top + dropdownHeight > window.innerHeight) {
+                                top = rect.top - dropdownHeight - 8;
+                              }
+                              if (left < 8) {
+                                left = 8;
+                              }
+                              if (
+                                left + dropdownWidth >
+                                window.innerWidth - 8
+                              ) {
+                                left = window.innerWidth - dropdownWidth - 8;
+                              }
+
+                              setDropdownPosition({ top, left });
+                              setOpenDropdownId(item._id || null);
+                            }
+                          }}
+                        >
+                          <i className="fas fa-ellipsis-v"></i>
+                        </button>
+                        {openDropdownId === item._id && dropdownPosition && (
+                          <div
+                            className="fixed w-48 bg-white border rounded-md shadow-lg"
+                            style={{
+                              top: `${dropdownPosition.top}px`,
+                              left: `${dropdownPosition.left}px`,
+                              zIndex: 9999,
+                            }}
+                          >
+                            {item.canVerify &&
+                              item.verifiedBy !== loggedInAdminId && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleVerify(item);
+                                  }}
+                                  className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-green-600"
+                                >
+                                  <i className="fas fa-check"></i>
+                                  Verify
+                                </button>
+                              )}
                             <button
-                              onClick={() => handleVerify(item)}
-                              className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors"
-                              title="Verify Product"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleView(item);
+                              }}
+                              className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-blue-600"
                             >
-                              <i className="fas fa-check"></i>
+                              <i className="fas fa-eye"></i>
+                              View
                             </button>
-                          )}
-                        <button
-                          onClick={() => handleView(item)}
-                          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                          title="View"
-                        >
-                          <i className="fas fa-eye"></i>
-                        </button>
-                        {/* Approve button: Show only if canApprove is true and the admin hasn't verified it */}
-                        {item.canApprove &&
-                          item.verifiedBy !== loggedInAdminId && (
+                            {item.canApprove &&
+                              item.verifiedBy !== loggedInAdminId && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleApprove(item);
+                                  }}
+                                  className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-blue-600"
+                                >
+                                  <i className="fas fa-thumbs-up"></i>
+                                  Approve
+                                </button>
+                              )}
                             <button
-                              onClick={() => handleApprove(item)}
-                              className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                              title="Approve Product"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEdit(item);
+                              }}
+                              className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-yellow-600"
                             >
-                              <i className="fas fa-thumbs-up"></i>
+                              <i className="fas fa-edit"></i>
+                              Edit
                             </button>
-                          )}
-                        <button
-                          onClick={() => handleEdit(item)}
-                          className="text-yellow-600 hover:text-yellow-800 dark:text-yellow-400 dark:hover:text-yellow-300 transition-colors"
-                          title="Edit Product"
-                        >
-                          <i className="fas fa-edit"></i>
-                        </button>
-                        <button
-                          onClick={() => handleDelete(item)}
-                          className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
-                          title="Delete Product"
-                        >
-                          <i className="fas fa-trash"></i>
-                        </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(item);
+                              }}
+                              className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-red-600"
+                            >
+                              <i className="fas fa-trash"></i>
+                              Delete
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -498,7 +634,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                 <img
                   src={getProductImageSrc(selectedProduct)}
                   alt={getSkuFamilyText(selectedProduct?.skuFamilyId)}
-                  className="w-16 h-16 object-contain rounded-lg border border-gray-200 dark:border-gray-600 flex-shrink-0"
+                  className="w-16 h-16 object-cover rounded-lg border border-gray-200 dark:border-gray-600 flex-shrink-0"
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).src =
                       placeholderImage;

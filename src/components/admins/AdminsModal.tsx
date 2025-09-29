@@ -1,164 +1,199 @@
-import React, { useState, useEffect, useRef } from "react";
-
-// Define the interface for Admin data
-interface Admin {
-  profileImage: string;
-  name: string;
-  email: string;
-  password: string;
-  isSuperAdmin: boolean;
-  isApproved: boolean;
-  isActive: boolean;
-  isDeleted: boolean;
-}
+import React, { useState, useEffect } from "react";
+import { AdminService, CreateAdminRequest, UpdateAdminRequest, Admin } from "../../services/admin/admin.services";
 
 // Define the interface for form data
 interface FormData {
-  profileImage: string;
   name: string;
   email: string;
   password: string;
-  isSuperAdmin: boolean;
-  isApproved: boolean;
   isActive: boolean;
-  isDeleted: boolean;
+}
+
+// Define validation errors interface
+interface ValidationErrors {
+  name?: string;
+  email?: string;
+  password?: string;
 }
 
 interface AdminModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (newItem: Admin) => void;
-  editItem?: Admin;
+  onSave: () => void; // Changed to void since we'll handle API calls internally
+  editAdmin?: Admin | null; // Admin to edit, null for create mode
 }
 
 const AdminsModal: React.FC<AdminModalProps> = ({
   isOpen,
   onClose,
   onSave,
-  editItem,
+  editAdmin,
 }) => {
   const [formData, setFormData] = useState<FormData>({
-    profileImage: "",
     name: "",
     email: "",
     password: "",
-    isSuperAdmin: false,
-    isApproved: false,
-    isActive: false,
-    isDeleted: false,
+    isActive: true,
   });
-  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
+  const [touched, setTouched] = useState<{ [key: string]: boolean }>({});
   const [showPassword, setShowPassword] = useState<boolean>(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   useEffect(() => {
     if (isOpen) {
-      if (editItem) {
+      if (editAdmin) {
+        // Edit mode - populate form with existing admin data
         setFormData({
-          profileImage: editItem.profileImage,
-          name: editItem.name,
-          email: editItem.email,
-          password: editItem.password,
-          isSuperAdmin: editItem.isSuperAdmin,
-          isApproved: editItem.isApproved,
-          isActive: editItem.isActive,
-          isDeleted: editItem.isDeleted,
+          name: editAdmin.name,
+          email: editAdmin.email,
+          password: "", // Don't populate password for security
+          isActive: editAdmin.isActive,
         });
       } else {
+        // Create mode - reset form
         setFormData({
-          profileImage: "",
           name: "",
           email: "",
           password: "",
-          isSuperAdmin: false,
-          isApproved: false,
-          isActive: false,
-          isDeleted: false,
+          isActive: true,
         });
       }
-      setShowPassword(false); // Reset password visibility on modal open
+      setShowPassword(false);
+      setValidationErrors({});
+      setTouched({});
     }
-  }, [isOpen, editItem]);
+  }, [isOpen, editAdmin]);
+
+  // Validation functions
+  const validateField = (name: string, value: string): string | undefined => {
+    switch (name) {
+      case 'name':
+        if (!value.trim()) return 'Name is required';
+        if (value.trim().length < 2) return 'Name must be at least 2 characters';
+        return undefined;
+      case 'email':
+        if (!value.trim()) return 'Email is required';
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(value)) return 'Please enter a valid email address';
+        return undefined;
+      case 'password':
+        if (!editAdmin && !value.trim()) return 'Password is required'; // Only required for new admins
+        if (value && value.length < 6) return 'Password must be at least 6 characters';
+        return undefined;
+      default:
+        return undefined;
+    }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
+    const fieldValue = type === "checkbox" ? checked : value;
+    
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
+      [name]: fieldValue,
+    }));
+
+    // Validate field on change
+    if (touched[name]) {
+      const error = validateField(name, value);
+      setValidationErrors((prev) => ({
+        ...prev,
+        [name]: error,
+      }));
+    }
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setTouched((prev) => ({
+      ...prev,
+      [name]: true,
+    }));
+
+    const error = validateField(name, value);
+    setValidationErrors((prev) => ({
+      ...prev,
+      [name]: error,
     }));
   };
 
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const files = e.dataTransfer?.files;
-    if (files && files.length > 0) {
-      handleFile(files[0]);
+  // Validate entire form
+  const validateForm = (): boolean => {
+    const errors: ValidationErrors = {};
+    
+    const nameError = validateField('name', formData.name);
+    if (nameError) errors.name = nameError;
+    
+    const emailError = validateField('email', formData.email);
+    if (emailError) errors.email = emailError;
+    
+    // Only validate password for new admins or if password is provided for existing admins
+    if (!editAdmin || formData.password) {
+      const passwordError = validateField('password', formData.password);
+      if (passwordError) errors.password = passwordError;
     }
+    
+    setValidationErrors(errors);
+    setTouched({ name: true, email: true, password: true });
+    
+    return Object.keys(errors).length === 0;
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      handleFile(files[0]);
-    }
-  };
 
-  const handleFile = (file: File) => {
-    if (file.type.startsWith("image/")) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData((prev) => ({
-          ...prev,
-          profileImage: reader.result as string,
-        }));
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const removeImage = () => {
-    setFormData((prev) => ({
-      ...prev,
-      profileImage: "",
-    }));
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
-
-  const togglePasswordVisibility = () => {
-    setShowPassword((prev) => !prev);
-  };
-
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const newItem: Admin = { ...formData };
-    onSave(newItem);
-    onClose();
+    
+    if (!validateForm()) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    
+    try {
+      if (editAdmin) {
+        // Update existing admin
+        const updateData: UpdateAdminRequest = {
+          id: editAdmin._id,
+          name: formData.name,
+          email: formData.email,
+          isActive: formData.isActive,
+        };
+        
+        // Only include password if it's provided for existing admins
+        if (formData.password) {
+          updateData.password = formData.password;
+        }
+        
+        await AdminService.updateAdmin(updateData);
+      } else {
+        // Create new admin
+        const createData: CreateAdminRequest = {
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+        };
+        
+        await AdminService.createAdmin(createData);
+      }
+      
+      onSave(); // Refresh the parent component
+      onClose();
+    } catch (error) {
+      console.error('Error saving admin:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!isOpen) return null;
 
-  const title = editItem ? "Edit Admin" : "Create Admin";
+  const title = editAdmin ? "Edit Admin" : "Create Admin";
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50 transition-opacity duration-300">
-      <div className="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-2xl w-full max-w-[800px] max-h-[88vh] overflow-y-auto transform transition-all duration-300 scale-100">
+      <div className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-2xl w-full max-w-[500px] max-h-[80vh] overflow-y-auto transform transition-all duration-300 scale-100">
         {/* Close Icon */}
         <button
           type="button"
@@ -179,97 +214,63 @@ const AdminsModal: React.FC<AdminModalProps> = ({
             />
           </svg>
         </button>
-        <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-8">
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6">
           {title}
         </h2>
-        <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Profile Image and Name Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
-                Profile Image
-              </label>
-              <div
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                onClick={!formData.profileImage ? handleClick : undefined}
-                className={`w-full p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer transition duration-200 flex flex-col items-center justify-center ${
-                  isDragging
-                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                    : ""
-                } ${formData.profileImage ? "cursor-default" : ""}`}
-              >
-                {formData.profileImage ? (
-                  <div className="relative">
-                    <img
-                      src={formData.profileImage}
-                      alt="Profile Preview"
-                      className="w-32 h-32 object-cover rounded-md"
-                    />
-                    <button
-                      type="button"
-                      onClick={removeImage}
-                      className="absolute top-1 right-1 bg-red-500 text-white w-8 h-8 flex items-center justify-center rounded-full hover:bg-red-600 transition-colors shadow-md"
-                    >
-                      <i className="fas fa-trash text-xs"></i>
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <i className="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-2"></i>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">
-                      Drag & drop image here or click to browse
-                    </p>
-                    <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">
-                      Supports JPG, PNG, GIF (max 5MB)
-                    </p>
-                  </>
-                )}
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  accept="image/*"
-                  className="hidden"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
-                Name
-              </label>
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                className="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
-                placeholder="Enter Name"
-                required
-              />
-            </div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Name Field */}
+          <div>
+            <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+              Name *
+            </label>
+            <input
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleInputChange}
+              onBlur={handleBlur}
+              className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 ${
+                touched.name && validationErrors.name
+                  ? 'border-red-500 focus:ring-red-500'
+                  : 'border-gray-200 dark:border-gray-700'
+              }`}
+              placeholder="Enter Name"
+              required
+            />
+            {touched.name && validationErrors.name && (
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{validationErrors.name}</p>
+            )}
           </div>
 
-          {/* Email and Password Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
-                Email
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                className="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
-                placeholder="Enter Email"
-                required
-              />
-            </div>
+          {/* Email Field */}
+          <div>
+            <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+              Email *
+            </label>
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleInputChange}
+              onBlur={handleBlur}
+              className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 ${
+                touched.email && validationErrors.email
+                  ? 'border-red-500 focus:ring-red-500'
+                  : 'border-gray-200 dark:border-gray-700'
+              }`}
+              placeholder="Enter Email"
+              required
+            />
+            {touched.email && validationErrors.email && (
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{validationErrors.email}</p>
+            )}
+          </div>
+
+          {/* Password Field (only for creating new admins) */}
+          {!editAdmin && (
             <div className="relative">
-              <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
-                Password
+              <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                Password *
               </label>
               <div className="relative">
                 <i className="fas fa-lock absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
@@ -278,13 +279,18 @@ const AdminsModal: React.FC<AdminModalProps> = ({
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
-                  className="w-full pl-10 pr-10 p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
+                  onBlur={handleBlur}
+                  className={`w-full pl-10 pr-10 p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 ${
+                    touched.password && validationErrors.password
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'border-gray-200 dark:border-gray-700'
+                  }`}
                   placeholder="Enter Password"
                   required
                 />
                 <button
                   type="button"
-                  onClick={togglePasswordVisibility}
+                  onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
                 >
                   <i
@@ -294,39 +300,46 @@ const AdminsModal: React.FC<AdminModalProps> = ({
                   ></i>
                 </button>
               </div>
+              {touched.password && validationErrors.password && (
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{validationErrors.password}</p>
+              )}
             </div>
-          </div>
+          )}
 
-          {/* Boolean Fields Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                name="isSuperAdmin"
-                checked={formData.isSuperAdmin}
-                onChange={handleInputChange}
-                className="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 transition duration-200"
-              />
-              <label className="ml-3 text-base font-medium text-gray-950 dark:text-gray-200">
-                Is Super Admin
-              </label>
-            </div>
+
+          {/* Active Status */}
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              name="isActive"
+              checked={formData.isActive}
+              onChange={handleInputChange}
+              className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 transition duration-200"
+            />
+            <label className="ml-2 text-sm font-medium text-gray-950 dark:text-gray-200">
+              Active Status
+            </label>
           </div>
 
           {/* Buttons */}
-          <div className="flex justify-end gap-4 pt-6">
+          <div className="flex justify-end gap-3 pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-2.5 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition duration-200 transform hover:scale-105"
+              disabled={isSubmitting}
+              className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 bg-[#0071E0] text-white rounded-lg hover:bg-blue-600 transition duration-200 transform hover:scale-105"
+              disabled={isSubmitting}
+              className="px-4 py-2 bg-[#0071E0] text-white rounded-lg hover:bg-blue-600 transition duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center gap-2 text-sm"
             >
-              {editItem ? "Update Admin" : "Create Admin"}
+              {isSubmitting && (
+                <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-white"></div>
+              )}
+              {editAdmin ? "Update Admin" : "Create Admin"}
             </button>
           </div>
         </form>

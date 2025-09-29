@@ -1,5 +1,5 @@
 // src/components/SettingsModal.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import toastHelper from '../../utils/toastHelper';
 import { UserProfileService } from "../../services/adminProfile/adminProfile.services";
 
@@ -14,25 +14,65 @@ interface SettingsModalProps {
     readyStockOrderProcess: string;
     reportTime: string;
     timezone: string;
+    percentage?: string; // ✅ new field
   };
   onSave: () => void;
 }
 
-export default function SettingsModal({ isOpen, onClose, mode, initialData, onSave }: SettingsModalProps) {
+export default function SettingsModal({
+  isOpen,
+  onClose,
+  mode,
+  initialData,
+  onSave,
+}: SettingsModalProps) {
   const [formData, setFormData] = useState({
     bidWalletAllowancePer: initialData?.bidWalletAllowancePer || "",
     readyStockAllowancePer: initialData?.readyStockAllowancePer || "",
     readyStockOrderProcess: initialData?.readyStockOrderProcess || "",
     reportTime: initialData?.reportTime || "",
     timezone: initialData?.timezone || "Asia/Kolkata",
+    percentage: initialData?.percentage || "", // ✅ added in state
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  // Update form data when initialData changes
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        bidWalletAllowancePer: initialData.bidWalletAllowancePer || "",
+        readyStockAllowancePer: initialData.readyStockAllowancePer || "",
+        readyStockOrderProcess: initialData.readyStockOrderProcess || "",
+        reportTime: initialData.reportTime || "",
+        timezone: initialData.timezone || "Asia/Kolkata",
+        percentage: initialData.percentage || "",
+      });
+    } else {
+      // Reset form for create mode
+      setFormData({
+        bidWalletAllowancePer: "",
+        readyStockAllowancePer: "",
+        readyStockOrderProcess: "",
+        reportTime: "",
+        timezone: "Asia/Kolkata",
+        percentage: "",
+      });
+    }
+  }, [initialData]);
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleSubmit = async () => {
-    if (!formData.bidWalletAllowancePer || !formData.readyStockAllowancePer || !formData.reportTime || !formData.timezone) {
+    if (
+      !formData.bidWalletAllowancePer ||
+      !formData.readyStockAllowancePer ||
+      !formData.reportTime ||
+      !formData.timezone ||
+      !formData.percentage // ✅ validation added
+    ) {
       toastHelper.error("Please fill in all required fields");
       return;
     }
@@ -40,23 +80,32 @@ export default function SettingsModal({ isOpen, onClose, mode, initialData, onSa
     try {
       const settingsData = {
         id: initialData?._id,
-        bidWalletAllowancePer: parseFloat(formData.bidWalletAllowancePer) || null,
-        readyStockAllowancePer: parseFloat(formData.readyStockAllowancePer) || null,
-        readyStockOrderProcess: formData.readyStockOrderProcess ? JSON.parse(formData.readyStockOrderProcess) : [],
+        bidWalletAllowancePer:
+          parseFloat(formData.bidWalletAllowancePer) || null,
+        readyStockAllowancePer:
+          parseFloat(formData.readyStockAllowancePer) || null,
+        readyStockOrderProcess: formData.readyStockOrderProcess
+          ? JSON.parse(formData.readyStockOrderProcess)
+          : [],
         reportTime: formData.reportTime,
         timezone: formData.timezone,
+        percentage: parseFloat(formData.percentage) || null, // ✅ send to backend
       };
 
-      const response = mode === "create"
-        ? await UserProfileService.createSettings(settingsData)
-        : await UserProfileService.updateSettings(settingsData);
+      const response =
+        mode === "create"
+          ? await UserProfileService.createSettings(settingsData)
+          : await UserProfileService.updateSettings(settingsData);
 
       if (response.status === 200) {
-        onSave(); // Trigger refresh of settings list
-        onClose(); // Close modal
+        onSave(); // refresh
+        onClose(); // close modal
       }
     } catch (error) {
-      console.error(`Error ${mode === "create" ? "creating" : "updating"} settings:`, error);
+      console.error(
+        `Error ${mode === "create" ? "creating" : "updating"} settings:`,
+        error
+      );
     }
   };
 
@@ -69,6 +118,21 @@ export default function SettingsModal({ isOpen, onClose, mode, initialData, onSa
           {mode === "create" ? "Create Settings" : "Update Settings"}
         </h2>
         <div className="grid grid-cols-1 gap-4">
+          {/* ✅ New Wallet Percentage Field */}
+          <div>
+            <label className="mb-1 flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400">
+              <i className="fas fa-percent text-gray-500"></i> Wallet Percentage (%)
+            </label>
+            <input
+              type="number"
+              name="percentage"
+              value={formData.percentage}
+              onChange={handleChange}
+              className="w-full px-3 py-2 text-sm border rounded-lg focus:ring focus:ring-brand-300 dark:bg-gray-800 dark:text-white/90"
+            />
+          </div>
+
+          {/* Existing Fields (unchanged) */}
           <div>
             <label className="mb-1 flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400">
               <i className="fas fa-wallet text-gray-500"></i> Bid Wallet Allowance (%)
@@ -131,10 +195,10 @@ export default function SettingsModal({ isOpen, onClose, mode, initialData, onSa
               <option value="Asia/Kolkata">Asia/Kolkata</option>
               <option value="UTC">UTC</option>
               <option value="America/New_York">America/New_York</option>
-              {/* Add more timezones as needed */}
             </select>
           </div>
         </div>
+
         <div className="flex justify-end gap-4 mt-6">
           <button
             onClick={onClose}

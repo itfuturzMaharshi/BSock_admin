@@ -1,4 +1,3 @@
-// src/services/adminProfile/adminProfile.services.ts
 import toastHelper from '../../utils/toastHelper';
 import api from '../api/api';
 
@@ -73,7 +72,7 @@ export class UserProfileService {
   static changePassword = async (currentPassword: string, newPassword: string): Promise<ChangePasswordResponse> => {
     const baseUrl = import.meta.env.VITE_BASE_URL;
     const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
-    const url = `${baseUrl}/api/${adminRoute}/changePassword`;
+    const url = `${baseUrl}/api/${adminRoute}/change-password`; // Changed to hyphenated convention
 
     try {
       const res = await api.post(url, { currentPassword, newPassword }, {
@@ -94,6 +93,7 @@ export class UserProfileService {
       };
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || 'Failed to change password';
+      console.error(`Change password error: URL=${url}, Message=${errorMessage}`); // Added for debugging
       toastHelper.error(errorMessage);
       throw new Error(errorMessage);
     }

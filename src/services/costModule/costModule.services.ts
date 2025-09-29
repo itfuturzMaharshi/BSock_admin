@@ -169,7 +169,7 @@ export class CostModuleService {
       const responseData = res.data;
 
       if (res.status === 200) {
-        toastHelper.showTost(responseData.message || 'Costs retrieved successfully!', 'success');
+        // toastHelper.showTost(responseData.message || 'Costs retrieved successfully!', 'success');
       } else {
         toastHelper.showTost(responseData.message || 'Failed to retrieve cost modules', 'warning');
       }

@@ -1,8 +1,11 @@
+// SkuFamilyTable.tsx
 import React, { useState, useEffect } from "react";
 import Swal from "sweetalert2";
 import { SkuFamilyService } from "../../services/skuFamily/skuFamily.services";
 import toastHelper from "../../utils/toastHelper";
 import SkuFamilyModal from "./SkuFamilModal";
+import placeholderImage from "../../../public/images/product/noimage.jpg";
+
 
 interface SkuFamily {
   _id?: string;
@@ -48,6 +51,7 @@ const SkuFamilyTable: React.FC = () => {
         searchTerm.trim()
       );
       if (response.data?.docs) {
+        console.log("Fetched SKU Family data:", response.data.docs); // Debug log
         setSkuFamilyData(response.data.docs);
         setTotalDocs(response.data.totalDocs || 0);
       } else {
@@ -81,8 +85,19 @@ const SkuFamilyTable: React.FC = () => {
   };
 
   const handleEdit = (id: string) => {
-    setEditId(id);
-    setIsModalOpen(true);
+    console.log("HandleEdit called with ID:", id);
+    const selectedItem = skuFamilyData.find((item) => item._id === id);
+    console.log("Selected item for edit:", selectedItem); // Debug log
+    
+    // Close modal first to reset state
+    setIsModalOpen(false);
+    setEditId(null);
+    
+    // Use setTimeout to ensure state is reset before opening again
+    setTimeout(() => {
+      setEditId(id);
+      setIsModalOpen(true);
+    }, 50);
   };
 
   const handleDelete = async (id: string) => {
@@ -108,8 +123,8 @@ const SkuFamilyTable: React.FC = () => {
 
   const totalPages = Math.ceil(totalDocs / itemsPerPage);
 
-  const placeholderImage =
-    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTMmyTPv4M5fFPvYLrMzMQcPD_VO34ByNjouQ&s";
+  // const placeholderImage =
+  //   "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTMmyTPv4M5fFPvYLrMzMQcPD_VO34ByNjouQ&s";
 
   return (
     <div className="p-4">
@@ -119,13 +134,13 @@ const SkuFamilyTable: React.FC = () => {
       />
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-sm">
         <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-          <div className="flex items-center gap-3">
-            <div className="relative">
+          <div className="flex items-center gap-3 flex-1">
+            <div className="relative flex-1">
               <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
               <input
                 type="text"
                 placeholder="Search by name or code..."
-                className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-64"
+                className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full"
                 value={searchTerm}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                   setSearchTerm(e.target.value);
@@ -135,7 +150,7 @@ const SkuFamilyTable: React.FC = () => {
             </div>
           </div>
           <button
-            className="inline-flex items-center gap-2 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
+            className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
             onClick={() => {
               setEditId(null);
               setIsModalOpen(true);

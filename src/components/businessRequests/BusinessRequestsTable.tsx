@@ -20,12 +20,18 @@ const BusinessRequestsTable: React.FC = () => {
   const [businessRequests, setBusinessRequests] = useState<BusinessRequest[]>(
     []
   );
+  const [filteredRequests, setFilteredRequests] = useState<BusinessRequest[]>(
+    []
+  );
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("Pending"); // Changed default to "Pending"
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(true);
   const [totalDocs, setTotalDocs] = useState<number>(0);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedProduct, setSelectedProduct] =
+    useState<BusinessRequest | null>(null);
   const [dropdownPosition, setDropdownPosition] = useState<{
     top: number;
     left: number;
@@ -87,11 +93,7 @@ const BusinessRequestsTable: React.FC = () => {
     setLoading(true);
     try {
       const { docs, totalDocs } =
-        await BusinessRequestsService.getBusinessRequests(
-          currentPage,
-          itemsPerPage,
-          searchTerm?.trim() || undefined
-        );
+        await BusinessRequestsService.getBusinessRequests(1, 1000, undefined);
 
       const baseUrl = import.meta.env.VITE_BASE_URL as string | undefined;
       const makeAbsoluteUrl = (path?: string | null): string | undefined => {
@@ -160,7 +162,27 @@ const BusinessRequestsTable: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, itemsPerPage, searchTerm, statusOverrides]);
+  }, [statusOverrides]);
+
+  // Filter and search logic
+  useEffect(() => {
+    let filtered = businessRequests;
+
+    // Apply search filter
+    if (searchTerm.trim()) {
+      filtered = filtered.filter((item) =>
+        item.businessName.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Apply status filter
+    if (statusFilter !== "All") {
+      filtered = filtered.filter((item) => item.status === statusFilter);
+    }
+
+    setFilteredRequests(filtered);
+    setCurrentPage(1); // Reset to first page when filters change
+  }, [businessRequests, searchTerm, statusFilter]);
 
   useEffect(() => {
     fetchData();
@@ -207,37 +229,16 @@ const BusinessRequestsTable: React.FC = () => {
   };
 
   const handleView = (item: BusinessRequest) => {
-    Swal.fire({
-      title: "Business Details",
-      html: `
-        <div style="text-align: left; font-size: 14px; line-height: 1.6; padding: 8px 4px;">
-          <p><strong>Name:</strong> ${item.name || "-"}</p>
-          <p><strong>Email:</strong> ${item.email || "-"}</p>
-          <p><strong>Phone Number:</strong> ${item.mobileNumber || "-"}</p>
-          <p><strong>WhatsApp Number:</strong> ${item.whatsappNumber || "-"}</p>
-        </div>
-      `,
-      showConfirmButton: false,
-      showCloseButton: true,
-      customClass: {
-        popup: "rounded-lg shadow-lg",
-        closeButton:
-          "text-gray-600 hover:text-gray-900 absolute right-4 top-4 text-lg",
-      },
-      closeButtonHtml: '<i class="fas fa-times"></i>',
-      didOpen: () => {
-        const closeButton = document.querySelector(".swal2-close");
-        if (closeButton) {
-          closeButton.addEventListener("click", () => {
-            setOpenDropdownId(null);
-            setDropdownPosition(null);
-          });
-        }
-      },
-    });
+    setSelectedProduct(item);
+    setOpenDropdownId(null);
+    setDropdownPosition(null);
   };
 
-  const totalPages = Math.ceil(totalDocs / itemsPerPage);
+  // Calculate pagination for filtered results
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedRequests = filteredRequests.slice(startIndex, endIndex);
+  const totalPages = Math.ceil(filteredRequests.length / itemsPerPage);
 
   const getStatusStyles = (status: "Approved" | "Pending" | "Rejected") => {
     switch (status) {
@@ -262,20 +263,37 @@ const BusinessRequestsTable: React.FC = () => {
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
       />
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-sm">
-        {/* Search */}
+        {/* Search and Filter */}
         <div className="flex flex-col gap-4 p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-          <div className="relative">
-            <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-            <input
-              type="text"
-              placeholder="Search by business name..."
-              className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-64"
-              value={searchTerm}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(1);
-              }}
-            />
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+            {/* Search Input */}
+            <div className="relative flex-1 w-[85%]">
+              <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+              <input
+                type="text"
+                placeholder="Search by business name..."
+                className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full"
+                value={searchTerm}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  setSearchTerm(e.target.value);
+                }}
+              />
+            </div>
+
+            {/* Status Filter Dropdown */}
+            <div className="relative">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="pl-3 pr-8 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm min-w-[120px] appearance-none cursor-pointer"
+              >
+                <option value="All">All Status</option>
+                <option value="Approved">Approved</option>
+                <option value="Pending">Pending</option>
+                <option value="Rejected">Rejected</option>
+              </select>
+              <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+            </div>
           </div>
         </div>
 
@@ -317,7 +335,7 @@ const BusinessRequestsTable: React.FC = () => {
                     </div>
                   </td>
                 </tr>
-              ) : !businessRequests || businessRequests.length === 0 ? (
+              ) : !paginatedRequests || paginatedRequests.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
@@ -326,154 +344,158 @@ const BusinessRequestsTable: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                businessRequests.map((item: BusinessRequest, index: number) => (
-                  <tr
-                    key={item._id || index}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                  >
-                    <td className="px-6 py-4">
-                      <img
-                        src={item.logo || placeholderImage}
-                        alt="Logo"
-                        className="w-12 h-12 object-contain rounded-md border cursor-pointer"
-                        onClick={() =>
-                          setSelectedImage(item.logo || placeholderImage)
-                        }
-                        onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).src =
-                            placeholderImage;
-                        }}
-                      />
-                    </td>
-                    <td className="px-6 py-4">
-                      <img
-                        src={item.certificate || placeholderImage}
-                        alt="Certificate"
-                        className="w-12 h-12 object-contain rounded-md border cursor-pointer"
-                        onClick={() =>
-                          setSelectedImage(item.certificate || placeholderImage)
-                        }
-                        onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).src =
-                            placeholderImage;
-                        }}
-                      />
-                    </td>
-                    <td className="px-6 py-4 text-sm font-medium">
-                      {item.businessName || "-"}
-                    </td>
-                    <td className="px-6 py-4 text-sm">{item.country || "-"}</td>
-                    <td className="px-6 py-4 text-sm max-w-xs overflow-hidden">
-                      {item.address || "-"}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusStyles(
-                          item.status
-                        )}`}
-                      >
-                        {item.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-center relative">
-                      <div className="dropdown-container relative">
-                        <button
-                          className="text-gray-600 dark:text-gray-400 hover:text-gray-800 p-1 rounded-full hover:bg-gray-100"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (openDropdownId === item._id) {
-                              setOpenDropdownId(null);
-                              setDropdownPosition(null);
-                            } else {
-                              const rect =
-                                e.currentTarget.getBoundingClientRect();
-                              const dropdownWidth = 192;
-                              const dropdownHeight = 120;
-                              let top = rect.bottom + 8;
-                              let left = rect.right - dropdownWidth;
-
-                              if (top + dropdownHeight > window.innerHeight) {
-                                top = rect.top - dropdownHeight - 8;
-                              }
-                              if (left < 8) {
-                                left = 8;
-                              }
-                              if (
-                                left + dropdownWidth >
-                                window.innerWidth - 8
-                              ) {
-                                left = window.innerWidth - dropdownWidth - 8;
-                              }
-
-                              setDropdownPosition({ top, left });
-                              setOpenDropdownId(item._id || null);
-                            }
+                paginatedRequests.map(
+                  (item: BusinessRequest, index: number) => (
+                    <tr
+                      key={item._id || index}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                    >
+                      <td className="px-6 py-4">
+                        <img
+                          src={item.logo || placeholderImage}
+                          alt="Logo"
+                          className="w-12 h-12 object-contain rounded-md border cursor-pointer"
+                          onClick={() =>
+                            setSelectedImage(item.logo || placeholderImage)
+                          }
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).src =
+                              placeholderImage;
                           }}
+                        />
+                      </td>
+                      <td className="px-6 py-4">
+                        <img
+                          src={item.certificate || placeholderImage}
+                          alt="Certificate"
+                          className="w-12 h-12 object-contain rounded-md border cursor-pointer"
+                          onClick={() =>
+                            setSelectedImage(
+                              item.certificate || placeholderImage
+                            )
+                          }
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).src =
+                              placeholderImage;
+                          }}
+                        />
+                      </td>
+                      <td className="px-6 py-4 text-sm font-medium">
+                        {item.businessName || "-"}
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        {item.country || "-"}
+                      </td>
+                      <td className="px-6 py-4 text-sm max-w-xs overflow-hidden">
+                        {item.address || "-"}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusStyles(
+                            item.status
+                          )}`}
                         >
-                          <i className="fas fa-ellipsis-v"></i>
-                        </button>
-                        {openDropdownId === item._id && dropdownPosition && (
-                          <div
-                            className="fixed w-48 bg-white border rounded-md shadow-lg"
-                            style={{
-                              top: `${dropdownPosition.top}px`,
-                              left: `${dropdownPosition.left}px`,
-                              zIndex: 9999,
+                          {item.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-center relative">
+                        <div className="dropdown-container relative">
+                          <button
+                            className="text-gray-600 dark:text-gray-400 hover:text-gray-800 p-1 rounded-full hover:bg-gray-100"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (openDropdownId === item._id) {
+                                setOpenDropdownId(null);
+                                setDropdownPosition(null);
+                              } else {
+                                const rect =
+                                  e.currentTarget.getBoundingClientRect();
+                                const dropdownWidth = 192;
+                                const dropdownHeight = 120;
+                                let top = rect.bottom + 8;
+                                let left = rect.right - dropdownWidth;
+
+                                if (top + dropdownHeight > window.innerHeight) {
+                                  top = rect.top - dropdownHeight - 8;
+                                }
+                                if (left < 8) {
+                                  left = 8;
+                                }
+                                if (
+                                  left + dropdownWidth >
+                                  window.innerWidth - 8
+                                ) {
+                                  left = window.innerWidth - dropdownWidth - 8;
+                                }
+
+                                setDropdownPosition({ top, left });
+                                setOpenDropdownId(item._id || null);
+                              }
                             }}
                           >
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleView(item);
-                                setOpenDropdownId(null);
-                                setDropdownPosition(null);
+                            <i className="fas fa-ellipsis-v"></i>
+                          </button>
+                          {openDropdownId === item._id && dropdownPosition && (
+                            <div
+                              className="fixed w-48 bg-white border rounded-md shadow-lg"
+                              style={{
+                                top: `${dropdownPosition.top}px`,
+                                left: `${dropdownPosition.left}px`,
+                                zIndex: 9999,
                               }}
-                              className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
                             >
-                              View
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (item._id)
-                                  handleStatusChange(item._id, "Approved");
-                                setOpenDropdownId(null);
-                                setDropdownPosition(null);
-                              }}
-                              className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
-                            >
-                              Approved
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (item._id)
-                                  handleStatusChange(item._id, "Pending");
-                                setOpenDropdownId(null);
-                                setDropdownPosition(null);
-                              }}
-                              className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
-                            >
-                              Pending
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (item._id)
-                                  handleStatusChange(item._id, "Rejected");
-                                setOpenDropdownId(null);
-                                setDropdownPosition(null);
-                              }}
-                              className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
-                            >
-                              Rejected
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleView(item);
+                                }}
+                                className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                              >
+                                View
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (item._id)
+                                    handleStatusChange(item._id, "Approved");
+                                  setOpenDropdownId(null);
+                                  setDropdownPosition(null);
+                                }}
+                                className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                              >
+                                Approved
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (item._id)
+                                    handleStatusChange(item._id, "Pending");
+                                  setOpenDropdownId(null);
+                                  setDropdownPosition(null);
+                                }}
+                                className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                              >
+                                Pending
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (item._id)
+                                    handleStatusChange(item._id, "Rejected");
+                                  setOpenDropdownId(null);
+                                  setDropdownPosition(null);
+                                }}
+                                className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                              >
+                                Rejected
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                )
               )}
             </tbody>
           </table>
@@ -482,7 +504,14 @@ const BusinessRequestsTable: React.FC = () => {
         {/* Pagination */}
         <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t bg-gray-50">
           <div className="text-sm">
-            Showing {businessRequests.length} of {totalDocs} items
+            Showing {paginatedRequests.length} of {filteredRequests.length}{" "}
+            items
+            {filteredRequests.length !== totalDocs && (
+              <span className="text-gray-500">
+                {" "}
+                (filtered from {totalDocs} total)
+              </span>
+            )}
           </div>
           <div className="flex items-center space-x-3">
             <button
@@ -493,8 +522,16 @@ const BusinessRequestsTable: React.FC = () => {
               Previous
             </button>
             <div className="flex space-x-1">
-              {Array.from({ length: totalPages }, (_, i) => {
-                const pageNum = i + 1;
+              {Array.from({ length: Math.min(totalPages, 10) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 10) {
+                  pageNum = i + 1;
+                } else {
+                  const start = Math.max(1, currentPage - 5);
+                  pageNum = start + i;
+                  if (pageNum > totalPages) return null;
+                }
+
                 return (
                   <button
                     key={pageNum}
@@ -523,6 +560,68 @@ const BusinessRequestsTable: React.FC = () => {
         </div>
       </div>
 
+      {/* Professional Business Details Modal */}
+      {selectedProduct && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50 transition-opacity duration-300">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl max-w-md w-full mx-4">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-600">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                Business Details
+              </h2>
+              <button
+                onClick={() => setSelectedProduct(null)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-2 flex-shrink-0"
+                title="Close"
+              >
+                <i className="fas fa-times text-xl"></i>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Name
+                  </label>
+                  <p className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-md">
+                    {selectedProduct.name || "-"}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Email
+                  </label>
+                  <p className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-md">
+                    {selectedProduct.email || "-"}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Phone Number
+                  </label>
+                  <p className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-md">
+                    {selectedProduct.mobileNumber || "-"}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    WhatsApp Number
+                  </label>
+                  <p className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-md">
+                    {selectedProduct.whatsappNumber || "-"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Enlarged image preview */}
       {selectedImage && (
         <div
@@ -536,7 +635,7 @@ const BusinessRequestsTable: React.FC = () => {
               className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
             />
             <button
-              className="absolute top-4 right-4 text-white bg-gray-800/70 rounded-full p-2"
+              className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center text-white bg-gray-800/70 rounded-full p-2"
               onClick={() => setSelectedImage(null)}
             >
               <i className="fas fa-times"></i>

@@ -16,11 +16,7 @@ const navItems: NavItem[] = [
     path: "/home",
     // subItems: [{ name: "Ecommerce", path: "/", pro: false }],
   },
-  {
-    icon: <i className="fas fa-calendar-alt"></i>,
-    name: "Calendar",
-    path: "/calendar",
-  },
+
   {
     icon: <i className="fas fa-user-shield"></i>,
     name: "Admins",
@@ -49,7 +45,7 @@ const navItems: NavItem[] = [
   },
   {
     icon: <i className="fas fa-calculator"></i>,
-    name: "Cost Module",
+    name: "Cost Management",
     path: "/cost-module",
   },
   {
