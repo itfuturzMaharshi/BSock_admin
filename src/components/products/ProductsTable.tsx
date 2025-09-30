@@ -10,7 +10,6 @@ import {
 } from "../../services/product/product.services";
 import placeholderImage from "../../../public/images/product/noimage.jpg";
 
-
 // Assuming loggedInAdminId is available (e.g., from context, prop, or auth service)
 interface ProductsTableProps {
   loggedInAdminId?: string; // Add this prop or fetch it from context
@@ -272,30 +271,38 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
     }
   };
 
+  // Updated getStatusBadge function to match reference code styling and icons
   const getStatusBadge = (product: Product) => {
-    if (product.isApproved) {
-      return (
-        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-green-100 text-green-700 border border-green-200">
-          Approved
-        </span>
-      );
-    } else if (product.isVerified) {
-      return (
-        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-yellow-100 text-yellow-700 border border-yellow-200">
-          Pending Approval
-        </span>
-      );
-    } else {
-      return (
-        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-red-100 text-red-700 border border-red-200">
-          Under Verification
-        </span>
-      );
-    }
-  };
+    let statusText: string;
+    let statusStyles: string;
+    let statusIcon: string;
 
-  // const placeholderImage =
-  //   "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTMmyTPv4M5fFPvYLrMzMQcPD_VO34ByNjouQ&s";
+    if (product.isApproved) {
+      statusText = "Approved";
+      statusStyles =
+        "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-700";
+      statusIcon = "fa-check-circle";
+    } else if (product.isVerified) {
+      statusText = "Pending Approval";
+      statusStyles =
+        "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-700";
+      statusIcon = "fa-clock";
+    } else {
+      statusText = "Under Verification";
+      statusStyles =
+        "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border border-red-200 dark:border-red-700";
+      statusIcon = "fa-times";
+    }
+
+    return (
+      <span
+        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold tracking-wider ${statusStyles}`}
+      >
+        <i className={`fas ${statusIcon} text-xs`}></i>
+        {statusText}
+      </span>
+    );
+  };
 
   return (
     <div className="p-4">

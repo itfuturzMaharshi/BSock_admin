@@ -234,14 +234,28 @@ const BusinessRequestsTable: React.FC = () => {
   const paginatedRequests = filteredRequests.slice(startIndex, endIndex);
   const totalPages = Math.ceil(filteredRequests.length / itemsPerPage);
 
+  // Updated status styling and icon functions
   const getStatusStyles = (status: "Approved" | "Pending" | "Rejected") => {
     switch (status) {
       case "Approved":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+        return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-700";
       case "Pending":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-700";
       case "Rejected":
-        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border border-red-200 dark:border-red-700";
+      default:
+        return "";
+    }
+  };
+
+  const getStatusIcon = (status: "Approved" | "Pending" | "Rejected") => {
+    switch (status) {
+      case "Approved":
+        return "fa-check-circle";
+      case "Pending":
+        return "fa-clock";
+      case "Rejected":
+        return "fa-times";
       default:
         return "";
     }
@@ -380,10 +394,11 @@ const BusinessRequestsTable: React.FC = () => {
                       </td>
                       <td className="px-6 py-4">
                         <span
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusStyles(
+                          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold tracking-wider ${getStatusStyles(
                             item.status
                           )}`}
                         >
+                          <i className={`fas ${getStatusIcon(item.status)} text-xs`}></i>
                           {item.status}
                         </span>
                       </td>

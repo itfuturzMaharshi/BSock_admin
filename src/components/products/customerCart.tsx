@@ -13,33 +13,10 @@ interface Customer {
   address?: string;
 }
 
-// interface Product {
-//   _id: string;
-//   skuFamilyId: any;
-//   simType?: string;
-//   color?: string;
-//   ram?: string;
-//   storage?: string;
-//   condition?: string;
-//   price: number | string;
-//   stock: number | string;
-//   country?: string;
-//   moq: number | string;
-//   isNegotiable?: boolean;
-//   isFlashDeal?: string | boolean;
-//   expiryTime?: string;
-//   specification?: string | null;
-//   purchaseType?: string;
-//   isApproved?: boolean;
-//   isDeleted?: boolean;
-// }
-
 type CustomerCart = CustomerCartItem & { updatedAt?: string };
 
 const CustomerCart: React.FC = () => {
-  const [customerCartsData, setCustomerCartsData] = useState<CustomerCart[]>(
-    []
-  );
+  const [customerCartsData, setCustomerCartsData] = useState<CustomerCart[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [selectedCustomer, setSelectedCustomer] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -232,17 +209,37 @@ const CustomerCart: React.FC = () => {
     }
   };
 
-  // Get status badge color
-  const getStatusBadgeClass = (status: string): string => {
-    switch (status) {
+  // Utility function to convert a string to title case (only first letter capitalized)
+  const toTitleCase = (str: string): string => {
+    if (!str) return str;
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+  };
+
+  // Get status styles
+  const getStatusStyles = (status: string) => {
+    switch (status.toLowerCase()) {
       case "active":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
+        return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-700";
       case "removed":
-        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300";
+        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border border-red-200 dark:border-red-700";
       case "ordered":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300";
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 border border-blue-200 dark:border-blue-700";
       default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300 border border-gray-200 dark:border-gray-700";
+    }
+  };
+
+  // Get status icon
+  const getStatusIcon = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "active":
+        return "fa-check-circle";
+      case "removed":
+        return "fa-times";
+      case "ordered":
+        return "fa-shopping-cart";
+      default:
+        return "";
     }
   };
 
@@ -252,9 +249,6 @@ const CustomerCart: React.FC = () => {
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-sm">
         {/* Table Header with Controls */}
         <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-          {/* <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">
-            Customer Cart Management
-          </h2> */}
           <div className="flex items-center gap-3 flex-1">
             {/* Search */}
             <div className="relative flex-1">
@@ -363,15 +357,11 @@ const CustomerCart: React.FC = () => {
                               {item.product.color && (
                                 <span>Color: {item.product.color}</span>
                               )}
-                             
-                              
                             </div>
                             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600 dark:text-gray-400">
                               <span>
                                 Price: ${formatPrice(item.product.price)}
                               </span>
-                              {/* <span>Stock: {item.product.stock}</span>
-                              <span>Condition: {item.product.condition}</span> */}
                             </div>
                           </div>
                         </div>
@@ -404,20 +394,25 @@ const CustomerCart: React.FC = () => {
                     </td>
 
                     {/* Quantity Column */}
-                    <td className="px-6 py-4">
-                      <span className="inline-flex items-center justify-center w-8 h-8 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-300 rounded-full text-sm font-medium">
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      <span
+                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 border border-blue-200 dark:border-blue-700"
+                      >
                         {item.quantity}
                       </span>
                     </td>
 
                     {/* Status Column */}
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                       <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusBadgeClass(
+                        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold  tracking-wider ${getStatusStyles(
                           item.status
                         )}`}
                       >
-                        {item.status}
+                        <i
+                          className={`fas ${getStatusIcon(item.status)} text-xs`}
+                        ></i>
+                        {toTitleCase(item.status)}
                       </span>
                     </td>
 
@@ -888,7 +883,7 @@ const CustomerCart: React.FC = () => {
                             : "text-blue-600 dark:text-blue-400"
                         }`}
                       >
-                        {previewItem.status}
+                        {toTitleCase(previewItem.status)}
                       </div>
                       <div className="text-xs text-gray-500 dark:text-gray-400">
                         Status

@@ -39,144 +39,144 @@ const OrdersTable: React.FC = () => {
     }
   };
 
-const handleUpdateStatus = async (order: Order) => {
-  const currentStatus = order.status;
-  let selectedStatus = currentStatus;
-  let editedCartItems: OrderItem[] = [...order.cartItems];
-  let message = "";
+  const handleUpdateStatus = async (order: Order) => {
+    const currentStatus = order.status;
+    let selectedStatus = currentStatus;
+    let editedCartItems: OrderItem[] = [...order.cartItems];
+    let message = "";
 
-  const modalHtml = `
-    <div style="text-align: left; padding: 20px; font-family: 'Inter', sans-serif; max-height: 500px; overflow-y: auto;">
-      <div style="margin-bottom: 20px;">
-        <label for="statusSelect" style="display: block; font-size: 14px; font-weight: 600; color: #1F2937; margin-bottom: 8px;">Select Status</label>
-        <select id="statusSelect" class="swal2-select" style="width: 100%; padding: 10px; font-size: 14px; margin:0px; border: 1px solid #D1D5DB; border-radius: 6px; background-color: #F9FAFB; color: #1F2937; outline: none; transition: border-color 0.2s;">
-          ${statusOptions
+    const modalHtml = `
+      <div style="text-align: left; padding: 20px; font-family: 'Inter', sans-serif; max-height: 500px; overflow-y: auto;">
+        <div style="margin-bottom: 20px;">
+          <label for="statusSelect" style="display: block; font-size: 14px; font-weight: 600; color: #1F2937; margin-bottom: 8px;">Select Status</label>
+          <select id="statusSelect" class="swal2-select" style="width: 100%; padding: 10px; font-size: 14px; margin:0px; border: 1px solid #D1D5DB; border-radius: 6px; background-color: #F9FAFB; color: #1F2937; outline: none; transition: border-color 0.2s;">
+            ${statusOptions
+              .map(
+                (status) =>
+                  `<option value="${status}" ${
+                    status === currentStatus ? "selected" : ""
+                  }>${status.charAt(0).toUpperCase() + status.slice(1)}</option>`
+              )
+              .join("")}
+          </select>
+        </div>
+        <div id="cartItemsContainer" style="margin-bottom: 20px; display: none;">
+          <h4 style="font-size: 16px; font-weight: 600; color: #1F2937; margin-bottom: 12px;">Edit Quantities</h4>
+          ${order.cartItems
             .map(
-              (status) =>
-                `<option value="${status}" ${
-                  status === currentStatus ? "selected" : ""
-                }>${status.charAt(0).toUpperCase() + status.slice(1)}</option>`
+              (item, index) =>
+                `
+                <div style="margin-bottom: 16px; padding: 12px; background-color: #F9FAFB; border-radius: 6px; border: 1px solid #E5E7EB;">
+                  <label style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 6px;">
+                    ${item.skuFamilyId?.name || item.productId.name}
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value="${item.quantity}"
+                    class="swal2-input quantity-input"
+                    data-item-index="${index}"
+                    style="width: 100%; margin:0px; padding: 8px; font-size: 14px; border: 1px solid #D1D5DB; border-radius: 6px; background-color: #FFFFFF; color: #1F2937; outline: none; transition: border-color 0.2s;"
+                  />
+                </div>
+                `
             )
             .join("")}
-        </select>
+        </div>
+        <div>
+          <label for="messageInput" style="display: block; font-size: 14px; font-weight: 600; color: #1F2937; margin-bottom: 8px;">Message (Optional)</label>
+          <textarea
+            id="messageInput"
+            class="swal2-textarea"
+            placeholder="Enter a message for this status change"
+            style="width: 100%; margin:0px; padding: 10px; font-size: 14px; border: 1px solid #D1D5DB; border-radius: 6px; background-color: #F9FAFB; color: #1F2937; min-height: 100px; resize: vertical; outline: none; transition: border-color 0.2s;"
+          ></textarea>
+        </div>
       </div>
-      <div id="cartItemsContainer" style="margin-bottom: 20px; display: none;">
-        <h4 style="font-size: 16px; font-weight: 600; color: #1F2937; margin-bottom: 12px;">Edit Quantities</h4>
-        ${order.cartItems
-          .map(
-            (item, index) =>
-              `
-              <div style="margin-bottom: 16px; padding: 12px; background-color: #F9FAFB; border-radius: 6px; border: 1px solid #E5E7EB;">
-                <label style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 6px;">
-                  ${item.skuFamilyId?.name || item.productId.name}
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  value="${item.quantity}"
-                  class="swal2-input quantity-input"
-                  data-item-index="${index}"
-                  style="width: 100%; margin:0px; padding: 8px; font-size: 14px; border: 1px solid #D1D5DB; border-radius: 6px; background-color: #FFFFFF; color: #1F2937; outline: none; transition: border-color 0.2s;"
-                />
-              </div>
-              `
-          )
-          .join("")}
-      </div>
-      <div>
-        <label for="messageInput" style="display: block; font-size: 14px; font-weight: 600; color: #1F2937; margin-bottom: 8px;">Message (Optional)</label>
-        <textarea
-          id="messageInput"
-          class="swal2-textarea"
-          placeholder="Enter a message for this status change"
-          style="width: 100%; margin:0px; padding: 10px; font-size: 14px; border: 1px solid #D1D5DB; border-radius: 6px; background-color: #F9FAFB; color: #1F2937; min-height: 100px; resize: vertical; outline: none; transition: border-color 0.2s;"
-        ></textarea>
-      </div>
-    </div>
-  `;
+    `;
 
-  const result = await Swal.fire({
-    title: `Update Status for Order`,
-    html: modalHtml,
-    showCancelButton: true,
-    confirmButtonText: "Change Status",
-    cancelButtonText: "Cancel",
-    width: 600,
-    customClass: {
-      popup: "swal2-custom-popup",
-      title: "swal2-custom-title",
-      confirmButton: "swal2-custom-confirm",
-      cancelButton: "swal2-custom-cancel",
-    },
-    preConfirm: () => {
-      const statusSelect = document.getElementById("statusSelect") as HTMLSelectElement;
-      const quantityInputs = document.querySelectorAll(".quantity-input") as NodeListOf<HTMLInputElement>;
-      const messageInput = document.getElementById("messageInput") as HTMLTextAreaElement;
+    const result = await Swal.fire({
+      title: `Update Status for Order`,
+      html: modalHtml,
+      showCancelButton: true,
+      confirmButtonText: "Change Status",
+      cancelButtonText: "Cancel",
+      width: 600,
+      customClass: {
+        popup: "swal2-custom-popup",
+        title: "swal2-custom-title",
+        confirmButton: "swal2-custom-confirm",
+        cancelButton: "swal2-custom-cancel",
+      },
+      preConfirm: () => {
+        const statusSelect = document.getElementById("statusSelect") as HTMLSelectElement;
+        const quantityInputs = document.querySelectorAll(".quantity-input") as NodeListOf<HTMLInputElement>;
+        const messageInput = document.getElementById("messageInput") as HTMLTextAreaElement;
 
-      selectedStatus = statusSelect.value;
-      message = messageInput.value;
+        selectedStatus = statusSelect.value;
+        message = messageInput.value;
 
-      if (["verified", "approved"].includes(selectedStatus) && ["request", "accepted"].includes(currentStatus)) {
-        editedCartItems = order.cartItems.map((item, index) => ({
-          ...item,
-          quantity: parseInt(quantityInputs[index]?.value) || item.quantity,
-        }));
-      } else {
-        editedCartItems = order.cartItems;
-      }
+        if (["verified", "approved"].includes(selectedStatus) && ["request", "accepted"].includes(currentStatus)) {
+          editedCartItems = order.cartItems.map((item, index) => ({
+            ...item,
+            quantity: parseInt(quantityInputs[index]?.value) || item.quantity,
+          }));
+        } else {
+          editedCartItems = order.cartItems;
+        }
 
-      return true;
-    },
-    didOpen: () => {
-      const statusSelect = document.getElementById("statusSelect") as HTMLSelectElement;
-      const cartItemsContainer = document.getElementById("cartItemsContainer") as HTMLElement;
+        return true;
+      },
+      didOpen: () => {
+        const statusSelect = document.getElementById("statusSelect") as HTMLSelectElement;
+        const cartItemsContainer = document.getElementById("cartItemsContainer") as HTMLElement;
 
-      statusSelect.addEventListener("change", () => {
-        const newStatus = statusSelect.value;
-        cartItemsContainer.style.display =
-          ["verified", "approved"].includes(newStatus) && ["request", "accepted"].includes(currentStatus)
-            ? "block"
-            : "none";
-      });
-
-      // Add focus styles for inputs
-      const inputs = document.querySelectorAll(".swal2-input, .swal2-select, .swal2-textarea");
-      inputs.forEach((input) => {
-        input.addEventListener("focus", () => {
-          (input as HTMLElement).style.borderColor = "#3B82F6";
-          (input as HTMLElement).style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+        statusSelect.addEventListener("change", () => {
+          const newStatus = statusSelect.value;
+          cartItemsContainer.style.display =
+            ["verified", "approved"].includes(newStatus) && ["request", "accepted"].includes(currentStatus)
+              ? "block"
+              : "none";
         });
-        input.addEventListener("blur", () => {
-          (input as HTMLElement).style.borderColor = "#D1D5DB";
-          (input as HTMLElement).style.boxShadow = "none";
+
+        // Add focus styles for inputs
+        const inputs = document.querySelectorAll(".swal2-input, .swal2-select, .swal2-textarea");
+        inputs.forEach((input) => {
+          input.addEventListener("focus", () => {
+            (input as HTMLElement).style.borderColor = "#3B82F6";
+            (input as HTMLElement).style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+          });
+          input.addEventListener("blur", () => {
+            (input as HTMLElement).style.borderColor = "#D1D5DB";
+            (input as HTMLElement).style.boxShadow = "none";
+          });
         });
-      });
-    },
-  });
+      },
+    });
 
-  if (result.isConfirmed) {
-    try {
-      const cartItemsToSend =
-        ["request", "accepted"].includes(currentStatus) && ["verified", "approved"].includes(selectedStatus)
-          ? editedCartItems
-          : undefined;
+    if (result.isConfirmed) {
+      try {
+        const cartItemsToSend =
+          ["request", "accepted"].includes(currentStatus) && ["verified", "approved"].includes(selectedStatus)
+            ? editedCartItems
+            : undefined;
 
-      const response = await AdminOrderService.updateOrderStatus(
-        order._id,
-        selectedStatus,
-        cartItemsToSend,
-        message || undefined
-      );
+        const response = await AdminOrderService.updateOrderStatus(
+          order._id,
+          selectedStatus,
+          cartItemsToSend,
+          message || undefined
+        );
 
-      if (response !== false) {
-        toastHelper.showTost(`Order status updated to ${selectedStatus}!`, "success");
-        fetchOrders();
+        if (response !== false) {
+          toastHelper.showTost(`Order status updated to ${selectedStatus}!`, "success");
+          fetchOrders();
+        }
+      } catch (error) {
+        console.error("Failed to update order status:", error);
       }
-    } catch (error) {
-      console.error("Failed to update order status:", error);
     }
-  }
-};
+  };
 
   const handleViewTracking = async (orderId: string) => {
     try {
@@ -266,22 +266,33 @@ const handleUpdateStatus = async (order: Order) => {
   };
 
   const getStatusBadge = (order: Order) => {
-    const statusColors: { [key: string]: string } = {
-      request: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-      verified: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-      approved: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-      shipped: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
-      delivered: "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200",
-      cancelled: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
-      accepted: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200",
+    const statusStyles: { [key: string]: string } = {
+      request: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-700",
+      verified: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-700",
+      approved: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-700",
+      shipped: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 border border-purple-200 dark:border-purple-700",
+      delivered: "bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-400 border border-teal-200 dark:border-teal-700",
+      cancelled: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border border-red-200 dark:border-red-700",
+      accepted: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-700",
+    };
+
+    const statusIcons: { [key: string]: string } = {
+      request: "fa-clock",
+      verified: "fa-check",
+      approved: "fa-check-circle",
+      shipped: "fa-truck",
+      delivered: "fa-box",
+      cancelled: "fa-times",
+      accepted: "fa-handshake",
     };
 
     return (
       <span
-        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-          statusColors[order.status] || "bg-gray-100 text-gray-800"
+        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold tracking-wider ${
+          statusStyles[order.status] || "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400 border border-gray-200 dark:border-gray-700"
         }`}
       >
+        <i className={`fas ${statusIcons[order.status] || "fa-info-circle"} text-xs`}></i>
         {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
       </span>
     );
@@ -289,6 +300,10 @@ const handleUpdateStatus = async (order: Order) => {
 
   return (
     <div className="p-4 max-w-[calc(100vw-360px)] mx-auto">
+      <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      />
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-sm">
         <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
           <div className="flex items-center gap-3 flex-1">
@@ -330,9 +345,6 @@ const handleUpdateStatus = async (order: Order) => {
           <table className="w-full table-auto">
             <thead className="bg-gray-100 dark:bg-gray-900">
               <tr>
-                {/* <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
-                  Order ID
-                </th> */}
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
                   Customer
                 </th>
@@ -345,7 +357,7 @@ const handleUpdateStatus = async (order: Order) => {
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
                   Date
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
+                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
                   Status
                 </th>
                 <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
@@ -380,9 +392,6 @@ const handleUpdateStatus = async (order: Order) => {
                     key={order._id}
                     className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                   >
-                    {/* <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-gray-200">
-                      {order._id}
-                    </td> */}
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                       {order?.customerId?.name || order?.customerId?.email || order?.customerId?._id}
                     </td>

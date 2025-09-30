@@ -152,10 +152,23 @@ const AdminsTable: React.FC = () => {
     }
   };
 
-  // No need for client-side filtering since we're using server-side search
+  // Function to get status styles and icons
+  const getStatusStyles = (isActive: boolean) => {
+    return isActive
+      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-700"
+      : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border border-red-200 dark:border-red-700";
+  };
+
+  const getStatusIcon = (isActive: boolean) => {
+    return isActive ? "fa-check-circle" : "fa-times";
+  };
 
   return (
     <div className="p-4">
+      <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      />
       {/* Table Container */}
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-sm">
         {/* Table Header with Controls */}
@@ -241,11 +254,8 @@ const AdminsTable: React.FC = () => {
                       {item.email}
                     </td>
                     <td className="px-6 py-4 text-sm">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        item.isActive
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-                          : 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
-                      }`}>
+                      <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold tracking-wider ${getStatusStyles(item.isActive)}`}>
+                        <i className={`fas ${getStatusIcon(item.isActive)} text-xs`}></i>
                         {item.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </td>
