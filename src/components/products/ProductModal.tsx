@@ -917,7 +917,36 @@ const ProductModal: React.FC<ProductModalProps> = ({
 
             {/* Expiry Time, Is Negotiable, and Is Flash Deal Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Is Negotiable Checkbox */}
+              <div className="flex items-center mt-6">
+                <input
+                  type="checkbox"
+                  name="isNegotiable"
+                  checked={formData.isNegotiable}
+                  onChange={handleInputChange}
+                  className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 transition duration-200"
+                />
+                <label className="ml-2 text-sm font-medium text-gray-950 dark:text-gray-200">
+                  Is Negotiable
+                </label>
+              </div>
+
+              {/* Is Flash Deal Checkbox */}
+              <div className="flex items-center mt-6">
+                <input
+                  type="checkbox"
+                  name="isFlashDeal"
+                  checked={formData.isFlashDeal === "true"}
+                  onChange={handleInputChange}
+                  className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 transition duration-200"
+                />
+                <label className="ml-2 text-sm font-medium text-gray-950 dark:text-gray-200">
+                  Is Flash Deal
+                </label>
+              </div>
+
               {/* Flash Deal Expiry Time */}
+              {formData.isFlashDeal === "true" && (
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                   Expiry Time
@@ -962,34 +991,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
                   </p>
                 )}
               </div>
-
-              {/* Is Negotiable Checkbox */}
-              <div className="flex items-center mt-6">
-                <input
-                  type="checkbox"
-                  name="isNegotiable"
-                  checked={formData.isNegotiable}
-                  onChange={handleInputChange}
-                  className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 transition duration-200"
-                />
-                <label className="ml-2 text-sm font-medium text-gray-950 dark:text-gray-200">
-                  Is Negotiable
-                </label>
-              </div>
-
-              {/* Is Flash Deal Checkbox */}
-              <div className="flex items-center mt-6">
-                <input
-                  type="checkbox"
-                  name="isFlashDeal"
-                  checked={formData.isFlashDeal === "true"}
-                  onChange={handleInputChange}
-                  className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 transition duration-200"
-                />
-                <label className="ml-2 text-sm font-medium text-gray-950 dark:text-gray-200">
-                  Is Flash Deal
-                </label>
-              </div>
+              )}
             </div>
           </form>
         </div>

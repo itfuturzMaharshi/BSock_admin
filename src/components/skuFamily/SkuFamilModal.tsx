@@ -64,7 +64,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
     description: "",
     colorVariant: "",
     country: "",
-    simType: [] as string[],
+    simType: "",
     networkBands: "",
   });
   const [newImages, setNewImages] = useState<File[]>([]);
@@ -129,7 +129,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
           description: editItem.description || "",
           colorVariant: editItem.colorVariant || "",
           country: editItem.country || "",
-          simType: editItem.simType ? editItem.simType.split(", ") : [],
+          simType: editItem.simType || "",
           networkBands: editItem.networkBands || "",
         });
 
@@ -149,7 +149,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
           description: "",
           colorVariant: "",
           country: "",
-          simType: [],
+          simType: "",
           networkBands: "",
         });
         setExistingImages([]);
@@ -163,7 +163,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
         description: "",
         colorVariant: "",
         country: "",
-        simType: [],
+        simType: "",
         networkBands: "",
       });
       setExistingImages([]);
@@ -200,22 +200,14 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
     }
   };
 
-  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { value, checked } = e.target;
-    setFormData((prev) => {
-      const simType = checked
-        ? [...prev.simType, value]
-        : prev.simType.filter((item) => item !== value);
-      return { ...prev, simType };
-    });
+  const handleSimTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const { value } = e.target;
+    setFormData((prev) => ({ ...prev, simType: value }));
     setFormErrors((prev) => ({ ...prev, simType: "" }));
 
     // Validate the field if it's been touched
     if (touched.simType) {
-      const newSimType = checked
-        ? [...formData.simType, value]
-        : formData.simType.filter((item) => item !== value);
-      const error = validateField("simType", newSimType);
+      const error = validateField("simType", value);
       setValidationErrors((prev) => ({ ...prev, simType: error }));
     }
   };
@@ -314,7 +306,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
       case "country":
         return !value ? "Country is required" : undefined;
       case "simType":
-        return !value || (Array.isArray(value) && value.length === 0)
+        return !value || value.trim() === ""
           ? "SIM Type is required"
           : undefined;
       case "networkBands":
@@ -399,7 +391,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
       formDataToSend.append("description", formData.description.trim());
       formDataToSend.append("colorVariant", formData.colorVariant);
       formDataToSend.append("country", formData.country);
-      formDataToSend.append("simType", formData.simType.join(", "));
+      formDataToSend.append("simType", formData.simType);
       formDataToSend.append("networkBands", formData.networkBands);
       newImages.forEach((image) => {
         formDataToSend.append("images", image);
@@ -564,11 +556,11 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                   onChange={handleInputChange}
                   onBlur={handleBlur}
                   rows={5}
-                  className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm h-[42px] resize-none ${
+                  className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm h-[42px] ${
                     touched.description && validationErrors.description
                       ? "border-red-500 focus:ring-red-500"
                       : "border-gray-200 dark:border-gray-700"
-                  }`}
+                  } resize-y`}
                   placeholder="Enter Description"
                   required
                   disabled={isLoading}
@@ -747,33 +739,30 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                   SIM Type
                 </label>
-                <div className="flex gap-4 pt-1">
-                  {simOptions.map((option) => (
-                    <div key={option} className="flex items-center">
-                      <input
-                        type="checkbox"
-                        value={option}
-                        checked={formData.simType.includes(option)}
-                        onChange={handleCheckboxChange}
-                        onBlur={() => {
-                          setTouched((prev) => ({ ...prev, simType: true }));
-                          const error = validateField(
-                            "simType",
-                            formData.simType
-                          );
-                          setValidationErrors((prev) => ({
-                            ...prev,
-                            simType: error,
-                          }));
-                        }}
-                        className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 transition duration-200"
-                        disabled={isLoading}
-                      />
-                      <label className="ml-2 text-sm font-medium text-gray-950 dark:text-gray-200">
+                <div className="relative">
+                  <select
+                    name="simType"
+                    value={formData.simType}
+                    onChange={handleSimTypeChange}
+                    onBlur={handleBlur}
+                    className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
+                      touched.simType && validationErrors.simType
+                        ? "border-red-500 focus:ring-red-500"
+                        : "border-gray-200 dark:border-gray-700"
+                    }`}
+                    required
+                    disabled={isLoading}
+                  >
+                    <option value="" disabled>
+                      Select SIM Type
+                    </option>
+                    {simOptions.map((option) => (
+                      <option key={option} value={option}>
                         {option}
-                      </label>
-                    </div>
-                  ))}
+                      </option>
+                    ))}
+                  </select>
+                  <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
                 </div>
                 {touched.simType && validationErrors.simType && (
                   <p className="mt-1 text-xs text-red-600 dark:text-red-400">
@@ -857,10 +846,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                   <path
                     className="opacity-75"
                     fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 
-           0 5.373 0 12h4zm2 5.291A7.962 
-           7.962 0 014 12H0c0 3.042 1.135 
-           5.824 3 7.938l3-2.647z"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                   ></path>
                 </svg>
               ) : editItem ? (

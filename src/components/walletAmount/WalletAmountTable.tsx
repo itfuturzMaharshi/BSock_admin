@@ -1,8 +1,16 @@
 import React, { useState, useEffect } from "react";
 import toastHelper from "../../utils/toastHelper";
 import WalletAmountModal from "./WalletAmountModal";
-import { walletAmountService, CustomerWalletData, WalletTransaction, ListTransactionsRequest } from "../../services/walletAmount/walletAmountService";
-import { CustomerService, Customer } from "../../services/customer/customerService";
+import {
+  walletAmountService,
+  CustomerWalletData,
+  WalletTransaction,
+  ListTransactionsRequest,
+} from "../../services/walletAmount/walletAmountService";
+import {
+  CustomerService,
+  Customer,
+} from "../../services/customer/customerService";
 
 // Define the interface for Transaction data
 interface Transaction {
@@ -25,12 +33,15 @@ const WalletAmountTable: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [selectedCustomer, setSelectedCustomer] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("All");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isViewDetailsOpen, setIsViewDetailsOpen] = useState<boolean>(false);
   const [editIndex, setEditIndex] = useState<number | null>(null);
-  const [editingCustomer, setEditingCustomer] = useState<CustomerWalletData | null>(null);
-  const [viewingCustomer, setViewingCustomer] = useState<CustomerWalletData | null>(null);
+  const [editingCustomer, setEditingCustomer] =
+    useState<CustomerWalletData | null>(null);
+  const [viewingCustomer, setViewingCustomer] =
+    useState<CustomerWalletData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [totalDocs, setTotalDocs] = useState<number>(0);
@@ -54,19 +65,36 @@ const WalletAmountTable: React.FC = () => {
     fetchCustomers();
   }, []);
 
-  // Update pagination totals when walletData or searchTerm changes
+  // Update pagination totals when walletData, searchTerm, or statusFilter changes
   useEffect(() => {
-    const filtered = walletData.filter((item) => {
-      const matchesSearch =
-        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (item.businessProfile.businessName && item.businessProfile.businessName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (item.mobileNumber && item.mobileNumber.toLowerCase().includes(searchTerm.toLowerCase()));
-      return matchesSearch;
-    });
+    let filtered = walletData;
+
+    if (searchTerm.trim()) {
+      filtered = filtered.filter((item) => {
+        const matchesSearch =
+          item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (item.businessProfile.businessName &&
+            item.businessProfile.businessName
+              .toLowerCase()
+              .includes(searchTerm.toLowerCase())) ||
+          (item.mobileNumber &&
+            item.mobileNumber.toLowerCase().includes(searchTerm.toLowerCase()));
+        return matchesSearch;
+      });
+    }
+
+    if (statusFilter !== "All") {
+      filtered = filtered.filter(
+        (item) =>
+          item.businessProfile.status.toLowerCase() ===
+          statusFilter.toLowerCase()
+      );
+    }
+
     setTotalDocs(filtered.length);
     setTotalPages(Math.ceil(filtered.length / itemsPerPage));
     setCurrentPage(1);
-  }, [walletData, searchTerm]);
+  }, [walletData, searchTerm, statusFilter]);
 
   const fetchWalletData = async () => {
     try {
@@ -85,8 +113,6 @@ const WalletAmountTable: React.FC = () => {
     try {
       setLoading(true);
       if (selectedCustomer === "all") {
-        // If "all" is selected, we need to fetch transactions for all customers
-        // For now, we'll show empty state or fetch from a general endpoint
         setTransactions([]);
         return;
       }
@@ -98,24 +124,25 @@ const WalletAmountTable: React.FC = () => {
       };
 
       const response = await walletAmountService.listTransactions(requestData);
-      // Transform the response to match our interface
-      const transformedTransactions: Transaction[] = response.docs.map((transaction: WalletTransaction) => ({
-        _id: transaction._id,
-        customerId: transaction.customerId,
-        customerName: customers.find(c => c._id === transaction.customerId)?.name || 'Unknown Customer',
-        type: transaction.type,
-        amount: transaction.amount,
-        remark: transaction.remark,
-        createdAt: transaction.createdAt,
-        createdBy: transaction.createdBy,
-      }));
+      const transformedTransactions: Transaction[] = response.docs.map(
+        (transaction: WalletTransaction) => ({
+          _id: transaction._id,
+          customerId: transaction.customerId,
+          customerName:
+            customers.find((c) => c._id === transaction.customerId)?.name ||
+            "Unknown Customer",
+          type: transaction.type,
+          amount: transaction.amount,
+          remark: transaction.remark,
+          createdAt: transaction.createdAt,
+          createdBy: transaction.createdBy,
+        })
+      );
 
       setTransactions(transformedTransactions);
-
-      // No need to fetch balance separately; use from viewingCustomer
     } catch (error) {
-      console.error('Failed to fetch transactions:', error);
-      toastHelper.showTost('Failed to fetch transactions', 'error');
+      console.error("Failed to fetch transactions:", error);
+      toastHelper.showTost("Failed to fetch transactions", "error");
     } finally {
       setLoading(false);
     }
@@ -126,27 +153,37 @@ const WalletAmountTable: React.FC = () => {
       const customerList = await CustomerService.getAllCustomers();
       setCustomers(customerList);
     } catch (error) {
-      console.error('Failed to fetch customers:', error);
-      toastHelper.showTost('Failed to fetch customers', 'error');
+      console.error("Failed to fetch customers:", error);
+      toastHelper.showTost("Failed to fetch customers", "error");
     }
   };
 
   // Calculate wallet stats
   const totalCustomers = walletData.length;
-  const totalWalletBalance = walletData.reduce((sum, item) => sum + parseFloat(item.walletBalance), 0);
-  const approvedCustomers = walletData.filter(item => item.businessProfile.status === "approved").length;
-  const pendingCustomers = walletData.filter(item => item.businessProfile.status === "pending").length;
-  
+  const totalWalletBalance = walletData.reduce(
+    (sum, item) => sum + parseFloat(item.walletBalance),
+    0
+  );
+  const approvedCustomers = walletData.filter(
+    (item) => item.businessProfile.status === "approved"
+  ).length;
+  const pendingCustomers = walletData.filter(
+    (item) => item.businessProfile.status === "pending"
+  ).length;
+  const rejectedCustomers = walletData.filter(
+    (item) => item.businessProfile.status === "rejected"
+  ).length;
+
   const walletStats = {
     totalCustomers,
     totalWalletBalance,
     approvedCustomers,
     pendingCustomers,
+    rejectedCustomers,
   };
 
   // Handle saving a new or edited transaction
   const handleSave = () => {
-    // Refresh the wallet data and transactions list after saving
     fetchWalletData();
     if (selectedCustomer !== "all") {
       fetchTransactions();
@@ -170,59 +207,64 @@ const WalletAmountTable: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  // Handle editing a transaction
-  // const handleEdit = (index: number) => {
-  //   setEditIndex(index);
-  //   setIsModalOpen(true);
-  // };
-
-  // // Handle deleting a transaction
-  // const handleDelete = async (index: number) => {
-  //   const transaction = transactions[index];
-  //   if (!transaction) return;
-
-  //   const confirmed = await Swal.fire({
-  //     title: "Are you sure?",
-  //     text: "This will permanently delete the transaction!",
-  //     icon: "warning",
-  //     showCancelButton: true,
-  //     confirmButtonText: "Yes, delete!",
-  //     cancelButtonText: "No, cancel!",
-  //   });
-
-  //   if (confirmed.isConfirmed) {
-  //     try {
-  //       // Note: There's no delete API in the provided wallet APIs
-  //       // This would need to be implemented on the backend
-  //       toastHelper.showTost("Delete functionality not available", "warning");
-  //       // For now, just refresh the data
-  //       fetchTransactions();
-  //     } catch (error) {
-  //       console.error('Failed to delete transaction:', error);
-  //       toastHelper.showTost('Failed to delete transaction', 'error');
-  //     }
-  //   }
-  // };
   // Utility function to convert a string to title case
-const toTitleCase = (str: string): string => {
-  return str
-    .toLowerCase()
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-};
+  const toTitleCase = (str: string): string => {
+    return str
+      .toLowerCase()
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  };
+
+  // Get status styles
+  const getStatusStyles = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "approved":
+        return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-700";
+      case "pending":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-700";
+      case "rejected":
+        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border border-red-200 dark:border-red-700";
+      default:
+        return "";
+    }
+  };
+
+  // Get status icon
+  const getStatusIcon = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "approved":
+        return "fa-check-circle";
+      case "pending":
+        return "fa-clock";
+      case "rejected":
+        return "fa-times";
+      default:
+        return "";
+    }
+  };
 
   // Filter and paginate wallet data (client-side)
   const filteredWalletData = walletData.filter((item) => {
     const matchesSearch =
       item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.businessProfile.businessName && item.businessProfile.businessName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (item.mobileNumber && item.mobileNumber.toLowerCase().includes(searchTerm.toLowerCase()));
-    return matchesSearch;
+      (item.businessProfile.businessName &&
+        item.businessProfile.businessName
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase())) ||
+      (item.mobileNumber &&
+        item.mobileNumber.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesStatus =
+      statusFilter === "All" ||
+      item.businessProfile.status.toLowerCase() === statusFilter.toLowerCase();
+    return matchesSearch && matchesStatus;
   });
 
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedData = filteredWalletData.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedData = filteredWalletData.slice(
+    startIndex,
+    startIndex + itemsPerPage
+  );
 
   return (
     <div className="p-4 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -320,7 +362,6 @@ const toTitleCase = (str: string): string => {
               </div>
             </div>
           </div>
-
         </div>
       </div>
 
@@ -328,9 +369,9 @@ const toTitleCase = (str: string): string => {
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-sm">
         {/* Table Header with Controls */}
         <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full">
             {/* Search */}
-            <div className="relative flex-1 w-[85%]">
+            <div className="relative flex-1 w-full">
               <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
               <input
                 type="text"
@@ -342,10 +383,24 @@ const toTitleCase = (str: string): string => {
                 }}
               />
             </div>
+            {/* Status Filter */}
+            <div className="relative">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="pl-3 pr-8 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm min-w-[120px] appearance-none cursor-pointer"
+              >
+                <option value="All">All Status</option>
+                <option value="Approved">Approved</option>
+                <option value="Pending">Pending</option>
+                <option value="Rejected">Rejected</option>
+              </select>
+              <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+            </div>
           </div>
 
           <button
-            className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
+            className="inline-flex items-center whitespace-nowrap gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
             onClick={() => {
               setEditIndex(null);
               setIsModalOpen(true);
@@ -406,8 +461,8 @@ const toTitleCase = (str: string): string => {
                     className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                   >
                     <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-gray-200">
-  {toTitleCase(item.name)}
-</td>
+                      {toTitleCase(item.name)}
+                    </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                       {item.businessProfile.businessName || "N/A"}
                     </td>
@@ -427,20 +482,16 @@ const toTitleCase = (str: string): string => {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                       <span
-                        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider ${
-                          item.businessProfile.status === "approved"
-                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-700"
-                            : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-700"
-                        }`}
+                        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider ${getStatusStyles(
+                          item.businessProfile.status
+                        )}`}
                       >
                         <i
-                          className={`fas ${
-                            item.businessProfile.status === "approved"
-                              ? "fa-check-circle"
-                              : "fa-clock"
-                          } text-xs`}
+                          className={`fas ${getStatusIcon(
+                            item.businessProfile.status
+                          )} text-xs`}
                         ></i>
-                        {item.businessProfile.status}
+                        {toTitleCase(item.businessProfile.status)}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
@@ -528,156 +579,159 @@ const toTitleCase = (str: string): string => {
       />
 
       {/* View Details Modal */}
-{isViewDetailsOpen && viewingCustomer && (
-  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full max-h-[85vh] flex flex-col">
-      <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-        <div className="flex items-center space-x-4">
-          <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-            <i className="fas fa-user text-blue-600 dark:text-blue-400 text-xl"></i>
-          </div>
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              {toTitleCase(viewingCustomer.name)} Recent Transaction List
-            </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Recent Transaction Details
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={() => {
-            setIsViewDetailsOpen(false);
-            setViewingCustomer(null);
-            setSelectedCustomer("all");
-            setTransactions([]);
-          }}
-          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-        >
-          <i className="fas fa-times text-xl"></i>
-        </button>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-6">
-        {/* Customer Information */}
-        <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Customer Information
-          </h3>
-          <div className="space-y-3">
-            <div>
-              <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Country
-              </label>
-              <p className="text-gray-900 dark:text-white">
-                {viewingCustomer.businessProfile.country || "N/A"}
-              </p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Wallet Balance
-              </label>
-              <p
-                className={`text-lg font-bold ${
-                  parseFloat(viewingCustomer.walletBalance) >= 0
-                    ? "text-emerald-600 dark:text-emerald-400"
-                    : "text-red-500 dark:text-red-400"
-                }`}
+      {isViewDetailsOpen && viewingCustomer && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+              <div className="flex items-center space-x-4">
+                <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+                  <i className="fas fa-user text-blue-600 dark:text-blue-400 text-xl"></i>
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                    {toTitleCase(viewingCustomer.name)} Recent Transaction List
+                  </h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Recent Transaction Details
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setIsViewDetailsOpen(false);
+                  setViewingCustomer(null);
+                  setSelectedCustomer("all");
+                  setTransactions([]);
+                }}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
               >
-                ${parseFloat(viewingCustomer.walletBalance).toLocaleString()}
-              </p>
+                <i className="fas fa-times text-xl"></i>
+              </button>
             </div>
-          </div>
-        </div>
 
-        {/* Transactions Section */}
-        <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Recent Transactions
-          </h3>
-          {transactions.length > 0 ? (
-            <div className="space-y-3">
-              {transactions.slice(0, 5).map((transaction, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                        transaction.type === "credit"
-                          ? "bg-emerald-100 dark:bg-emerald-900/30"
-                          : "bg-red-100 dark:bg-red-900/30"
-                      }`}
-                    >
-                      <i
-                        className={`fas ${
-                          transaction.type === "credit"
-                            ? "fa-arrow-up text-emerald-600 dark:text-emerald-400"
-                            : "fa-arrow-down text-red-600 dark:text-red-400"
-                        } text-sm`}
-                      ></i>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">
-                        {transaction.remark}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {new Date(transaction.createdAt).toLocaleString()}
-                      </p>
-                    </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              {/* Customer Information */}
+              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-8">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                  Customer Information
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                      Country
+                    </label>
+                    <p className="text-gray-900 dark:text-white">
+                      {viewingCustomer.businessProfile.country || "N/A"}
+                    </p>
                   </div>
-                  <div className="text-right">
+                  <div>
+                    <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                      Wallet Balance
+                    </label>
                     <p
-                      className={`text-sm font-bold ${
-                        transaction.type === "credit"
+                      className={`text-lg font-bold ${
+                        parseFloat(viewingCustomer.walletBalance) >= 0
                           ? "text-emerald-600 dark:text-emerald-400"
                           : "text-red-500 dark:text-red-400"
                       }`}
                     >
-                      {transaction.type === "debit" ? "-" : "+"}$
-                      {transaction.amount.toLocaleString()}
+                      $
+                      {parseFloat(
+                        viewingCustomer.walletBalance
+                      ).toLocaleString()}
                     </p>
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-              No transactions found for this customer
-            </p>
-          )}
-        </div>
-      </div>
+              </div>
 
-      <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
-        <button
-          onClick={() => {
-            setIsViewDetailsOpen(false);
-            setViewingCustomer(null);
-            setSelectedCustomer("all");
-            setTransactions([]);
-          }}
-          className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-        >
-          Close
-        </button>
-        <button
-          onClick={() => {
-            handleEditCustomer(viewingCustomer);
-            setIsViewDetailsOpen(false);
-            setViewingCustomer(null);
-            setSelectedCustomer("all");
-            setTransactions([]);
-          }}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          Edit Wallet
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+              {/* Transactions Section */}
+              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                  Recent Transactions
+                </h3>
+                {transactions.length > 0 ? (
+                  <div className="space-y-3">
+                    {transactions.slice(0, 5).map((transaction, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div
+                            className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                              transaction.type === "credit"
+                                ? "bg-emerald-100 dark:bg-emerald-900/30"
+                                : "bg-red-100 dark:bg-red-900/30"
+                            }`}
+                          >
+                            <i
+                              className={`fas ${
+                                transaction.type === "credit"
+                                  ? "fa-arrow-up text-emerald-600 dark:text-emerald-400"
+                                  : "fa-arrow-down text-red-600 dark:text-red-400"
+                              } text-sm`}
+                            ></i>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">
+                              {transaction.remark}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              {new Date(transaction.createdAt).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p
+                            className={`text-sm font-bold ${
+                              transaction.type === "credit"
+                                ? "text-emerald-600 dark:text-emerald-400"
+                                : "text-red-500 dark:text-red-400"
+                            }`}
+                          >
+                            {transaction.type === "debit" ? "-" : "+"}$
+                            {transaction.amount.toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 dark:text-gray-400 text-center py-8">
+                    No transactions found for this customer
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+              <button
+                onClick={() => {
+                  setIsViewDetailsOpen(false);
+                  setViewingCustomer(null);
+                  setSelectedCustomer("all");
+                  setTransactions([]);
+                }}
+                className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => {
+                  handleEditCustomer(viewingCustomer);
+                  setIsViewDetailsOpen(false);
+                  setViewingCustomer(null);
+                  setSelectedCustomer("all");
+                  setTransactions([]);
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Edit Wallet
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -24,7 +24,7 @@ const BusinessRequestsTable: React.FC = () => {
     []
   );
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [statusFilter, setStatusFilter] = useState<string>("Pending"); // Changed default to "Pending"
+  const [statusFilter, setStatusFilter] = useState<string>("Pending");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(true);
   const [totalDocs, setTotalDocs] = useState<number>(0);
@@ -40,7 +40,6 @@ const BusinessRequestsTable: React.FC = () => {
     Record<string, "Approved" | "Pending" | "Rejected">
   >({});
 
-  // Load overrides from localStorage once
   useEffect(() => {
     try {
       const raw = localStorage.getItem("br_status_overrides");
@@ -53,7 +52,6 @@ const BusinessRequestsTable: React.FC = () => {
     } catch {}
   }, []);
 
-  // Persist overrides
   useEffect(() => {
     try {
       localStorage.setItem(
@@ -164,24 +162,21 @@ const BusinessRequestsTable: React.FC = () => {
     }
   }, [statusOverrides]);
 
-  // Filter and search logic
   useEffect(() => {
     let filtered = businessRequests;
 
-    // Apply search filter
     if (searchTerm.trim()) {
       filtered = filtered.filter((item) =>
         item.businessName.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
-    // Apply status filter
     if (statusFilter !== "All") {
       filtered = filtered.filter((item) => item.status === statusFilter);
     }
 
     setFilteredRequests(filtered);
-    setCurrentPage(1); // Reset to first page when filters change
+    setCurrentPage(1);
   }, [businessRequests, searchTerm, statusFilter]);
 
   useEffect(() => {
@@ -234,7 +229,6 @@ const BusinessRequestsTable: React.FC = () => {
     setDropdownPosition(null);
   };
 
-  // Calculate pagination for filtered results
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedRequests = filteredRequests.slice(startIndex, endIndex);
@@ -263,10 +257,8 @@ const BusinessRequestsTable: React.FC = () => {
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
       />
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-sm">
-        {/* Search and Filter */}
         <div className="flex flex-col gap-4 p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-            {/* Search Input */}
             <div className="relative flex-1 w-[85%]">
               <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
               <input
@@ -274,13 +266,11 @@ const BusinessRequestsTable: React.FC = () => {
                 placeholder="Search by business name..."
                 className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full"
                 value={searchTerm}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                  setSearchTerm(e.target.value);
-                }}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setSearchTerm(e.target.value)
+                }
               />
             </div>
-
-            {/* Status Filter Dropdown */}
             <div className="relative">
               <select
                 value={statusFilter}
@@ -297,7 +287,6 @@ const BusinessRequestsTable: React.FC = () => {
           </div>
         </div>
 
-        {/* Table */}
         <div className="max-w-full overflow-x-auto">
           <table className="w-full table-auto">
             <thead className="bg-gray-100 dark:bg-gray-900">
@@ -449,8 +438,9 @@ const BusinessRequestsTable: React.FC = () => {
                                   e.stopPropagation();
                                   handleView(item);
                                 }}
-                                className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                                className="flex items-center w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-blue-600"
                               >
+                                <i className="fas fa-eye mr-2 text-blue-600"></i>{" "}
                                 View
                               </button>
                               <button
@@ -458,11 +448,10 @@ const BusinessRequestsTable: React.FC = () => {
                                   e.stopPropagation();
                                   if (item._id)
                                     handleStatusChange(item._id, "Approved");
-                                  setOpenDropdownId(null);
-                                  setDropdownPosition(null);
                                 }}
-                                className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                                className="flex items-center w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-green-600"
                               >
+                                <i className="fas fa-check mr-2 text-green-600"></i>{" "}
                                 Approved
                               </button>
                               <button
@@ -470,11 +459,10 @@ const BusinessRequestsTable: React.FC = () => {
                                   e.stopPropagation();
                                   if (item._id)
                                     handleStatusChange(item._id, "Pending");
-                                  setOpenDropdownId(null);
-                                  setDropdownPosition(null);
                                 }}
-                                className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                                className="flex items-center w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-yellow-600"
                               >
+                                <i className="fas fa-pause mr-2 text-yellow-600"></i>{" "}
                                 Pending
                               </button>
                               <button
@@ -482,11 +470,10 @@ const BusinessRequestsTable: React.FC = () => {
                                   e.stopPropagation();
                                   if (item._id)
                                     handleStatusChange(item._id, "Rejected");
-                                  setOpenDropdownId(null);
-                                  setDropdownPosition(null);
                                 }}
-                                className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                                className="flex items-center w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-red-600"
                               >
+                                <i className="fas fa-times mr-2 text-red-600"></i>{" "}
                                 Rejected
                               </button>
                             </div>
@@ -501,7 +488,6 @@ const BusinessRequestsTable: React.FC = () => {
           </table>
         </div>
 
-        {/* Pagination */}
         <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t bg-gray-50">
           <div className="text-sm">
             Showing {paginatedRequests.length} of {filteredRequests.length}{" "}
@@ -560,11 +546,9 @@ const BusinessRequestsTable: React.FC = () => {
         </div>
       </div>
 
-      {/* Professional Business Details Modal */}
       {selectedProduct && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50 transition-opacity duration-300">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl max-w-md w-full mx-4">
-            {/* Modal Header */}
             <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-600">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                 Business Details
@@ -577,8 +561,6 @@ const BusinessRequestsTable: React.FC = () => {
                 <i className="fas fa-times text-xl"></i>
               </button>
             </div>
-
-            {/* Modal Body */}
             <div className="p-6">
               <div className="space-y-4">
                 <div>
@@ -589,7 +571,6 @@ const BusinessRequestsTable: React.FC = () => {
                     {selectedProduct.name || "-"}
                   </p>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Email
@@ -598,7 +579,6 @@ const BusinessRequestsTable: React.FC = () => {
                     {selectedProduct.email || "-"}
                   </p>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Phone Number
@@ -607,7 +587,6 @@ const BusinessRequestsTable: React.FC = () => {
                     {selectedProduct.mobileNumber || "-"}
                   </p>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     WhatsApp Number
@@ -622,7 +601,6 @@ const BusinessRequestsTable: React.FC = () => {
         </div>
       )}
 
-      {/* Enlarged image preview */}
       {selectedImage && (
         <div
           className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
