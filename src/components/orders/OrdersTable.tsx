@@ -12,11 +12,15 @@ const OrdersTable: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [totalDocs, setTotalDocs] = useState<number>(0);
   const [totalPages, setTotalPages] = useState<number>(1);
+  const [currentAdminId, setCurrentAdminId] = useState<string>("");
   const itemsPerPage = 10;
 
-  const statusOptions = ["request", "verified", "approved", "shipped", "delivered", "cancelled", "accepted"];
+  const allStatusOptions = ["request", "verified", "approved", "accepted", "shipped", "delivered", "cancelled"];
 
   useEffect(() => {
+    // Get current admin ID from localStorage
+    const adminId = localStorage.getItem("adminId") || "";
+    setCurrentAdminId(adminId);
     fetchOrders();
   }, [currentPage, searchTerm, statusFilter]);
 
@@ -39,8 +43,52 @@ const OrdersTable: React.FC = () => {
     }
   };
 
+  // Get available status options based on current order and admin
+  const getAvailableStatusOptions = (order: Order): string[] => {
+    const currentStatus = order.status;
+    
+    // If current admin verified this order
+    const isVerifiedByCurrentAdmin = order.verifiedBy === currentAdminId;
+    
+    // If current admin approved this order
+    const isApprovedByCurrentAdmin = order.approvedBy === currentAdminId;
+
+    // Filter status options based on conditions
+    return allStatusOptions.filter(status => {
+      // If admin verified, hide "approved" option
+      if (isVerifiedByCurrentAdmin && status === "approved") {
+        return false;
+      }
+      
+      // If admin approved, hide "verified" option
+      if (isApprovedByCurrentAdmin && status === "verified") {
+        return false;
+      }
+
+      // Show cancel option only if current admin verified and status is "verified"
+      if (status === "cancelled" && currentStatus === "verified" && isVerifiedByCurrentAdmin) {
+        return true;
+      }
+
+      // Hide cancel for other scenarios (will be handled separately)
+      if (status === "cancelled" && currentStatus !== "verified") {
+        return currentStatus === "cancelled"; // Only show if already cancelled
+      }
+
+      return true;
+    });
+  };
+
   const handleUpdateStatus = async (order: Order) => {
     const currentStatus = order.status;
+    const availableStatusOptions = getAvailableStatusOptions(order);
+    
+    // If no options available (shouldn't happen, but safety check)
+    if (availableStatusOptions.length === 0) {
+      toastHelper.showTost("No status options available for this order", "warning");
+      return;
+    }
+
     let selectedStatus = currentStatus;
     let editedCartItems: OrderItem[] = [...order.cartItems];
     let message = "";
@@ -50,7 +98,7 @@ const OrdersTable: React.FC = () => {
         <div style="margin-bottom: 20px;">
           <label for="statusSelect" style="display: block; font-size: 14px; font-weight: 600; color: #1F2937; margin-bottom: 8px;">Select Status</label>
           <select id="statusSelect" class="swal2-select" style="width: 100%; padding: 10px; font-size: 14px; margin:0px; border: 1px solid #D1D5DB; border-radius: 6px; background-color: #F9FAFB; color: #1F2937; outline: none; transition: border-color 0.2s;">
-            ${statusOptions
+            ${availableStatusOptions
               .map(
                 (status) =>
                   `<option value="${status}" ${
@@ -113,8 +161,17 @@ const OrdersTable: React.FC = () => {
         const quantityInputs = document.querySelectorAll(".quantity-input") as NodeListOf<HTMLInputElement>;
         const messageInput = document.getElementById("messageInput") as HTMLTextAreaElement;
 
+        if (!statusSelect) {
+          Swal.showValidationMessage('Status select element not found');
+          return false;
+        }
+
         selectedStatus = statusSelect.value;
-        message = messageInput.value;
+        message = messageInput?.value || "";
+
+        console.log('Selected Status:', selectedStatus);
+        console.log('Current Status:', currentStatus);
+        console.log('Message:', message);
 
         if (["verified", "approved"].includes(selectedStatus) && ["request", "accepted"].includes(currentStatus)) {
           editedCartItems = order.cartItems.map((item, index) => ({
@@ -155,6 +212,12 @@ const OrdersTable: React.FC = () => {
     });
 
     if (result.isConfirmed) {
+      // Check if status actually changed
+      if (selectedStatus === currentStatus && !message) {
+        toastHelper.showTost("No changes made to the order status", "info");
+        return;
+      }
+
       try {
         const cartItemsToSend =
           ["request", "accepted"].includes(currentStatus) && ["verified", "approved"].includes(selectedStatus)
@@ -174,6 +237,7 @@ const OrdersTable: React.FC = () => {
         }
       } catch (error) {
         console.error("Failed to update order status:", error);
+        toastHelper.showTost("Failed to update order status", "error");
       }
     }
   };
@@ -286,14 +350,27 @@ const OrdersTable: React.FC = () => {
       accepted: "fa-handshake",
     };
 
+    const isVerifiedByOtherAdmin = order.orderTrackingStatus === "verified" && order.verifiedBy !== currentAdminId;
+
     return (
-      <span
-        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold tracking-wider ${
-          statusStyles[order.status] || "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400 border border-gray-200 dark:border-gray-700"
-        }`}
-      >
-        <i className={`fas ${statusIcons[order.status] || "fa-info-circle"} text-xs`}></i>
-        {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+      <span className="inline-flex items-center gap-2">
+        <span
+          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold tracking-wider ${
+            statusStyles[order.status] || "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400 border border-gray-200 dark:border-gray-700"
+          }`}
+        >
+          <i className={`fas ${statusIcons[order.status] || "fa-info-circle"} text-xs`}></i>
+          {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+        </span>
+        {isVerifiedByOtherAdmin && (
+          <span 
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200"
+            title="This order has been verified by another admin"
+          >
+            <i className="fas fa-info-circle text-xs"></i>
+            Verified
+          </span>
+        )}
       </span>
     );
   };
@@ -331,7 +408,7 @@ const OrdersTable: React.FC = () => {
               className="pl-3 pr-8 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm appearance-none cursor-pointer"
             >
               <option value="">All Status</option>
-              {statusOptions.map((status) => (
+              {allStatusOptions.map((status) => (
                 <option key={status} value={status}>
                   {status.charAt(0).toUpperCase() + status.slice(1)}
                 </option>
@@ -371,7 +448,7 @@ const OrdersTable: React.FC = () => {
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="p-12 text-center">
+                  <td colSpan={7} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
                       Loading Orders...
@@ -380,7 +457,7 @@ const OrdersTable: React.FC = () => {
                 </tr>
               ) : ordersData.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="p-12 text-center">
+                  <td colSpan={7} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       No orders found
                     </div>

@@ -30,6 +30,7 @@ export interface Order {
   canVerify?: boolean;
   canApprove?: boolean;
   tracking?: TrackingItem[];
+  orderTrackingStatus?: string; // New field added
 }
 
 export interface TrackingItem {
@@ -37,7 +38,7 @@ export interface TrackingItem {
   changedBy?: any;
   userType: string;
   changedAt: string;
-  message?: string; // Added message field to match schema
+  message?: string;
 }
 
 export interface ListResponse {
@@ -103,7 +104,7 @@ export class AdminOrderService {
     orderId: string,
     status: string,
     cartItems?: OrderItem[],
-    message?: string // Added message parameter
+    message?: string
   ): Promise<any> => {
     const baseUrl = import.meta.env.VITE_BASE_URL;
     const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
@@ -119,7 +120,7 @@ export class AdminOrderService {
       }));
     }
     if (message) {
-      body.message = message; // Include message in request body
+      body.message = message;
     }
 
     try {
