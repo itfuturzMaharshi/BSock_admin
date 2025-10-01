@@ -15,7 +15,14 @@ const OrdersTable: React.FC = () => {
   const [currentAdminId, setCurrentAdminId] = useState<string>("");
   const itemsPerPage = 10;
 
-  const allStatusOptions = ["request", "verified", "approved", "accepted", "shipped", "delivered", "cancelled"];
+  const allStatusOptions = ["request", "verified", "approved", "accepted", "shipped", "delivered", "cancel"];
+  
+  // Get available status options for filter dropdown based on admin
+  const getAvailableFilterStatuses = (): string[] => {
+    // For now, show all statuses in filter dropdown
+    // This can be customized based on specific admin requirements
+    return allStatusOptions;
+  };
 
   useEffect(() => {
     // Get current admin ID from localStorage
@@ -46,47 +53,107 @@ const OrdersTable: React.FC = () => {
   // Get available status options based on current order and admin
   const getAvailableStatusOptions = (order: Order): string[] => {
     const currentStatus = order.status;
+    const orderTrackingStatus = order.orderTrackingStatus;
     
-    // If current admin verified this order
-    const isVerifiedByCurrentAdmin = order.verifiedBy === currentAdminId;
+    // Define status flow: request → verified → approved → accepted → shipped → delivered
+    const statusFlow = ["request", "verified", "approved", "accepted", "shipped", "delivered"];
     
-    // If current admin approved this order
-    const isApprovedByCurrentAdmin = order.approvedBy === currentAdminId;
-
-    // Filter status options based on conditions
-    return allStatusOptions.filter(status => {
-      // If admin verified, hide "approved" option
-      if (isVerifiedByCurrentAdmin && status === "approved") {
-        return false;
+    // Get the next status in the flow
+    const getNextStatus = (current: string): string | null => {
+      const currentIndex = statusFlow.indexOf(current);
+      return currentIndex >= 0 && currentIndex < statusFlow.length - 1 
+        ? statusFlow[currentIndex + 1] 
+        : null;
+    };
+    
+    // Get the previous status in the flow (for going back)
+    const getPreviousStatus = (current: string): string | null => {
+      const currentIndex = statusFlow.indexOf(current);
+      return currentIndex > 0 ? statusFlow[currentIndex - 1] : null;
+    };
+    
+    // Handle cancellation flow: cancel → verified → approved → cancel
+    if (orderTrackingStatus === "cancel") {
+      // If order is in cancel state, show verification and approval options
+      if (!order.verifiedBy && !order.approvedBy) {
+        // No one has verified or approved yet - show "verified" for first admin
+        return ["cancel", "verified"];
+      } else if (order.verifiedBy && !order.approvedBy) {
+        // Verified but not approved - show "approved" for second admin
+        return ["cancel", "verified", "approved"];
+      } else if (order.verifiedBy && order.approvedBy) {
+        // Both verified and approved - order becomes cancel, no more options
+        return ["cancel"];
       }
-      
-      // If admin approved, hide "verified" option
-      if (isApprovedByCurrentAdmin && status === "verified") {
-        return false;
-      }
-
-      // Show cancel option only if current admin verified and status is "verified"
-      if (status === "cancelled" && currentStatus === "verified" && isVerifiedByCurrentAdmin) {
-        return true;
-      }
-
-      // Hide cancel for other scenarios (will be handled separately)
-      if (status === "cancelled" && currentStatus !== "verified") {
-        return currentStatus === "cancelled"; // Only show if already cancelled
-      }
-
-      return true;
-    });
+    }
+    
+    // If order is already cancelled, no status options
+    if (currentStatus === "cancel" || orderTrackingStatus === "cancel") {
+      return ["cancel"];
+    }
+    
+    const availableStatuses: string[] = [];
+    
+    // Add current status
+    availableStatuses.push(currentStatus);
+    
+    // Add next status in flow
+    const nextStatus = getNextStatus(currentStatus);
+    if (nextStatus) {
+      availableStatuses.push(nextStatus);
+    }
+    
+    // Add previous status in flow (for going back)
+    const previousStatus = getPreviousStatus(currentStatus);
+    if (previousStatus) {
+      availableStatuses.push(previousStatus);
+    }
+    
+    // Add cancel option for all statuses except already cancelled
+    availableStatuses.push("cancel");
+    
+    // Special handling for admin-specific statuses
+    if (currentStatus === "request" && !order.verifiedBy && !order.approvedBy) {
+      // For new orders, only show "verified"
+      return ["request", "verified", "cancel"];
+    }
+    
+    // If order is verified but status is still "request", show only "verified" and "approved"
+    if (order.verifiedBy && currentStatus === "request") {
+      return ["verified", "approved", "cancel"];
+    }
+    
+    // If order is approved but status is still "verified", show only "approved" and next status
+    if (order.approvedBy && currentStatus === "verified") {
+      return ["approved", "accepted", "cancel"];
+    }
+    
+    // Remove duplicates and return
+    return [...new Set(availableStatuses)];
   };
 
   const handleUpdateStatus = async (order: Order) => {
     const currentStatus = order.status;
     const availableStatusOptions = getAvailableStatusOptions(order);
     
+    // Check if current admin has permission to update this order's status
+    const canUpdateStatus = order.verifiedBy === currentAdminId || order.approvedBy === currentAdminId;
+    
     // If no options available (shouldn't happen, but safety check)
     if (availableStatusOptions.length === 0) {
       toastHelper.showTost("No status options available for this order", "warning");
       return;
+    }
+    
+    // Check if admin has permission to update status
+    // Allow updates for new orders (request status) or if admin has permission
+    const isNewOrder = currentStatus === "request" && !order.verifiedBy && !order.approvedBy;
+    
+    // Allow status updates for all statuses in the flow
+    // No need for complex permission checks since we're following the flow
+    if (!isNewOrder && !canUpdateStatus && ["verified", "approved"].includes(currentStatus)) {
+      // Only restrict if it's not a new order and admin doesn't have permission
+      // For the flow-based approach, we'll allow updates
     }
 
     let selectedStatus = currentStatus;
@@ -190,8 +257,11 @@ const OrdersTable: React.FC = () => {
 
         statusSelect.addEventListener("change", () => {
           const newStatus = statusSelect.value;
+          // Hide cart items for cancel status
           cartItemsContainer.style.display =
-            ["verified", "approved"].includes(newStatus) && ["request", "accepted"].includes(currentStatus)
+            newStatus !== "cancel" && 
+            ["verified", "approved"].includes(newStatus) && 
+            ["request", "accepted"].includes(currentStatus)
               ? "block"
               : "none";
         });
@@ -219,10 +289,20 @@ const OrdersTable: React.FC = () => {
       }
 
       try {
+        // Don't send cart items for cancel status
         const cartItemsToSend =
-          ["request", "accepted"].includes(currentStatus) && ["verified", "approved"].includes(selectedStatus)
+          selectedStatus !== "cancel" && 
+          ["request", "accepted"].includes(currentStatus) && 
+          ["verified", "approved"].includes(selectedStatus)
             ? editedCartItems
             : undefined;
+
+        console.log('Updating order status:', {
+          orderId: order._id,
+          selectedStatus,
+          cartItemsToSend,
+          message
+        });
 
         const response = await AdminOrderService.updateOrderStatus(
           order._id,
@@ -231,8 +311,10 @@ const OrdersTable: React.FC = () => {
           message || undefined
         );
 
+        console.log('Update response:', response);
+
         if (response !== false) {
-          toastHelper.showTost(`Order status updated to ${selectedStatus}!`, "success");
+          // Success message is already shown in the service
           fetchOrders();
         }
       } catch (error) {
@@ -338,6 +420,7 @@ const OrdersTable: React.FC = () => {
       delivered: "bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-400 border border-teal-200 dark:border-teal-700",
       cancelled: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border border-red-200 dark:border-red-700",
       accepted: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-700",
+      cancel: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border border-orange-200 dark:border-orange-700",
     };
 
     const statusIcons: { [key: string]: string } = {
@@ -348,20 +431,76 @@ const OrdersTable: React.FC = () => {
       delivered: "fa-box",
       cancelled: "fa-times",
       accepted: "fa-handshake",
+      cancel: "fa-exclamation-triangle",
     };
 
+    // Determine the actual status to display
+    let displayStatus = order.status;
+    
+    // Handle cancellation flow display
+    if (order.orderTrackingStatus === "cancel") {
+      if (order.verifiedBy && order.approvedBy) {
+        displayStatus = "cancel";
+      } else if (order.verifiedBy) {
+        displayStatus = "verified";
+      } else {
+        displayStatus = "cancel";
+      }
+    } else {
+      // Priority: approved > verified > request
+      // If order is approved, show "approved" regardless of other statuses
+      if (order.approvedBy) {
+        displayStatus = "approved";
+      }
+      // If order is verified but not approved, show "verified"
+      else if (order.verifiedBy) {
+        displayStatus = "verified";
+      }
+      // Otherwise show the current status
+      else {
+        displayStatus = order.status;
+      }
+    }
+
     const isVerifiedByOtherAdmin = order.orderTrackingStatus === "verified" && order.verifiedBy !== currentAdminId;
+
+    // Check if we're in cancellation flow and should show only icons
+    const isInCancellationFlow = order.orderTrackingStatus === "cancel";
+    const showOnlyIcons = isInCancellationFlow && (order.verifiedBy || order.approvedBy);
 
     return (
       <span className="inline-flex items-center gap-2">
         <span
           className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold tracking-wider ${
-            statusStyles[order.status] || "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400 border border-gray-200 dark:border-gray-700"
+            statusStyles[displayStatus] || "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400 border border-gray-200 dark:border-gray-700"
           }`}
         >
-          <i className={`fas ${statusIcons[order.status] || "fa-info-circle"} text-xs`}></i>
-          {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+          <i className={`fas ${statusIcons[displayStatus] || "fa-info-circle"} text-xs`}></i>
+          {!showOnlyIcons && displayStatus.charAt(0).toUpperCase() + displayStatus.slice(1)}
         </span>
+        
+        {/* Show verification and approval icons during cancellation flow - ONLY ICONS, NO TEXT */}
+        {isInCancellationFlow && (
+          <>
+            {order.verifiedBy && (
+              <span 
+                className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-600 border border-blue-200"
+                title="Verified by admin"
+              >
+                <i className="fas fa-check text-xs"></i>
+              </span>
+            )}
+            {order.approvedBy && (
+              <span 
+                className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 border border-emerald-200"
+                title="Approved by admin"
+              >
+                <i className="fas fa-check-circle text-xs"></i>
+              </span>
+            )}
+          </>
+        )}
+        
         {isVerifiedByOtherAdmin && (
           <span 
             className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200"
@@ -408,7 +547,7 @@ const OrdersTable: React.FC = () => {
               className="pl-3 pr-8 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm appearance-none cursor-pointer"
             >
               <option value="">All Status</option>
-              {allStatusOptions.map((status) => (
+              {getAvailableFilterStatuses().map((status) => (
                 <option key={status} value={status}>
                   {status.charAt(0).toUpperCase() + status.slice(1)}
                 </option>

@@ -111,6 +111,7 @@ export class AdminOrderService {
     const url = `${baseUrl}/api/${adminRoute}/order/update-status`;
 
     const body: any = { orderId, status };
+    
     if (cartItems && cartItems.length > 0) {
       body.cartItems = cartItems.map(item => ({
         productId: item.productId._id,
