@@ -38,7 +38,6 @@ const CurrencyConversionTable: React.FC = () => {
     } catch (err: any) {
       console.error("Error fetching currency conversions:", err);
       
-      // Check if it's an authentication error
       if (err.message?.includes('Authentication required')) {
         toastHelper.showTost("Please login to access currency conversions", "error");
       } else if (err.message?.includes('API endpoint not found')) {
@@ -67,7 +66,6 @@ const CurrencyConversionTable: React.FC = () => {
     } catch (err: any) {
       console.error("Error saving currency conversion:", err);
       
-      // Check if it's an authentication error
       if (err.message?.includes('Authentication required')) {
         toastHelper.showTost("Please login to save currency conversions", "error");
       } else if (err.message?.includes('API endpoint not found')) {
@@ -83,11 +81,9 @@ const CurrencyConversionTable: React.FC = () => {
     const selectedItem = currencyConversions.find((item) => item._id === id);
     console.log("Selected item for edit:", selectedItem);
     
-    // Close modal first to reset state
     setIsModalOpen(false);
     setEditId(null);
     
-    // Use setTimeout to ensure state is reset before opening again
     setTimeout(() => {
       setEditId(id);
       setIsModalOpen(true);
@@ -111,7 +107,6 @@ const CurrencyConversionTable: React.FC = () => {
       } catch (err: any) {
         console.error("Error deleting currency conversion:", err);
         
-        // Check if it's an authentication error
         if (err.message?.includes('Authentication required')) {
           toastHelper.showTost("Please login to delete currency conversions", "error");
         } else if (err.message?.includes('API endpoint not found')) {
@@ -145,7 +140,7 @@ const CurrencyConversionTable: React.FC = () => {
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-sm">
         {/* Table Header with Controls */}
         <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-          <div className="flex items-center gap-3 w-[85%]">
+          <div className="flex items-center gap-3 w-full">
             {/* Search */}
             <div className="relative flex-1">
               <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
@@ -250,8 +245,8 @@ const CurrencyConversionTable: React.FC = () => {
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+        {totalDocs > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 w-full">
             <div className="text-sm text-gray-600 dark:text-gray-400 mb-4 sm:mb-0">
               Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalDocs)} of {totalDocs} entries
             </div>
