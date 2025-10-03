@@ -42,6 +42,10 @@ export default function UserInfoCard({
     confirm: false,
   });
   const [settingsList, setSettingsList] = useState<any[]>([]);
+  
+  const [accordionOpen, setAccordionOpen] = useState(false);
+  const [systemOpen, setSystemOpen] = useState(false);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "update">("create");
   const [selectedSettings, setSelectedSettings] = useState<any>(null);
@@ -139,9 +143,6 @@ export default function UserInfoCard({
               <div className="w-20 h-20 bg-[#0071E3] rounded-full flex items-center justify-center text-white text-2xl font-bold">
                 {getInitials(formData.name)}
               </div>
-              <button className="absolute -bottom-1 -right-1 w-6 h-6 bg-gray-200 dark:bg-gray-600 rounded-full flex items-center justify-center hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">
-                <i className="fas fa-camera text-xs text-gray-600 dark:text-gray-300"></i>
-              </button>
             </div>
             
             {/* Profile Info */}
@@ -186,186 +187,236 @@ export default function UserInfoCard({
                 {formData.email}
               </p>
             </div>
-            <div>
+            {/* <div>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">User Role</p>
               <p className="text-lg font-medium text-gray-800 dark:text-white">
                 Admin
               </p>
-            </div>
+            </div> */}
           </div>
         </div>
 
         {/* Account Settings Card */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
-          <div className="mb-6">
-            <h2 className="text-xl font-bold text-[#0071E3] dark:text-blue-400">
-              Account Settings
-            </h2>
-          </div>
-          
-          <div className="grid grid-cols-1 gap-6">
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-2">
-                <i className="fas fa-lock text-gray-500"></i> Current Password
-              </p>
-              <div className="relative">
-                <input
-                  type={showPassword.current ? "text" : "password"}
-                  name="currentPassword"
-                  value={formData.currentPassword}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 pr-10 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring focus:ring-[#0071E3] dark:bg-gray-700 dark:text-white/90"
-                />
-                <button
-                  type="button"
-                  onClick={() => togglePassword("current")}
-                  className="absolute inset-y-0 right-3 flex items-center text-gray-500"
-                >
-                  <i className={`fas ${showPassword.current ? "fa-eye" : "fa-eye-slash"}`}></i>
-                </button>
-              </div>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-2">
-                <i className="fas fa-lock text-gray-500"></i> New Password
-              </p>
-              <div className="relative">
-                <input
-                  type={showPassword.new ? "text" : "password"}
-                  name="newPassword"
-                  value={formData.newPassword}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 pr-10 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring focus:ring-[#0071E3] dark:bg-gray-700 dark:text-white/90"
-                />
-                <button
-                  type="button"
-                  onClick={() => togglePassword("new")}
-                  className="absolute inset-y-0 right-3 flex items-center text-gray-500"
-                >
-                  <i className={`fas ${showPassword.new ? "fa-eye" : "fa-eye-slash"}`}></i>
-                </button>
-              </div>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-2">
-                <i className="fas fa-lock text-gray-500"></i> Confirm Password
-              </p>
-              <div className="relative">
-                <input
-                  type={showPassword.confirm ? "text" : "password"}
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 pr-10 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring focus:ring-[#0071E3] dark:bg-gray-700 dark:text-white/90"
-                />
-                <button
-                  type="button"
-                  onClick={() => togglePassword("confirm")}
-                  className="absolute inset-y-0 right-3 flex items-center text-gray-500"
-                >
-                  <i className={`fas ${showPassword.confirm ? "fa-eye" : "fa-eye-slash"}`}></i>
-                </button>
-              </div>
-            </div>
-            <div className="flex justify-end mt-6">
-              <button
-                onClick={handleChangePassword}
-                className="flex items-center justify-center gap-2 rounded-lg bg-[#0071E3] px-6 py-3 text-base font-medium text-white shadow hover:bg-[#005bb5] transition-colors"
-              >
-                <i className="fas fa-pen-to-square"></i> Change Password
-              </button>
-            </div>
-          </div>
-        </div>
+<div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
+  {/* Accordion Header */}
+  <div
+    className="flex items-center justify-between cursor-pointer"
+    onClick={() => setAccordionOpen((prev) => !prev)}
+  >
+    <h2 className="text-xl font-bold text-[#0071E3] dark:text-blue-400">
+      Account Settings
+    </h2>
+    <i
+      className={`fas fa-chevron-${accordionOpen ? "up" : "down"} text-gray-500`}
+    ></i>
+  </div>
 
-        {/* Settings Card */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-[#0071E3] dark:text-blue-400">
-              System Settings
-            </h2>
-            {settingsList.length === 0 ? (
-              <button
-                onClick={openCreateModal}
-                className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-              >
-                <i className="fas fa-plus text-sm"></i>
-                Create Settings
-              </button>
-            ) : (
-              <div className="text-sm text-gray-500 dark:text-gray-400">
-                Settings exist - Use Update button below to modify
-              </div>
-            )}
-          </div>
-          
-          {settingsList.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full border border-gray-200 dark:border-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-800">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Wallet Percentage
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Bid Wallet Allowance
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Ready Stock Allowance
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Report Time
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Timezone
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Action
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                  {settingsList.map((settings) => (
-                    <tr
-                      key={settings._id}
-                      className="hover:bg-gray-50 dark:hover:bg-gray-700"
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-white/90">
-                        {settings.percentage ?? "N/A"}%
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-white/90">
-                        {settings.bidWalletAllowancePer || "N/A"}%
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-white/90">
-                        {settings.readyStockAllowancePer || "N/A"}%
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-white/90">
-                        {settings.reportTime || "N/A"}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-white/90">
-                        {settings.timezone || "N/A"}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <button
-                          onClick={() => openUpdateModal(settings)}
-                          className="flex items-center justify-center gap-2 rounded-lg bg-[#0071E3] px-3 py-2 text-sm font-medium text-white shadow hover:bg-[#005bb5] transition-colors"
-                        >
-                          <i className="fas fa-pen-to-square"></i> Update
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <p className="text-base text-gray-500 dark:text-gray-400">
-                No settings configuration found. Click "Create Settings" above to add your first configuration.
-              </p>
-            </div>
-          )}
+  {/* Accordion Content */}
+  <div
+    className={`grid grid-cols-1 gap-6 transition-all duration-300 overflow-hidden ${
+      accordionOpen ? "max-h-[1000px] mt-6" : "max-h-0"
+    }`}
+  >
+    <div>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-2">
+        <i className="fas fa-lock text-gray-500"></i> Current Password
+      </p>
+      <div className="relative">
+        <input
+          type={showPassword.current ? "text" : "password"}
+          name="currentPassword"
+          value={formData.currentPassword}
+          onChange={handleChange}
+          className="w-full px-3 py-2 pr-10 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring focus:ring-[#0071E3] dark:bg-gray-700 dark:text-white/90"
+        />
+        <button
+          type="button"
+          onClick={() => togglePassword("current")}
+          className="absolute inset-y-0 right-3 flex items-center text-gray-500"
+        >
+          <i
+            className={`fas ${
+              showPassword.current ? "fa-eye" : "fa-eye-slash"
+            }`}
+          ></i>
+        </button>
+      </div>
+    </div>
+
+    {/* New Password */}
+    <div>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-2">
+        <i className="fas fa-lock text-gray-500"></i> New Password
+      </p>
+      <div className="relative">
+        <input
+          type={showPassword.new ? "text" : "password"}
+          name="newPassword"
+          value={formData.newPassword}
+          onChange={handleChange}
+          className="w-full px-3 py-2 pr-10 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring focus:ring-[#0071E3] dark:bg-gray-700 dark:text-white/90"
+        />
+        <button
+          type="button"
+          onClick={() => togglePassword("new")}
+          className="absolute inset-y-0 right-3 flex items-center text-gray-500"
+        >
+          <i
+            className={`fas ${
+              showPassword.new ? "fa-eye" : "fa-eye-slash"
+            }`}
+          ></i>
+        </button>
+      </div>
+    </div>
+
+    {/* Confirm Password */}
+    <div>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-2">
+        <i className="fas fa-lock text-gray-500"></i> Confirm Password
+      </p>
+      <div className="relative">
+        <input
+          type={showPassword.confirm ? "text" : "password"}
+          name="confirmPassword"
+          value={formData.confirmPassword}
+          onChange={handleChange}
+          className="w-full px-3 py-2 pr-10 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring focus:ring-[#0071E3] dark:bg-gray-700 dark:text-white/90"
+        />
+        <button
+          type="button"
+          onClick={() => togglePassword("confirm")}
+          className="absolute inset-y-0 right-3 flex items-center text-gray-500"
+        >
+          <i
+            className={`fas ${
+              showPassword.confirm ? "fa-eye" : "fa-eye-slash"
+            }`}
+          ></i>
+        </button>
+      </div>
+    </div>
+
+    {/* Change Password Button */}
+    <div className="flex justify-end mt-6">
+      <button
+        onClick={handleChangePassword}
+        className="flex items-center justify-center gap-2 rounded-lg bg-[#0071E3] px-6 py-3 text-base font-medium text-white shadow hover:bg-[#005bb5] transition-colors"
+      >
+        <i className="fas fa-pen-to-square"></i> Change Password
+      </button>
+    </div>
+  </div>
+</div>
+
+
+        {/* System Settings Card */}
+<div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
+  {/* Accordion Header */}
+  <div
+    className="flex items-center justify-between cursor-pointer"
+    onClick={() => setSystemOpen(!systemOpen)}
+  >
+    <h2 className="text-xl font-bold text-[#0071E3] dark:text-blue-400">
+      System Settings
+    </h2>
+    <i
+      className={`fas fa-chevron-${systemOpen ? "up" : "down"} text-gray-500`}
+    ></i>
+  </div>
+
+  {/* Accordion Content */}
+  <div
+    className={`transition-all duration-300 overflow-hidden ${
+      systemOpen ? "max-h-[2000px] mt-6" : "max-h-0"
+    }`}
+  >
+    <div className="flex items-center justify-between mb-6">
+      {settingsList.length === 0 ? (
+        <button
+          onClick={openCreateModal}
+          className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+        >
+          <i className="fas fa-plus text-sm"></i>
+          Create Settings
+        </button>
+      ) : (
+        <div className="text-sm text-gray-500 dark:text-gray-400">
+          Settings exist - Use Update button below to modify
         </div>
+      )}
+    </div>
+
+    {settingsList.length > 0 ? (
+      <div className="overflow-x-auto">
+        <table className="min-w-full border border-gray-200 dark:border-gray-700">
+          <thead className="bg-gray-50 dark:bg-gray-800">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Wallet Percentage
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Bid Wallet Allowance
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Ready Stock Allowance
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Report Time
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Timezone
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Action
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+            {settingsList.map((settings) => (
+              <tr
+                key={settings._id}
+                className="hover:bg-gray-50 dark:hover:bg-gray-700"
+              >
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-white/90">
+                  {settings.percentage ?? "N/A"}%
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-white/90">
+                  {settings.bidWalletAllowancePer || "N/A"}%
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-white/90">
+                  {settings.readyStockAllowancePer || "N/A"}%
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-white/90">
+                  {settings.reportTime || "N/A"}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-white/90">
+                  {settings.timezone || "N/A"}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <button
+                    onClick={() => openUpdateModal(settings)}
+                    className="flex items-center justify-center gap-2 rounded-lg bg-[#0071E3] px-3 py-2 text-sm font-medium text-white shadow hover:bg-[#005bb5] transition-colors"
+                  >
+                    <i className="fas fa-pen-to-square"></i> Update
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    ) : (
+      <div className="text-center py-8">
+        <p className="text-base text-gray-500 dark:text-gray-400">
+          No settings configuration found. Click "Create Settings" above to add
+          your first configuration.
+        </p>
+      </div>
+    )}
+  </div>
+</div>
+
 
       </div>
 
