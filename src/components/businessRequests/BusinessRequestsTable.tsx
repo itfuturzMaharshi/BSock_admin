@@ -1249,10 +1249,12 @@ const BusinessRequestsTable: React.FC = () => {
                 <i className="fas fa-times text-lg"></i>
               </button>
             </div>
-            <div className="p-6">
+
+            {/* Body */}
+            <div className="p-6 bg-gray-50 dark:bg-gray-900">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">
                     Name
                   </label>
                   <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50/50 dark:bg-gray-800/50 px-3 py-2 rounded-lg border border-gray-200/50 dark:border-gray-700/50">
@@ -1260,7 +1262,7 @@ const BusinessRequestsTable: React.FC = () => {
                   </p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">
                     Email
                   </label>
                   <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50/50 dark:bg-gray-800/50 px-3 py-2 rounded-lg border border-gray-200/50 dark:border-gray-700/50">
@@ -1268,7 +1270,7 @@ const BusinessRequestsTable: React.FC = () => {
                   </p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">
                     Phone Number
                   </label>
                   <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50/50 dark:bg-gray-800/50 px-3 py-2 rounded-lg border border-gray-200/50 dark:border-gray-700/50">
@@ -1276,7 +1278,7 @@ const BusinessRequestsTable: React.FC = () => {
                   </p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">
                     WhatsApp Number
                   </label>
                   <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50/50 dark:bg-gray-800/50 px-3 py-2 rounded-lg border border-gray-200/50 dark:border-gray-700/50">
