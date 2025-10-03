@@ -1,3 +1,864 @@
+// import React, { useState, useEffect } from "react";
+// import Swal from "sweetalert2";
+// import { format } from "date-fns";
+// import toastHelper from "../../utils/toastHelper";
+// import ProductModal from "./ProductModal";
+// import UploadExcelModal from "./UploadExcelModal";
+// import {
+//   ProductService,
+//   Product,
+// } from "../../services/product/product.services";
+// import placeholderImage from "../../../public/images/product/noimage.jpg";
+
+// interface ProductsTableProps {
+//   loggedInAdminId?: string;
+// }
+
+// const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
+//   const [productsData, setProductsData] = useState<Product[]>([]);
+//   const [searchTerm, setSearchTerm] = useState<string>("");
+//   const [statusFilter, setStatusFilter] = useState<string>("all");
+//   const [currentPage, setCurrentPage] = useState<number>(1);
+//   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+//   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
+//   const [editProduct, setEditProduct] = useState<Product | null>(null);
+//   const [loading, setLoading] = useState<boolean>(true);
+//   const [totalDocs, setTotalDocs] = useState<number>(0);
+//   const [totalPages, setTotalPages] = useState<number>(1);
+//   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+//   const itemsPerPage = 10;
+//   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+//   const [dropdownPosition, setDropdownPosition] = useState<{
+//     top: number;
+//     left: number;
+//   } | null>(null);
+
+//   useEffect(() => {
+//     fetchProducts();
+//   }, [currentPage, searchTerm, statusFilter]);
+
+//   useEffect(() => {
+//     const handleClickOutside = (event: MouseEvent) => {
+//       if (!event.target) return;
+//       if (!(event.target as HTMLElement).closest(".dropdown-container")) {
+//         setOpenDropdownId(null);
+//         setDropdownPosition(null);
+//       }
+//     };
+
+//     const handleResize = () => {
+//       if (openDropdownId) {
+//         setOpenDropdownId(null);
+//         setDropdownPosition(null);
+//       }
+//     };
+
+//     document.addEventListener("click", handleClickOutside);
+//     window.addEventListener("resize", handleResize);
+//     return () => {
+//       document.removeEventListener("click", handleClickOutside);
+//       window.removeEventListener("resize", handleResize);
+//     };
+//   }, [openDropdownId]);
+
+//   const fetchProducts = async () => {
+//     try {
+//       setLoading(true);
+//       const response = await ProductService.getProductList(
+//         currentPage,
+//         itemsPerPage,
+//         searchTerm
+//       );
+
+//       let filteredData = response.data.docs;
+
+//       if (statusFilter !== "all") {
+//         filteredData = response.data.docs.filter((product: Product) => {
+//           if (statusFilter === "approved") {
+//             return product.isApproved;
+//           } else if (statusFilter === "pending") {
+//             return product.isVerified && !product.isApproved;
+//           } else if (statusFilter === "verification") {
+//             return !product.isVerified;
+//           }
+//           return true;
+//         });
+//       }
+
+//       setProductsData(filteredData);
+//       setTotalDocs(filteredData.length);
+//       setTotalPages(Math.ceil(filteredData.length / itemsPerPage));
+//     } catch (error) {
+//       console.error("Failed to fetch products:", error);
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   const handleSave = async (productData: any) => {
+//     try {
+//       const processedData = {
+//         ...productData,
+//         price:
+//           typeof productData.price === "string"
+//             ? parseFloat(productData.price)
+//             : productData.price,
+//         stock:
+//           typeof productData.stock === "string"
+//             ? parseInt(productData.stock)
+//             : productData.stock,
+//         moq:
+//           typeof productData.moq === "string"
+//             ? parseInt(productData.moq)
+//             : productData.moq,
+//       };
+
+//       if (editProduct && editProduct._id) {
+//         await ProductService.updateProduct(editProduct._id, processedData);
+//         toastHelper.showTost("Product updated successfully!", "success");
+//       } else {
+//         await ProductService.createProduct(processedData);
+//         toastHelper.showTost("Product added successfully!", "success");
+//       }
+//       setIsModalOpen(false);
+//       setEditProduct(null);
+//       fetchProducts();
+//     } catch (error) {
+//       console.error("Failed to save product:", error);
+//     }
+//   };
+
+//   const handleEdit = (product: Product) => {
+//     setEditProduct(product);
+//     setIsModalOpen(true);
+//     setOpenDropdownId(null);
+//     setDropdownPosition(null);
+//   };
+
+//   const handleDelete = async (product: Product) => {
+//     if (!product._id) return;
+
+//     const confirmed = await Swal.fire({
+//       title: "Are you sure?",
+//       text: "You won't be able to revert this!",
+//       icon: "warning",
+//       showCancelButton: true,
+//       confirmButtonText: "Yes, delete it!",
+//       cancelButtonText: "No, cancel!",
+//     });
+
+//     if (confirmed.isConfirmed) {
+//       try {
+//         await ProductService.deleteProduct(product._id);
+//         toastHelper.showTost("Product deleted successfully!", "success");
+//         fetchProducts();
+//       } catch (error) {
+//         console.error("Failed to delete product:", error);
+//       }
+//     }
+//     setOpenDropdownId(null);
+//     setDropdownPosition(null);
+//   };
+
+//   const handleVerify = async (product: Product) => {
+//     if (!product._id) return;
+
+//     const confirmed = await Swal.fire({
+//       title: "Verify Product",
+//       text: "Are you sure you want to verify this product?",
+//       icon: "question",
+//       showCancelButton: true,
+//       confirmButtonText: "Yes, verify it!",
+//       cancelButtonText: "No, cancel!",
+//     });
+
+//     if (confirmed.isConfirmed) {
+//       try {
+//         const result = await ProductService.verifyProduct(product._id);
+//         if (result !== false) {
+//           fetchProducts();
+//         }
+//       } catch (error) {
+//         console.error("Failed to verify product:", error);
+//       }
+//     }
+//     setOpenDropdownId(null);
+//     setDropdownPosition(null);
+//   };
+
+//   const handleApprove = async (product: Product) => {
+//     if (!product._id) return;
+
+//     const confirmed = await Swal.fire({
+//       title: "Approve Product",
+//       text: "Are you sure you want to approve this product?",
+//       icon: "question",
+//       showCancelButton: true,
+//       confirmButtonText: "Yes, approve it!",
+//       cancelButtonText: "No, cancel!",
+//     });
+
+//     if (confirmed.isConfirmed) {
+//       try {
+//         const result = await ProductService.approveProduct(product._id);
+//         if (result !== false) {
+//           fetchProducts();
+//         }
+//       } catch (error) {
+//         console.error("Failed to approve product:", error);
+//       }
+//     }
+//     setOpenDropdownId(null);
+//     setDropdownPosition(null);
+//   };
+
+//   const handleView = (product: Product) => {
+//     setSelectedProduct(product);
+//     setOpenDropdownId(null);
+//     setDropdownPosition(null);
+//   };
+
+//   const getSkuFamilyText = (skuFamilyId: any): string => {
+//     if (skuFamilyId == null) return "";
+//     if (typeof skuFamilyId === "string") return skuFamilyId;
+//     if (typeof skuFamilyId === "object") {
+//       return skuFamilyId.name || skuFamilyId.code || skuFamilyId._id || "";
+//     }
+//     return String(skuFamilyId);
+//   };
+
+//   const buildImageUrl = (relativeOrAbsolute: string): string => {
+//     if (!relativeOrAbsolute)
+//       return "https://via.placeholder.com/60x60?text=Product";
+//     const isAbsolute = /^https?:\/\//i.test(relativeOrAbsolute);
+//     if (isAbsolute) return relativeOrAbsolute;
+//     const base = import.meta.env.VITE_BASE_URL || "";
+//     return `${base}${
+//       relativeOrAbsolute.startsWith("/") ? "" : "/"
+//     }${relativeOrAbsolute}`;
+//   };
+
+//   const getProductImageSrc = (product: Product): string => {
+//     try {
+//       const sku = product?.skuFamilyId as any;
+//       const first =
+//         Array.isArray(sku?.images) && sku.images.length > 0
+//           ? sku.images[0]
+//           : "";
+//       if (first) return buildImageUrl(first);
+//     } catch (_) {}
+//     return "https://via.placeholder.com/60x60?text=Product";
+//   };
+
+//   const formatPrice = (price: number | string): string => {
+//     if (typeof price === "string") {
+//       const num = parseFloat(price);
+//       return isNaN(num) ? "0.00" : num.toFixed(2);
+//     }
+//     return price.toFixed(2);
+//   };
+
+//   const formatExpiryTime = (expiryTime: string): string => {
+//     if (!expiryTime) return "-";
+//     try {
+//       const date = new Date(expiryTime);
+//       return format(date, "MMM dd, yyyy");
+//     } catch {
+//       return "-";
+//     }
+//   };
+
+//   const getStatusBadge = (product: Product) => {
+//     let statusText: string;
+//     let statusStyles: string;
+//     let statusIcon: string;
+
+//     if (product.isApproved) {
+//       statusText = "Approved";
+//       statusStyles =
+//         "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-700";
+//       statusIcon = "fa-check-circle";
+//     } else if (product.isVerified) {
+//       statusText = "Pending Approval";
+//       statusStyles =
+//         "bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-700";
+//       statusIcon = "fa-clock";
+//     } else {
+//       statusText = "Under Verification";
+//       statusStyles =
+//         "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-700";
+//       statusIcon = "fa-times-circle";
+//     }
+
+//     return (
+//       <span
+//         className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold ${statusStyles}`}
+//       >
+//         <i className={`fas ${statusIcon} text-xs`}></i>
+//         {statusText}
+//       </span>
+//     );
+//   };
+
+//   return (
+//     <div className="p-6">
+//       <link
+//         rel="stylesheet"
+//         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+//       />
+
+//       <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
+//         <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+//           <div className="flex items-center gap-3 flex-1">
+//             <div className="relative flex-1 max-w-md">
+//               <i className="fas fa-search absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+//               <input
+//                 type="text"
+//                 placeholder="Search by SKU Family ID or other..."
+//                 className="pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-[#0071E0] focus:border-[#0071E0] text-sm w-full transition-all"
+//                 value={searchTerm}
+//                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+//                   setSearchTerm(e.target.value);
+//                   setCurrentPage(1);
+//                 }}
+//               />
+//             </div>
+//           </div>
+//           <div className="flex items-center gap-3">
+//             <div className="relative">
+//               <select
+//                 value={statusFilter}
+//                 onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+//                   setStatusFilter(e.target.value);
+//                   setCurrentPage(1);
+//                 }}
+//                 className="pl-3 pr-10 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-[#0071E0] focus:border-[#0071E0] text-sm appearance-none cursor-pointer transition-all min-w-[160px]"
+//               >
+//                 <option value="all">All Status</option>
+//                 <option value="approved">Approved</option>
+//                 <option value="pending">Pending Approval</option>
+//                 <option value="verification">Under Verification</option>
+//               </select>
+//               <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+//             </div>
+//             <div className="flex items-center gap-2">
+//               <button
+//                 className="inline-flex items-center gap-2 rounded-lg bg-[#0071E0] hover:bg-[#0061c0] text-white px-5 py-2.5 text-sm font-semibold transition-colors"
+//                 onClick={() => setIsUploadModalOpen(true)}
+//               >
+//                 <i className="fas fa-upload text-sm"></i>
+//                 Upload File
+//               </button>
+//               <button
+//                 className="inline-flex items-center gap-2 rounded-lg bg-[#0071E0] hover:bg-[#0061c0] text-white px-5 py-2.5 text-sm font-semibold transition-colors"
+//                 onClick={() => {
+//                   setEditProduct(null);
+//                   setIsModalOpen(true);
+//                 }}
+//               >
+//                 <i className="fas fa-plus text-sm"></i>
+//                 Add Product
+//               </button>
+//             </div>
+//           </div>
+//         </div>
+
+//         <div className="max-w-full overflow-x-auto">
+//           <table className="w-full table-auto">
+//             <thead className="bg-gray-50 dark:bg-gray-900">
+//               <tr>
+//                 <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 align-middle">
+//                   <div className="flex items-center gap-2">
+//                     Image
+//                   </div>
+//                 </th>
+//                 <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 align-middle">
+//                   <div className="flex items-center gap-2">
+//                     Name
+//                   </div>
+//                 </th>
+//                 <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 align-middle">
+//                   <div className="flex items-center gap-2">
+//                     SIM Type
+//                   </div>
+//                 </th>
+//                 <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 align-middle">
+//                   <div className="flex items-center gap-2">
+//                     Color
+//                   </div>
+//                 </th>
+//                 <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 align-middle">
+//                   <div className="flex items-center gap-2">
+//                     RAM
+//                   </div>
+//                 </th>
+//                 <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 align-middle">
+//                   <div className="flex items-center gap-2">
+//                     Storage
+//                   </div>
+//                 </th>
+//                 <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 align-middle">
+//                   <div className="flex items-center gap-2">
+//                     Price
+//                   </div>
+//                 </th>
+//                 <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 align-middle">
+//                   <div className="flex items-center gap-2">
+//                     Country
+//                   </div>
+//                 </th>
+//                 <th className="px-6 py-3.5 text-center text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 align-middle">
+//                   <div className="flex items-center justify-center gap-2">
+//                     Status
+//                   </div>
+//                 </th>
+//                 <th className="px-6 py-3.5 text-center text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 align-middle">
+//                   <div className="flex items-center justify-center gap-2">
+//                     Actions
+//                   </div>
+//                 </th>
+//               </tr>
+//             </thead>
+//             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+//               {loading ? (
+//                 <tr>
+//                   <td colSpan={10} className="p-12 text-center">
+//                     <div className="flex flex-col items-center justify-center">
+//                       <div className="relative">
+//                         <div className="animate-spin rounded-full h-10 w-10 border-3 border-gray-200 dark:border-gray-700"></div>
+//                         <div className="animate-spin rounded-full h-10 w-10 border-3 border-[#0071E0] border-t-transparent absolute top-0 left-0"></div>
+//                       </div>
+//                       <p className="text-gray-500 dark:text-gray-400 text-sm font-medium mt-3">
+//                         Loading Products...
+//                       </p>
+//                     </div>
+//                   </td>
+//                 </tr>
+//               ) : productsData.length === 0 ? (
+//                 <tr>
+//                   <td colSpan={10} className="p-12 text-center">
+//                     <div className="flex flex-col items-center justify-center">
+//                       <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-3">
+//                         <i className="fas fa-mobile-alt text-2xl text-gray-400"></i>
+//                       </div>
+//                       <p className="text-gray-500 dark:text-gray-400 text-base font-medium">
+//                         No products found
+//                       </p>
+//                       <p className="text-gray-400 dark:text-gray-500 text-sm mt-1">
+//                         Try adjusting your search or filters
+//                       </p>
+//                     </div>
+//                   </td>
+//                 </tr>
+//               ) : (
+//                 productsData.map((item: Product, index: number) => (
+//                   <tr
+//                     key={item._id || index}
+//                     className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+//                   >
+//                     <td className="px-6 py-4">
+//                       <img
+//                         src={getProductImageSrc(item) || placeholderImage}
+//                         alt={getSkuFamilyText(item?.skuFamilyId) || "Product"}
+//                         className="w-12 h-12 object-cover rounded-lg border border-gray-200 dark:border-gray-600"
+//                         onError={(e) => {
+//                           (e.currentTarget as HTMLImageElement).src =
+//                             placeholderImage;
+//                         }}
+//                       />
+//                     </td>
+//                     <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-gray-200">
+//                       {getSkuFamilyText(item.skuFamilyId)}
+//                     </td>
+//                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+//                       {item.simType}
+//                     </td>
+//                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+//                       {item.color}
+//                     </td>
+//                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+//                       {item.ram}
+//                     </td>
+//                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+//                       {item.storage}
+//                     </td>
+//                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+//                       ${formatPrice(item.price)}
+//                     </td>
+//                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+//                       {item.country}
+//                     </td>
+//                     <td className="px-6 py-4 text-sm text-center">
+//                       {getStatusBadge(item)}
+//                     </td>
+//                     <td className="px-6 py-4 text-sm text-center flex justify-center relative">
+//                       <div className="dropdown-container relative">
+//                         <button
+//                           className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
+//                           onClick={(e) => {
+//                             e.stopPropagation();
+//                             if (openDropdownId === item._id) {
+//                               setOpenDropdownId(null);
+//                               setDropdownPosition(null);
+//                             } else {
+//                               const rect =
+//                                 e.currentTarget.getBoundingClientRect();
+//                               const dropdownWidth = 192;
+//                               const dropdownHeight = 220;
+//                               let top = rect.bottom + 8;
+//                               let left = rect.right - dropdownWidth;
+//                               if (top + dropdownHeight > window.innerHeight) {
+//                                 top = rect.top - dropdownHeight - 8;
+//                               }
+//                               if (left < 8) {
+//                                 left = 8;
+//                               }
+//                               if (
+//                                 left + dropdownWidth >
+//                                 window.innerWidth - 8
+//                               ) {
+//                                 left = window.innerWidth - dropdownWidth - 8;
+//                               }
+//                               setDropdownPosition({ top, left });
+//                               setOpenDropdownId(item._id || null);
+//                             }
+//                           }}
+//                         >
+//                           <i className="fas fa-ellipsis-v"></i>
+//                         </button>
+//                         {openDropdownId === item._id && dropdownPosition && (
+//                           <div
+//                             className="fixed w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden"
+//                             style={{
+//                               top: `${dropdownPosition.top}px`,
+//                               left: `${dropdownPosition.left}px`,
+//                               zIndex: 9999,
+//                             }}
+//                           >
+//                             {item.canVerify &&
+//                               item.verifiedBy !== loggedInAdminId && (
+//                                 <button
+//                                   onClick={(e) => {
+//                                     e.stopPropagation();
+//                                     handleVerify(item);
+//                                   }}
+//                                   className="flex items-center w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-emerald-600 dark:text-emerald-400 transition-colors"
+//                                 >
+//                                   <i className="fas fa-check mr-3 text-sm"></i>
+//                                   Verify
+//                                 </button>
+//                               )}
+//                             <button
+//                               onClick={(e) => {
+//                                 e.stopPropagation();
+//                                 handleView(item);
+//                               }}
+//                               className="flex items-center w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-[#0071E0] dark:text-blue-400 transition-colors"
+//                             >
+//                               <i className="fas fa-eye mr-3 text-sm"></i>
+//                               View Details
+//                             </button>
+//                             {item.canApprove &&
+//                               item.verifiedBy !== loggedInAdminId && (
+//                                 <button
+//                                   onClick={(e) => {
+//                                     e.stopPropagation();
+//                                     handleApprove(item);
+//                                   }}
+//                                   className="flex items-center w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-[#0071E0] dark:text-blue-400 transition-colors"
+//                                 >
+//                                   <i className="fas fa-thumbs-up mr-3 text-sm"></i>
+//                                   Approve
+//                                 </button>
+//                               )}
+//                             <button
+//                               onClick={(e) => {
+//                                 e.stopPropagation();
+//                                 handleEdit(item);
+//                               }}
+//                               className="flex items-center w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-yellow-600 dark:text-yellow-400 transition-colors"
+//                             >
+//                               <i className="fas fa-edit mr-3 text-sm"></i>
+//                               Edit
+//                             </button>
+//                             <button
+//                               onClick={(e) => {
+//                                 e.stopPropagation();
+//                                 handleDelete(item);
+//                               }}
+//                               className="flex items-center w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-red-600 dark:text-red-400 transition-colors"
+//                             >
+//                               <i className="fas fa-trash mr-3 text-sm"></i>
+//                               Delete
+//                             </button>
+//                           </div>
+//                         )}
+//                       </div>
+//                     </td>
+//                   </tr>
+//                 ))
+//               )}
+//             </tbody>
+//           </table>
+//         </div>
+
+//         <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+//           <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-4 sm:mb-0">
+//             <i className="fas fa-list text-[#0071E0] text-xs"></i>
+//             <span>
+//               Showing{" "}
+//               <span className="text-gray-800 dark:text-gray-200 font-semibold">
+//                 {productsData.length}
+//               </span>{" "}
+//               of{" "}
+//               <span className="text-gray-800 dark:text-gray-200 font-semibold">
+//                 {totalDocs}
+//               </span>{" "}
+//               items
+//             </span>
+//           </div>
+//           <div className="flex items-center space-x-2">
+//             <button
+//               onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+//               disabled={currentPage === 1}
+//               className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50 text-sm font-medium transition-colors flex items-center gap-2"
+//             >
+//               <i className="fas fa-chevron-left text-xs"></i>
+//               Previous
+//             </button>
+//             <div className="flex space-x-1.5">
+//               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+//                 const pageNum = i + 1;
+//                 return (
+//                   <button
+//                     key={pageNum}
+//                     onClick={() => setCurrentPage(pageNum)}
+//                     className={`w-9 h-9 rounded-lg text-sm font-semibold transition-colors ${
+//                       currentPage === pageNum
+//                         ? "bg-[#0071E0] text-white"
+//                         : "bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600"
+//                     }`}
+//                   >
+//                     {pageNum}
+//                   </button>
+//                 );
+//               })}
+//             </div>
+//             <button
+//               onClick={() =>
+//                 setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+//               }
+//               disabled={currentPage === totalPages}
+//               className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50 text-sm font-medium transition-colors flex items-center gap-2"
+//             >
+//               Next
+//               <i className="fas fa-chevron-right text-xs"></i>
+//             </button>
+//           </div>
+//         </div>
+//       </div>
+
+//       <ProductModal
+//         isOpen={isModalOpen}
+//         onClose={() => {
+//           setIsModalOpen(false);
+//           setEditProduct(null);
+//         }}
+//         onSave={handleSave}
+//         editItem={editProduct || undefined}
+//       />
+//       <UploadExcelModal
+//         isOpen={isUploadModalOpen}
+//         onClose={() => setIsUploadModalOpen(false)}
+//       />
+
+//       {selectedProduct && (
+//         <div
+//           className="fixed inset-0 flex items-center justify-center bg-black/60 z-50 transition-opacity duration-300"
+//           onClick={() => setSelectedProduct(null)}
+//         >
+//           <div
+//             className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl max-w-4xl w-full max-h-[85vh] flex flex-col mx-4"
+//             onClick={(e) => e.stopPropagation()}
+//           >
+//             <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+//               <div className="flex items-center space-x-4">
+//                 <img
+//                   src={getProductImageSrc(selectedProduct)}
+//                   alt={getSkuFamilyText(selectedProduct?.skuFamilyId)}
+//                   className="w-16 h-16 object-cover rounded-lg border border-gray-200 dark:border-gray-600 flex-shrink-0"
+//                   onError={(e) => {
+//                     (e.currentTarget as HTMLImageElement).src =
+//                       placeholderImage;
+//                   }}
+//                 />
+//                 <div>
+//                   <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+//                     {getSkuFamilyText(selectedProduct.skuFamilyId)}
+//                   </h2>
+//                   <p className="text-sm text-gray-500 dark:text-gray-400">
+//                     Product Details
+//                   </p>
+//                 </div>
+//               </div>
+//               <button
+//                 onClick={() => setSelectedProduct(null)}
+//                 className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+//                 title="Close"
+//               >
+//                 <i className="fas fa-times text-lg"></i>
+//               </button>
+//             </div>
+
+//             <div className="overflow-y-auto flex-1 p-6">
+//               <div className="mb-6">{getStatusBadge(selectedProduct)}</div>
+
+//               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+//                 <div className="space-y-4">
+//                   <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+//                     Basic Information
+//                   </h3>
+//                   <div>
+//                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+//                       Name
+//                     </label>
+//                     <p className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-md">
+//                       {getSkuFamilyText(selectedProduct.skuFamilyId)}
+//                     </p>
+//                   </div>
+//                   <div>
+//                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+//                       SIM Type
+//                     </label>
+//                     <p className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-md">
+//                       {selectedProduct.simType}
+//                     </p>
+//                   </div>
+//                   <div>
+//                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+//                       Color
+//                     </label>
+//                     <p className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-md">
+//                       {selectedProduct.color}
+//                     </p>
+//                   </div>
+//                   <div className="grid grid-cols-2 gap-4">
+//                     <div>
+//                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+//                         RAM
+//                       </label>
+//                       <p className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-md">
+//                         {selectedProduct.ram}
+//                       </p>
+//                     </div>
+//                     <div>
+//                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+//                         Storage
+//                       </label>
+//                       <p className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-md">
+//                         {selectedProduct.storage}
+//                       </p>
+//                     </div>
+//                   </div>
+//                   <div>
+//                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+//                       Condition
+//                     </label>
+//                     <p className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-md">
+//                       {selectedProduct.condition}
+//                     </p>
+//                   </div>
+//                   <div className="grid grid-cols-2 gap-4">
+//                     <div>
+//                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+//                         Flash Deal
+//                       </label>
+//                       <p
+//                         className={`text-sm font-medium bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-md ${
+//                           selectedProduct.isFlashDeal
+//                             ? "text-green-600"
+//                             : "text-red-600"
+//                         }`}
+//                       >
+//                         {selectedProduct.isFlashDeal ? "Yes" : "No"}
+//                       </p>
+//                     </div>
+//                     <div>
+//                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+//                         Negotiable
+//                       </label>
+//                       <p
+//                         className={`text-sm font-medium bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-md ${
+//                           selectedProduct.isNegotiable
+//                             ? "text-green-600"
+//                             : "text-red-600"
+//                         }`}
+//                       >
+//                         {selectedProduct.isNegotiable ? "Yes" : "No"}
+//                       </p>
+//                     </div>
+//                   </div>
+//                 </div>
+
+//                 <div className="space-y-4">
+//                   <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+//                     Pricing & Inventory
+//                   </h3>
+//                   <div>
+//                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+//                       Price
+//                     </label>
+//                     <p className="text-lg text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-md font-semibold">
+//                       ${formatPrice(selectedProduct.price)}
+//                     </p>
+//                   </div>
+//                   <div className="grid grid-cols-2 gap-4">
+//                     <div>
+//                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+//                         Stock
+//                       </label>
+//                       <p className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-md">
+//                         {selectedProduct.stock} units
+//                       </p>
+//                     </div>
+//                     <div>
+//                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+//                         MOQ
+//                       </label>
+//                       <p className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-md">
+//                         {selectedProduct.moq} units
+//                       </p>
+//                     </div>
+//                   </div>
+//                   <div>
+//                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+//                       Country
+//                     </label>
+//                     <p className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-md">
+//                       {selectedProduct.country}
+//                     </p>
+//                   </div>
+//                   <div>
+//                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+//                       Expiry Date
+//                     </label>
+//                     <p className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-md">
+//                       {formatExpiryTime(selectedProduct.expiryTime)}
+//                     </p>
+//                   </div>
+//                 </div>
+//               </div>
+//             </div>
+//           </div>
+//         </div>
+//       )}
+//     </div>
+//   );
+// };
+
+// export default ProductsTable;
+
+
 import React, { useState, useEffect } from "react";
 import Swal from "sweetalert2";
 import { format } from "date-fns";
@@ -10,9 +871,8 @@ import {
 } from "../../services/product/product.services";
 import placeholderImage from "../../../public/images/product/noimage.jpg";
 
-// Assuming loggedInAdminId is available (e.g., from context, prop, or auth service)
 interface ProductsTableProps {
-  loggedInAdminId?: string; // Add this prop or fetch it from context
+  loggedInAdminId?: string;
 }
 
 const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
@@ -34,9 +894,52 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
     left: number;
   } | null>(null);
 
-  // Fetch products on component mount and when page/search/filter changes
   useEffect(() => {
-    fetchProducts();
+    let debounceTimer: number;
+
+    const fetchProducts = async () => {
+      setLoading(true);
+      try {
+        const response = await ProductService.getProductList(
+          currentPage,
+          itemsPerPage,
+          searchTerm
+        );
+
+        let filteredData = response.data.docs;
+
+        if (statusFilter !== "all") {
+          filteredData = response.data.docs.filter((product: Product) => {
+            if (statusFilter === "approved") {
+              return product.isApproved;
+            } else if (statusFilter === "pending") {
+              return product.isVerified && !product.isApproved;
+            } else if (statusFilter === "verification") {
+              return !product.isVerified;
+            }
+            return true;
+          });
+        }
+
+        setProductsData(filteredData);
+        setTotalDocs(response.data.totalDocs || filteredData.length);
+        setTotalPages(Math.ceil((response.data.totalDocs || filteredData.length) / itemsPerPage));
+      } catch (error) {
+        console.error("Failed to fetch products:", error);
+        toastHelper.showTost("Failed to fetch products", "error");
+        setProductsData([]);
+        setTotalDocs(0);
+        setTotalPages(1);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    debounceTimer = setTimeout(() => {
+      fetchProducts();
+    }, searchTerm ? 500 : 0);
+
+    return () => clearTimeout(debounceTimer);
   }, [currentPage, searchTerm, statusFilter]);
 
   useEffect(() => {
@@ -63,41 +966,6 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
     };
   }, [openDropdownId]);
 
-  const fetchProducts = async () => {
-    try {
-      setLoading(true);
-      const response = await ProductService.getProductList(
-        currentPage,
-        itemsPerPage,
-        searchTerm
-      );
-
-      let filteredData = response.data.docs;
-
-      // Apply status filter
-      if (statusFilter !== "all") {
-        filteredData = response.data.docs.filter((product: Product) => {
-          if (statusFilter === "approved") {
-            return product.isApproved;
-          } else if (statusFilter === "pending") {
-            return product.isVerified && !product.isApproved;
-          } else if (statusFilter === "verification") {
-            return !product.isVerified;
-          }
-          return true;
-        });
-      }
-
-      setProductsData(filteredData);
-      setTotalDocs(filteredData.length);
-      setTotalPages(Math.ceil(filteredData.length / itemsPerPage));
-    } catch (error) {
-      console.error("Failed to fetch products:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSave = async (productData: any) => {
     try {
       const processedData = {
@@ -123,11 +991,12 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
         await ProductService.createProduct(processedData);
         toastHelper.showTost("Product added successfully!", "success");
       }
+      setCurrentPage(1); // Reset to first page after save
       setIsModalOpen(false);
       setEditProduct(null);
-      fetchProducts();
     } catch (error) {
       console.error("Failed to save product:", error);
+      toastHelper.showTost("Failed to save product", "error");
     }
   };
 
@@ -143,20 +1012,29 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
 
     const confirmed = await Swal.fire({
       title: "Are you sure?",
-      text: "You won't be able to revert this!",
+      html: `
+        <div class="text-center">
+          <p class="mb-3">This will permanently delete the product!</p>
+          <p class="text-sm text-gray-600">This action cannot be undone.</p>
+        </div>
+      `,
       icon: "warning",
       showCancelButton: true,
-      confirmButtonText: "Yes, delete it!",
+      confirmButtonText: "Yes, delete permanently!",
       cancelButtonText: "No, cancel!",
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#6b7280",
+      focusCancel: true,
     });
 
     if (confirmed.isConfirmed) {
       try {
         await ProductService.deleteProduct(product._id);
         toastHelper.showTost("Product deleted successfully!", "success");
-        fetchProducts();
+        setCurrentPage(1); // Reset to first page after delete
       } catch (error) {
         console.error("Failed to delete product:", error);
+        toastHelper.showTost("Failed to delete product", "error");
       }
     }
     setOpenDropdownId(null);
@@ -168,21 +1046,31 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
 
     const confirmed = await Swal.fire({
       title: "Verify Product",
-      text: "Are you sure you want to verify this product?",
+      html: `
+        <div class="text-center">
+          <p class="mb-3">Are you sure you want to verify this product?</p>
+          <p class="text-sm text-gray-600">This action will mark the product as verified.</p>
+        </div>
+      `,
       icon: "question",
       showCancelButton: true,
       confirmButtonText: "Yes, verify it!",
       cancelButtonText: "No, cancel!",
+      confirmButtonColor: "#10b981",
+      cancelButtonColor: "#6b7280",
+      focusCancel: true,
     });
 
     if (confirmed.isConfirmed) {
       try {
         const result = await ProductService.verifyProduct(product._id);
         if (result !== false) {
-          fetchProducts();
+          toastHelper.showTost("Product verified successfully!", "success");
+          setCurrentPage(1); // Reset to first page after verify
         }
       } catch (error) {
         console.error("Failed to verify product:", error);
+        toastHelper.showTost("Failed to verify product", "error");
       }
     }
     setOpenDropdownId(null);
@@ -194,21 +1082,31 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
 
     const confirmed = await Swal.fire({
       title: "Approve Product",
-      text: "Are you sure you want to approve this product?",
+      html: `
+        <div class="text-center">
+          <p class="mb-3">Are you sure you want to approve this product?</p>
+          <p class="text-sm text-gray-600">This action will mark the product as approved.</p>
+        </div>
+      `,
       icon: "question",
       showCancelButton: true,
       confirmButtonText: "Yes, approve it!",
       cancelButtonText: "No, cancel!",
+      confirmButtonColor: "#10b981",
+      cancelButtonColor: "#6b7280",
+      focusCancel: true,
     });
 
     if (confirmed.isConfirmed) {
       try {
         const result = await ProductService.approveProduct(product._id);
         if (result !== false) {
-          fetchProducts();
+          toastHelper.showTost("Product approved successfully!", "success");
+          setCurrentPage(1); // Reset to first page after approve
         }
       } catch (error) {
         console.error("Failed to approve product:", error);
+        toastHelper.showTost("Failed to approve product", "error");
       }
     }
     setOpenDropdownId(null);
@@ -231,8 +1129,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
   };
 
   const buildImageUrl = (relativeOrAbsolute: string): string => {
-    if (!relativeOrAbsolute)
-      return "https://via.placeholder.com/60x60?text=Product";
+    if (!relativeOrAbsolute) return placeholderImage;
     const isAbsolute = /^https?:\/\//i.test(relativeOrAbsolute);
     if (isAbsolute) return relativeOrAbsolute;
     const base = import.meta.env.VITE_BASE_URL || "";
@@ -250,7 +1147,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
           : "";
       if (first) return buildImageUrl(first);
     } catch (_) {}
-    return "https://via.placeholder.com/60x60?text=Product";
+    return placeholderImage;
   };
 
   const formatPrice = (price: number | string): string => {
@@ -271,7 +1168,6 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
     }
   };
 
-  // Updated getStatusBadge function to match reference code styling and icons
   const getStatusBadge = (product: Product) => {
     let statusText: string;
     let statusStyles: string;
@@ -280,23 +1176,23 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
     if (product.isApproved) {
       statusText = "Approved";
       statusStyles =
-        "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-700";
+        "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-700";
       statusIcon = "fa-check-circle";
     } else if (product.isVerified) {
       statusText = "Pending Approval";
       statusStyles =
-        "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-700";
+        "bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-700";
       statusIcon = "fa-clock";
     } else {
       statusText = "Under Verification";
       statusStyles =
-        "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border border-red-200 dark:border-red-700";
-      statusIcon = "fa-times";
+        "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-700";
+      statusIcon = "fa-times-circle";
     }
 
     return (
       <span
-        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold tracking-wider ${statusStyles}`}
+        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold ${statusStyles}`}
       >
         <i className={`fas ${statusIcon} text-xs`}></i>
         {statusText}
@@ -305,51 +1201,58 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
   };
 
   return (
-    <div className="p-4">
-      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-sm">
-        <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-          <div className="flex items-center gap-3 flex-1">
-            <div className="relative flex-1">
-              <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-              <input
-                type="text"
-                placeholder="Search by SKU Family ID or other..."
-                className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full"
-                value={searchTerm}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1);
-                }}
-              />
+    <div className="p-6 dark:bg-gray-950 min-h-screen font-sans">
+      <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      />
+
+      {/* Table Container */}
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200/50 dark:border-gray-800/50 overflow-hidden">
+        {/* Table Header with Controls */}
+        <div className="p-6 border-b border-gray-200/50 dark:border-gray-800/50 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-900">
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3 flex-1 max-w-sm">
+              <div className="relative flex-1">
+                <i className="fas fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                <input
+                  type="text"
+                  placeholder="Search by SKU Family ID or other..."
+                  className="w-full pl-12 pr-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[#0071E0] focus:border-[#0071E0] transition-all duration-300 text-sm placeholder-gray-400 shadow-sm"
+                  value={searchTerm}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                    setSearchTerm(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                />
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <select
-                value={statusFilter}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                  setStatusFilter(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="pl-3 pr-8 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm appearance-none cursor-pointer"
-              >
-                <option value="all">All Status</option>
-                <option value="approved">Approved</option>
-                <option value="pending">Pending Approval</option>
-                <option value="verification">Under Verification</option>
-              </select>
-              <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
-            </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <select
+                  value={statusFilter}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                    setStatusFilter(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="pl-3 pr-10 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[#0071E0] focus:border-[#0071E0] text-sm appearance-none cursor-pointer transition-all min-w-[160px] shadow-sm"
+                >
+                  <option value="all">All Status</option>
+                  <option value="approved">Approved</option>
+                  <option value="pending">Pending Approval</option>
+                  <option value="verification">Under Verification</option>
+                </select>
+                <i className="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+              </div>
               <button
-                className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
+                className="inline-flex items-center gap-2 px-5 py-3 bg-[#0071E0] hover:bg-[#0061c0] text-white rounded-lg text-sm font-semibold transition-all duration-300 shadow-md hover:shadow-lg"
                 onClick={() => setIsUploadModalOpen(true)}
               >
                 <i className="fas fa-upload text-xs"></i>
                 Upload File
               </button>
               <button
-                className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
+                className="inline-flex items-center gap-2 px-5 py-3 bg-[#0071E0] hover:bg-[#0061c0] text-white rounded-lg text-sm font-semibold transition-all duration-300 shadow-md hover:shadow-lg"
                 onClick={() => {
                   setEditProduct(null);
                   setIsModalOpen(true);
@@ -362,57 +1265,68 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
           </div>
         </div>
 
-        <div className="max-w-full overflow-x-auto">
-          <table className="w-full table-auto">
-            <thead className="bg-gray-100 dark:bg-gray-900">
+        {/* Table */}
+        <div className="overflow-hidden rounded-2xl">
+          <table className="w-full table-fixed border-collapse">
+            <thead className="bg-gray-50/50 dark:bg-gray-800/50">
               <tr>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Image
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Name
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  SIM Type
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Color
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  RAM
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Storage
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Price
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Country
-                </th>
-                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Status
-                </th>
-                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Actions
-                </th>
+                {[
+                  { header: "Image", width: "w-16" },
+                  { header: "Name", width: "w-28" },
+                  { header: "SIM Type", width: "w-20" },
+                  { header: "Color", width: "w-20" },
+                  { header: "RAM", width: "w-20" },
+                  { header: "Storage", width: "w-20" },
+                  { header: "Price", width: "w-20" },
+                  { header: "Country", width: "w-20" },
+                  { header: "Status", width: "w-28" },
+                  { header: "Actions", width: "w-16" },
+                ].map(({ header, width }, index) => (
+                  <th
+                    key={header}
+                    className={`px-4 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider ${width} ${
+                      header === "Status" || header === "Actions"
+                        ? "text-center"
+                        : "text-left"
+                    } truncate ${
+                      index === 0 ? "rounded-tl-2xl" : ""
+                    } ${
+                      index === 9 ? "rounded-tr-2xl" : ""
+                    }`}
+                  >
+                    {header}
+                  </th>
+                ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+            <tbody className="divide-y divide-gray-200/50 dark:divide-gray-800/50">
               {loading ? (
                 <tr>
-                  <td colSpan={10} className="p-12 text-center">
-                    <div className="text-gray-500 dark:text-gray-400 text-lg">
-                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
-                      Loading Products...
+                  <td colSpan={10} className="py-20 text-center">
+                    <div className="flex flex-col items-center animate-in fade-in duration-500">
+                      <div className="relative">
+                        <div className="animate-spin rounded-full h-10 w-10 border-2 border-gray-200 dark:border-gray-700"></div>
+                        <div className="animate-spin rounded-full h-10 w-10 border-2 border-[#0071E0] border-t-transparent absolute top-0 left-0"></div>
+                      </div>
+                      <p className="mt-4 text-sm font-medium text-gray-500 dark:text-gray-400">
+                        Loading Products...
+                      </p>
                     </div>
                   </td>
                 </tr>
               ) : productsData.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="p-12 text-center">
-                    <div className="text-gray-500 dark:text-gray-400 text-lg">
-                      No products found
+                  <td colSpan={10} className="py-20 text-center">
+                    <div className="flex flex-col items-center animate-in fade-in duration-500">
+                      <div className="w-14 h-14 bg-gray-100/50 dark:bg-gray-800/50 rounded-full flex items-center justify-center mb-4">
+                        <i className="fas fa-mobile-alt text-xl text-gray-400"></i>
+                      </div>
+                      <p className="text-gray-600 dark:text-gray-300 font-semibold text-sm">
+                        No products found
+                      </p>
+                      <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
+                        Try adjusting your search or filters
+                      </p>
                     </div>
                   </td>
                 </tr>
@@ -420,47 +1334,65 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                 productsData.map((item: Product, index: number) => (
                   <tr
                     key={item._id || index}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                    className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-all duration-200"
                   >
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4 w-16">
                       <img
                         src={getProductImageSrc(item) || placeholderImage}
                         alt={getSkuFamilyText(item?.skuFamilyId) || "Product"}
-                        className="w-12 h-12 object-cover rounded-md border border-gray-200 dark:border-gray-600"
+                        className="w-10 h-10 object-cover rounded-lg border border-gray-200/50 dark:border-gray-700/50 shadow-sm"
                         onError={(e) => {
                           (e.currentTarget as HTMLImageElement).src =
                             placeholderImage;
                         }}
                       />
                     </td>
-                    <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-gray-200">
-                      {getSkuFamilyText(item.skuFamilyId)}
+                    <td className="px-4 py-4 w-28 truncate">
+                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        {getSkuFamilyText(item.skuFamilyId) || "N/A"}
+                      </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.simType}
+                    <td className="px-4 py-4 w-20 truncate">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        {item.simType || "N/A"}
+                      </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.color}
+                    <td className="px-4 py-4 w-20 truncate">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        {item.color || "N/A"}
+                      </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.ram}
+                    <td className="px-4 py-4 w-20 truncate">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        {item.ram || "N/A"}
+                      </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.storage}
+                    <td className="px-4 py-4 w-20 truncate">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        {item.storage || "N/A"}
+                      </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      ${formatPrice(item.price)}
+                    <td className="px-4 py-4 w-20 truncate">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        ${formatPrice(item.price) || "0.00"}
+                      </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.country}
+                    <td className="px-4 py-4 w-20 truncate">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        {item.country || "N/A"}
+                      </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-center">
+                    <td className="px-4 py-4 w-28 text-center">
                       {getStatusBadge(item)}
                     </td>
-                    <td className="px-6 py-4 text-sm text-center relative">
+                    <td
+                      className={`px-4 py-4 w-16 text-center ${
+                        index === productsData.length - 1 ? "rounded-br-2xl" : ""
+                      }`}
+                    >
                       <div className="dropdown-container relative">
                         <button
-                          className="text-gray-600 dark:text-gray-400 hover:text-gray-800 p-1 rounded-full hover:bg-gray-100"
+                          className="w-9 h-9 flex items-center justify-center rounded-lg bg-[#0071E0]/10 hover:bg-[#0071E0]/20 dark:bg-[#0071E0]/20 dark:hover:bg-[#0071E0]/30 text-[#0071E0] dark:text-[#0071E0] transition-all duration-200 shadow-sm hover:shadow"
                           onClick={(e) => {
                             e.stopPropagation();
                             if (openDropdownId === item._id) {
@@ -470,10 +1402,9 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                               const rect =
                                 e.currentTarget.getBoundingClientRect();
                               const dropdownWidth = 192;
-                              const dropdownHeight = 200; // Adjusted for more options
+                              const dropdownHeight = 220;
                               let top = rect.bottom + 8;
                               let left = rect.right - dropdownWidth;
-
                               if (top + dropdownHeight > window.innerHeight) {
                                 top = rect.top - dropdownHeight - 8;
                               }
@@ -486,17 +1417,16 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                               ) {
                                 left = window.innerWidth - dropdownWidth - 8;
                               }
-
                               setDropdownPosition({ top, left });
                               setOpenDropdownId(item._id || null);
                             }
                           }}
                         >
-                          <i className="fas fa-ellipsis-v"></i>
+                          <i className="fas fa-ellipsis-v text-sm"></i>
                         </button>
                         {openDropdownId === item._id && dropdownPosition && (
                           <div
-                            className="fixed w-48 bg-white border rounded-md shadow-lg"
+                            className="fixed w-48 bg-white dark:bg-gray-800 border border-gray-200/50 dark:border-gray-700/50 rounded-lg shadow-lg overflow-hidden"
                             style={{
                               top: `${dropdownPosition.top}px`,
                               left: `${dropdownPosition.left}px`,
@@ -510,9 +1440,9 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                                     e.stopPropagation();
                                     handleVerify(item);
                                   }}
-                                  className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-green-600"
+                                  className="flex items-center w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-emerald-600 dark:text-emerald-400 transition-all duration-200"
                                 >
-                                  <i className="fas fa-check"></i>
+                                  <i className="fas fa-check mr-3 text-sm"></i>
                                   Verify
                                 </button>
                               )}
@@ -521,10 +1451,10 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                                 e.stopPropagation();
                                 handleView(item);
                               }}
-                              className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-blue-600"
+                              className="flex items-center w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-[#0071E0] dark:text-[#0071E0] transition-all duration-200"
                             >
-                              <i className="fas fa-eye"></i>
-                              View
+                              <i className="fas fa-eye mr-3 text-sm"></i>
+                              View Details
                             </button>
                             {item.canApprove &&
                               item.verifiedBy !== loggedInAdminId && (
@@ -533,9 +1463,9 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                                     e.stopPropagation();
                                     handleApprove(item);
                                   }}
-                                  className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-blue-600"
+                                  className="flex items-center w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-[#0071E0] dark:text-[#0071E0] transition-all duration-200"
                                 >
-                                  <i className="fas fa-thumbs-up"></i>
+                                  <i className="fas fa-thumbs-up mr-3 text-sm"></i>
                                   Approve
                                 </button>
                               )}
@@ -544,9 +1474,9 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                                 e.stopPropagation();
                                 handleEdit(item);
                               }}
-                              className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-yellow-600"
+                              className="flex items-center w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-yellow-600 dark:text-yellow-400 transition-all duration-200"
                             >
-                              <i className="fas fa-edit"></i>
+                              <i className="fas fa-pen mr-3 text-sm"></i>
                               Edit
                             </button>
                             <button
@@ -554,9 +1484,9 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                                 e.stopPropagation();
                                 handleDelete(item);
                               }}
-                              className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-red-600"
+                              className="flex items-center w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-red-600 dark:text-red-400 transition-all duration-200"
                             >
-                              <i className="fas fa-trash"></i>
+                              <i className="fas fa-trash mr-3 text-sm"></i>
                               Delete
                             </button>
                           </div>
@@ -570,47 +1500,66 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
           </table>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-          <div className="text-sm text-gray-600 dark:text-gray-400 mb-4 sm:mb-0">
-            Showing {productsData.length} of {totalDocs} items
-          </div>
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed text-sm transition-colors"
-            >
-              Previous
-            </button>
-            <div className="flex space-x-1">
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                const pageNum = i + 1;
-                return (
-                  <button
-                    key={pageNum}
-                    onClick={() => setCurrentPage(pageNum)}
-                    className={`px-3 py-2 rounded-lg text-sm ${
-                      currentPage === pageNum
-                        ? "bg-[#0071E0] text-white dark:bg-blue-500 dark:text-white border border-blue-600 dark:border-blue-500"
-                        : "bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600"
-                    } transition-colors`}
-                  >
-                    {pageNum}
-                  </button>
-                );
-              })}
+        {/* Pagination */}
+        {totalDocs > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-5 border-t border-gray-200/50 dark:border-gray-800/50 bg-gray-50/50 dark:bg-gray-900/50 rounded-b-2xl">
+            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-4 sm:mb-0">
+              <i className="fas fa-list text-[#0071E0] text-sm"></i>
+              <span>
+                Showing{" "}
+                <span className="font-semibold text-gray-900 dark:text-gray-100">
+                  {((currentPage - 1) * itemsPerPage) + 1}
+                </span>{" "}
+                to{" "}
+                <span className="font-semibold text-gray-900 dark:text-gray-100">
+                  {Math.min(currentPage * itemsPerPage, totalDocs)}
+                </span>{" "}
+                of{" "}
+                <span className="font-semibold text-gray-900 dark:text-gray-100">
+                  {totalDocs}
+                </span>{" "}
+                entries
+              </span>
             </div>
-            <button
-              onClick={() =>
-                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-              }
-              disabled={currentPage === totalPages}
-              className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed text-sm transition-colors"
-            >
-              Next
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1 || loading}
+                className="px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 text-sm font-medium flex items-center gap-2 shadow-sm"
+              >
+                <i className="fas fa-chevron-left text-sm"></i>
+                Previous
+              </button>
+              <div className="flex gap-2">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  const pageNum = i + 1;
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      disabled={loading}
+                      className={`w-10 h-10 rounded-lg text-sm font-medium transition-all duration-200 shadow-sm ${
+                        currentPage === pageNum
+                          ? "bg-[#0071E0] text-white"
+                          : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      } disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages || loading}
+                className="px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 text-sm font-medium flex items-center gap-2 shadow-sm"
+              >
+                Next
+                <i className="fas fa-chevron-right text-sm"></i>
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <ProductModal
@@ -633,22 +1582,22 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
           onClick={() => setSelectedProduct(null)}
         >
           <div
-            className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-4xl w-full max-h-[85vh] flex flex-col"
+            className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200/50 dark:border-gray-800/50 max-w-4xl w-full max-h-[85vh] flex flex-col mx-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200/50 dark:border-gray-800/50">
               <div className="flex items-center space-x-4">
                 <img
                   src={getProductImageSrc(selectedProduct)}
                   alt={getSkuFamilyText(selectedProduct?.skuFamilyId)}
-                  className="w-16 h-16 object-cover rounded-lg border border-gray-200 dark:border-gray-600 flex-shrink-0"
+                  className="w-16 h-16 object-cover rounded-lg border border-gray-200/50 dark:border-gray-700/50 shadow-sm"
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).src =
                       placeholderImage;
                   }}
                 />
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
                     {getSkuFamilyText(selectedProduct.skuFamilyId)}
                   </h2>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -658,10 +1607,10 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
               </div>
               <button
                 onClick={() => setSelectedProduct(null)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-2 flex-shrink-0"
+                className="w-9 h-9 flex items-center justify-center rounded-lg bg-[#0071E0]/10 hover:bg-[#0071E0]/20 dark:bg-[#0071E0]/20 dark:hover:bg-[#0071E0]/30 text-[#0071E0] dark:text-[#0071E0] transition-all duration-200 shadow-sm hover:shadow"
                 title="Close"
               >
-                <i className="fas fa-times text-xl"></i>
+                <i className="fas fa-times text-sm"></i>
               </button>
             </div>
 
@@ -670,75 +1619,69 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
                     Basic Information
                   </h3>
-
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Name
                     </label>
-                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
-                      {getSkuFamilyText(selectedProduct.skuFamilyId)}
+                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50/50 dark:bg-gray-800/50 px-3 py-2 rounded-lg">
+                      {getSkuFamilyText(selectedProduct.skuFamilyId) || "N/A"}
                     </p>
                   </div>
-
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       SIM Type
                     </label>
-                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
-                      {selectedProduct.simType}
+                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50/50 dark:bg-gray-800/50 px-3 py-2 rounded-lg">
+                      {selectedProduct.simType || "N/A"}
                     </p>
                   </div>
-
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Color
                     </label>
-                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
-                      {selectedProduct.color}
+                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50/50 dark:bg-gray-800/50 px-3 py-2 rounded-lg">
+                      {selectedProduct.color || "N/A"}
                     </p>
                   </div>
-
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         RAM
                       </label>
-                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
-                        {selectedProduct.ram}
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50/50 dark:bg-gray-800/50 px-3 py-2 rounded-lg">
+                        {selectedProduct.ram || "N/A"}
                       </p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Storage
                       </label>
-                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
-                        {selectedProduct.storage}
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50/50 dark:bg-gray-800/50 px-3 py-2 rounded-lg">
+                        {selectedProduct.storage || "N/A"}
                       </p>
                     </div>
                   </div>
-
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Condition
                     </label>
-                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
-                      {selectedProduct.condition}
+                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50/50 dark:bg-gray-800/50 px-3 py-2 rounded-lg">
+                      {selectedProduct.condition || "N/A"}
                     </p>
                   </div>
-
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Flash Deal
                       </label>
                       <p
-                        className={`text-sm font-medium bg-gray-50 dark:bg-gray-800 p-3 rounded-md ${
+                        className={`text-sm font-medium bg-gray-50/50 dark:bg-gray-800/50 px-3 py-2 rounded-lg ${
                           selectedProduct.isFlashDeal
-                            ? "text-green-600"
-                            : "text-red-600"
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : "text-red-600 dark:text-red-400"
                         }`}
                       >
                         {selectedProduct.isFlashDeal ? "Yes" : "No"}
@@ -749,10 +1692,10 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                         Negotiable
                       </label>
                       <p
-                        className={`text-sm font-medium bg-gray-50 dark:bg-gray-800 p-3 rounded-md ${
+                        className={`text-sm font-medium bg-gray-50/50 dark:bg-gray-800/50 px-3 py-2 rounded-lg ${
                           selectedProduct.isNegotiable
-                            ? "text-green-600"
-                            : "text-red-600"
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : "text-red-600 dark:text-red-400"
                         }`}
                       >
                         {selectedProduct.isNegotiable ? "Yes" : "No"}
@@ -762,52 +1705,48 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                 </div>
 
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
                     Pricing & Inventory
                   </h3>
-
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Price
                     </label>
-                    <p className="text-lg text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md font-semibold">
-                      ${formatPrice(selectedProduct.price)}
+                    <p className="text-lg text-gray-900 dark:text-gray-100 bg-gray-50/50 dark:bg-gray-800/50 px-3 py-2 rounded-lg font-semibold">
+                      ${formatPrice(selectedProduct.price) || "0.00"}
                     </p>
                   </div>
-
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Stock
                       </label>
-                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
-                        {selectedProduct.stock} units
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50/50 dark:bg-gray-800/50 px-3 py-2 rounded-lg">
+                        {selectedProduct.stock || 0} units
                       </p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         MOQ
                       </label>
-                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
-                        {selectedProduct.moq} units
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50/50 dark:bg-gray-800/50 px-3 py-2 rounded-lg">
+                        {selectedProduct.moq || 0} units
                       </p>
                     </div>
                   </div>
-
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Country
                     </label>
-                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
-                      {selectedProduct.country}
+                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50/50 dark:bg-gray-800/50 px-3 py-2 rounded-lg">
+                      {selectedProduct.country || "N/A"}
                     </p>
                   </div>
-
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Expiry Date
                     </label>
-                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50/50 dark:bg-gray-800/50 px-3 py-2 rounded-lg">
                       {formatExpiryTime(selectedProduct.expiryTime)}
                     </p>
                   </div>
