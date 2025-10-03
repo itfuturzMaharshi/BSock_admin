@@ -25,6 +25,7 @@ export interface UpdateCurrencyConversionRequest {
 export interface ListCurrencyConversionRequest {
   page: number;
   limit: number;
+  search?: string;
 }
 
 export interface DeleteCurrencyConversionRequest {
@@ -244,6 +245,7 @@ export class CurrencyConversionService {
       const res = await api.post(url, {
         page: requestData.page,
         limit: requestData.limit,
+        ...(requestData.search && { search: requestData.search }),
       }, {
         headers: { 'Content-Type': 'application/json' },
       });

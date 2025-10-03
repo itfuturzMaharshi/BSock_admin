@@ -563,50 +563,53 @@ const BusinessRequestsTable: React.FC = () => {
 
       {selectedProduct && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50 transition-opacity duration-300">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl max-w-md w-full mx-4">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-600">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">
+            {/* Header - White Background */}
+            <div className="flex items-center justify-between p-6 bg-white dark:bg-gray-800 border-b-2 border-gray-100">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                 Business Details
               </h2>
               <button
                 onClick={() => setSelectedProduct(null)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-2 flex-shrink-0"
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded-lg transition-all duration-200 flex-shrink-0"
                 title="Close"
               >
                 <i className="fas fa-times text-xl"></i>
               </button>
             </div>
-            <div className="p-6">
+
+            {/* Body */}
+            <div className="p-6 bg-gray-50 dark:bg-gray-900">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">
                     Name
                   </label>
-                  <p className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-md">
+                  <p className="text-base text-gray-900 dark:text-white bg-white dark:bg-gray-800 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 ">
                     {selectedProduct.name || "-"}
                   </p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">
                     Email
                   </label>
-                  <p className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-md">
+                  <p className="text-base text-gray-900 dark:text-white bg-white dark:bg-gray-800 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700  break-all">
                     {selectedProduct.email || "-"}
                   </p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">
                     Phone Number
                   </label>
-                  <p className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-md">
+                  <p className="text-base text-gray-900 dark:text-white bg-white dark:bg-gray-800 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 ">
                     {selectedProduct.mobileNumber || "-"}
                   </p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">
                     WhatsApp Number
                   </label>
-                  <p className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-md">
+                  <p className="text-base text-gray-900 dark:text-white bg-white dark:bg-gray-800 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 ">
                     {selectedProduct.whatsappNumber || "-"}
                   </p>
                 </div>

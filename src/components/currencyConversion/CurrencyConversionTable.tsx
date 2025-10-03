@@ -24,6 +24,7 @@ const CurrencyConversionTable: React.FC = () => {
       const response = await CurrencyConversionService.listCurrencyConversions({
         page: currentPage,
         limit: itemsPerPage,
+        ...(searchTerm && { search: searchTerm }),
       });
       
       if (response.data?.docs) {

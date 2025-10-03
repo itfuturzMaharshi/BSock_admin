@@ -478,6 +478,12 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
       marginTop: "4px",
       boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
       zIndex: 20,
+      overflow: "hidden",
+    }),
+    menuList: (defaultStyles: any) => ({
+      ...defaultStyles,
+      maxHeight: "200px", // Set a reasonable max height
+      paddingBottom: "8px", // Add padding to bottom to ensure last item is fully visible
     }),
     option: (defaultStyles: any, state: any) => ({
       ...defaultStyles,
@@ -490,6 +496,7 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
       color: state.isSelected ? "white" : "#1f2937",
       cursor: "pointer",
       padding: "10px 12px",
+      marginBottom: "2px", // Add small margin between options
     }),
   };
 

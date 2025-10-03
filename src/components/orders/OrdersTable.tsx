@@ -515,7 +515,7 @@ const OrdersTable: React.FC = () => {
   };
 
   return (
-    <div className="p-4 max-w-[calc(100vw-360px)] mx-auto">
+    <div className="p-4">
       <link
         rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
