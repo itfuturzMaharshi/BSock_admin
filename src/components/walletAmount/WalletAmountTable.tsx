@@ -1213,7 +1213,7 @@ const WalletAmountTable: React.FC = () => {
                   <th
                     key={header}
                     className={`px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider ${
-                      header === "Actions" ? "text-center" : "text-left"
+                      header === "Actions" || header ==="Status" ? "text-center" : "text-left"
                     }`}
                   >
                     {header}

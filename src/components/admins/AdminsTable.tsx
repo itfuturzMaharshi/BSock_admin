@@ -652,7 +652,7 @@ const AdminsTable: React.FC = () => {
                     <th
                       key={header}
                       className={`px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider ${
-                        header === "Actions" ? "text-center" : "text-left"
+                        header === "Actions" || header === "Status" ? "text-center" : "text-left"
                       }`}
                     >
                       {header}
@@ -716,7 +716,7 @@ const AdminsTable: React.FC = () => {
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 justify-center flex">
                       <span
                         className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium shadow-sm ${getStatusStyles(
                           item.isActive

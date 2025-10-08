@@ -1450,15 +1450,17 @@ const OrdersTable: React.FC = () => {
                       {getStatusBadge(order)}
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <button
-                        onClick={() => handleUpdateStatus(order)}
-                        className="w-9 h-9 flex items-center justify-center rounded-lg bg-[#0071E0]/10 hover:bg-[#0071E0]/20 dark:bg-[#0071E0]/20 dark:hover:bg-[#0071E0]/30 text-[#0071E0] dark:text-[#0071E0] transition-all duration-200 shadow-sm hover:shadow"
-                        title="Update Status"
-                      >
-                        <i className="fas fa-pen text-sm"></i>
-                      </button>
+                      <div className="flex justify-center">
+                        <button
+                          onClick={() => handleUpdateStatus(order)}
+                          className="w-9 h-9 flex items-center justify-center rounded-lg bg-[#0071E0]/10 hover:bg-[#0071E0]/20 dark:bg-[#0071E0]/20 dark:hover:bg-[#0071E0]/30 text-[#0071E0] dark:text-[#0071E0] transition-all duration-200 shadow-sm hover:shadow"
+                          title="Update Status"
+                        >
+                          <i className="fas fa-pen text-sm"></i>
+                        </button>
+                      </div>
                     </td>
-                    <td className="px-6 py-4 text-center">
+                    <td className="px-6 py-4 text-center justify-center flex">
                       <button
                         onClick={() => handleViewTracking(order._id)}
                         className="w-9 h-9 flex items-center justify-center rounded-lg bg-[#0071E0]/10 hover:bg-[#0071E0]/20 dark:bg-[#0071E0]/20 dark:hover:bg-[#0071E0]/30 text-[#0071E0] dark:text-[#0071E0] transition-all duration-200 shadow-sm hover:shadow"

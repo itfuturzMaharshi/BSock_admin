@@ -1386,7 +1386,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                       {getStatusBadge(item)}
                     </td>
                     <td
-                      className={`px-4 py-4 w-16 text-center ${
+                      className={`px-4 py-4  text-center flex justify-center ${
                         index === productsData.length - 1 ? "rounded-br-2xl" : ""
                       }`}
                     >
