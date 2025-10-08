@@ -1,6 +1,6 @@
 import PageMeta from "../../components/common/PageMeta";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
-import SkyFamilyTable from "../../components/skuFamily/SkyFamilyTable";
+import SkyFamilyTable from "../../components/skuFamily/SkuFamilyTable";
 
 const SkuFamily = () => {
   return (
