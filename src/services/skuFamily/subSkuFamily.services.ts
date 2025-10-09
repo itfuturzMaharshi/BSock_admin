@@ -63,7 +63,26 @@ export class SubSkuFamilyService {
     const url = `${baseUrl}/api/${adminRoute}/subSkuFamily/update`;
 
     try {
-      data.append('id', id);
+      // Ensure id is only appended once
+      if (!data.has('id')) {
+        data.append('id', id);
+      }
+      
+      // Log the data being sent for debugging
+      console.log('Sending update data:', {
+        id: data.get('id'),
+        skuFamilyId: data.get('skuFamilyId'),
+        simType: data.get('simType'),
+        colorVariant: data.get('colorVariant'),
+        networkBands: data.get('networkBands')
+      });
+      
+      // Log the raw FormData entries
+      console.log('FormData entries:');
+      for (const [key, value] of data.entries()) {
+        console.log(`${key}:`, value);
+      }
+      
       const res = await api.post(url, data);
       toastHelper.showTost(res.data.message || 'Sub SKU Family updated successfully!', 'success');
       return res.data;

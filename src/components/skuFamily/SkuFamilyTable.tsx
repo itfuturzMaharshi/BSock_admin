@@ -23,12 +23,18 @@ const SkuFamilyTable: React.FC = () => {
   const [expandedRows, setExpandedRows] = useState<{[key: string]: boolean}>({});
   const [isSubRowEditModalOpen, setIsSubRowEditModalOpen] = useState<boolean>(false);
   const [editingSubRow, setEditingSubRow] = useState<{parentId: string, subRow: SkuFamily} | null>(null);
+  const [selectedSubRow, setSelectedSubRow] = useState<SkuFamily | null>(null);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [dropdownPosition, setDropdownPosition] = useState<{
     top: number;
     left: number;
   } | null>(null);
   const [selectedSkuFamily, setSelectedSkuFamily] = useState<SkuFamily | null>(null);
+  const [openSubRowDropdownId, setOpenSubRowDropdownId] = useState<string | null>(null);
+  const [subRowDropdownPosition, setSubRowDropdownPosition] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -42,12 +48,20 @@ const SkuFamilyTable: React.FC = () => {
         setOpenDropdownId(null);
         setDropdownPosition(null);
       }
+      if (!(event.target as HTMLElement).closest(".subrow-dropdown-container")) {
+        setOpenSubRowDropdownId(null);
+        setSubRowDropdownPosition(null);
+      }
     };
 
     const handleResize = () => {
       if (openDropdownId) {
         setOpenDropdownId(null);
         setDropdownPosition(null);
+      }
+      if (openSubRowDropdownId) {
+        setOpenSubRowDropdownId(null);
+        setSubRowDropdownPosition(null);
       }
     };
 
@@ -57,7 +71,7 @@ const SkuFamilyTable: React.FC = () => {
       document.removeEventListener("click", handleClickOutside);
       window.removeEventListener("resize", handleResize);
     };
-  }, [openDropdownId]);
+  }, [openDropdownId, openSubRowDropdownId]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -163,6 +177,12 @@ const SkuFamilyTable: React.FC = () => {
     setDropdownPosition(null);
   };
 
+  const handleSubRowView = (subRow: SkuFamily) => {
+    setSelectedSubRow(subRow);
+    setOpenSubRowDropdownId(null);
+    setSubRowDropdownPosition(null);
+  };
+
   const handleAddSubRow = (id: string) => {
     setParentRowId(id);
     setIsSubRowModalOpen(true);
@@ -243,8 +263,10 @@ const SkuFamilyTable: React.FC = () => {
     try {
       if (!editingSubRow) return;
 
-      // Add skuFamilyId to formData
-      formData.append('skuFamilyId', editingSubRow.parentId);
+      // Add skuFamilyId to formData (ensure it's a string, not array) - only if not already present
+      if (!formData.has('skuFamilyId')) {
+        formData.append('skuFamilyId', editingSubRow.parentId);
+      }
 
       // Use SubSkuFamilyService to update the sub-row
       await SubSkuFamilyService.updateSubSkuFamily(editingSubRow.subRow._id!, formData);
@@ -266,9 +288,45 @@ const SkuFamilyTable: React.FC = () => {
   // Helper function to display array data properly
   const displayArrayData = (data: any): string => {
     if (!data) return "N/A";
+    
+    // Handle deeply nested arrays by flattening them
+    const flattenArray = (arr: any): any[] => {
+      if (!Array.isArray(arr)) return [arr];
+      return arr.reduce((flat: any[], item: any) => {
+        if (Array.isArray(item)) {
+          return flat.concat(flattenArray(item));
+        }
+        // Handle stringified arrays
+        if (typeof item === 'string' && item.startsWith('[') && item.endsWith(']')) {
+          try {
+            const parsed = JSON.parse(item);
+            return flat.concat(flattenArray(parsed));
+          } catch {
+            return flat.concat(item);
+          }
+        }
+        return flat.concat(item);
+      }, []);
+    };
+    
     if (Array.isArray(data)) {
-      return data.length > 0 ? data.join(", ") : "N/A";
+      const flattened = flattenArray(data);
+      const cleanData = flattened.filter(item => item && item !== 'N/A' && item.trim() !== '');
+      return cleanData.length > 0 ? cleanData.join(", ") : "N/A";
     }
+    
+    // Handle string that might be a JSON array
+    if (typeof data === 'string' && data.startsWith('[') && data.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(data);
+        const flattened = flattenArray(parsed);
+        const cleanData = flattened.filter(item => item && item !== 'N/A' && item.trim() !== '');
+        return cleanData.length > 0 ? cleanData.join(", ") : "N/A";
+      } catch {
+        return data;
+      }
+    }
+    
     return data;
   };
 
@@ -514,21 +572,80 @@ const SkuFamilyTable: React.FC = () => {
                           {subRow.country || "N/A"}
                         </td>
                         <td className="w-20 px-2 py-4 text-sm text-center">
-                          <div className="flex items-center justify-center gap-3">
+                          <div className="subrow-dropdown-container relative">
                             <button
-                              onClick={() => handleSubRowEdit(item._id!, subRow._id!)}
-                              className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                              title="Edit Sub-Row"
+                              className="text-gray-600 dark:text-gray-400 hover:text-gray-800 p-1 rounded-full hover:bg-gray-100"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const subRowId = `${item._id}-${subRow._id}`;
+                                if (openSubRowDropdownId === subRowId) {
+                                  setOpenSubRowDropdownId(null);
+                                  setSubRowDropdownPosition(null);
+                                } else {
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  const dropdownWidth = 192;
+                                  const dropdownHeight = 200;
+                                  let top = rect.bottom + 8;
+                                  let left = rect.right - dropdownWidth;
+
+                                  if (top + dropdownHeight > window.innerHeight) {
+                                    top = rect.top - dropdownHeight - 8;
+                                  }
+                                  if (left < 8) {
+                                    left = 8;
+                                  }
+                                  if (left + dropdownWidth > window.innerWidth - 8) {
+                                    left = window.innerWidth - dropdownWidth - 8;
+                                  }
+
+                                  setSubRowDropdownPosition({ top, left });
+                                  setOpenSubRowDropdownId(subRowId);
+                                }
+                              }}
                             >
-                              <i className="fas fa-edit"></i>
+                              <i className="fas fa-ellipsis-v"></i>
                             </button>
-                            <button
-                              onClick={() => handleSubRowDelete(item._id!, subRow._id!)}
-                              className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
-                              title="Delete Sub-Row"
-                            >
-                              <i className="fas fa-trash"></i>
-                            </button>
+                            {openSubRowDropdownId === `${item._id}-${subRow._id}` && subRowDropdownPosition && (
+                              <div
+                                className="fixed w-48 bg-white border rounded-md shadow-lg"
+                                style={{
+                                  top: `${subRowDropdownPosition.top}px`,
+                                  left: `${subRowDropdownPosition.left}px`,
+                                  zIndex: 9999,
+                                }}
+                              >
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSubRowView(subRow);
+                                  }}
+                                  className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-blue-600"
+                                >
+                                  <i className="fas fa-eye"></i>
+                                  View
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSubRowEdit(item._id!, subRow._id!);
+                                  }}
+                                  className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-yellow-600"
+                                >
+                                  <i className="fas fa-edit"></i>
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSubRowDelete(item._id!, subRow._id!);
+                                  }}
+                                  className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-red-600"
+                                >
+                                  <i className="fas fa-trash"></i>
+                                  Delete
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -799,8 +916,178 @@ const SkuFamilyTable: React.FC = () => {
           </div>
         </div>
       )}
+      {selectedSubRow && (
+        <div
+          className="fixed inset-0 flex items-center justify-center bg-black/60 z-50 transition-opacity duration-300"
+          onClick={() => setSelectedSubRow(null)}
+        >
+          <div
+            className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-4xl w-full max-h-[85vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+              <div className="flex items-center space-x-4">
+                <img
+                  src={(function () {
+                    const base = (import.meta as any).env?.VITE_BASE_URL || "";
+                    const first = Array.isArray(selectedSubRow.images) && selectedSubRow.images.length > 0
+                      ? selectedSubRow.images[0]
+                      : "";
+                    if (!first) return placeholderImage;
+                    const isAbsolute = /^https?:\/\//i.test(first);
+                    return isAbsolute
+                      ? first
+                      : `${base}${first.startsWith("/") ? "" : "/"}${first}`;
+                  })()}
+                  alt={selectedSubRow.name || "Sub SKU Family"}
+                  className="w-16 h-16 object-cover rounded-lg border border-gray-200 dark:border-gray-600 flex-shrink-0"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = placeholderImage;
+                  }}
+                />
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                    {selectedSubRow.name || "N/A"}
+                  </h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Sub SKU Family Details
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedSubRow(null)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-2 flex-shrink-0"
+                title="Close"
+              >
+                <i className="fas fa-times text-xl"></i>
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                    Basic Information
+                  </h3>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Name
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                      {selectedSubRow.name || "N/A"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Code
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                      {selectedSubRow.code || "N/A"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Brand
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                      {selectedSubRow.brand || "N/A"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Description
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                      {selectedSubRow.description || "N/A"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                    Technical Details
+                  </h3>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Color Variant
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                      {displayArrayData(selectedSubRow.colorVariant)}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Country
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                      {selectedSubRow.country || "N/A"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      SIM Type
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                      {displayArrayData(selectedSubRow.simType)}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Network Bands
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                      {displayArrayData(selectedSubRow.networkBands)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                  Images
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {selectedSubRow.images && selectedSubRow.images.length > 0 ? (
+                    selectedSubRow.images.map((image, index) => (
+                      <div key={index} className="relative">
+                        <img
+                          src={(function () {
+                            const base = (import.meta as any).env?.VITE_BASE_URL || "";
+                            const isAbsolute = /^https?:\/\//i.test(image);
+                            return isAbsolute
+                              ? image
+                              : `${base}${image.startsWith("/") ? "" : "/"}${image}`;
+                          })()}
+                          alt={`${selectedSubRow.name} - Image ${index + 1}`}
+                          className="w-full h-32 object-cover rounded-lg border border-gray-200 dark:border-gray-600"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).src = placeholderImage;
+                          }}
+                        />
+                      </div>
+                    ))
+                  ) : (
+                    <div className="col-span-full text-center py-8 text-gray-500 dark:text-gray-400">
+                      <i className="fas fa-image text-4xl mb-2"></i>
+                      <p>No images available</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
-
-export default SkuFamilyTable;
+                      
+export default SkuFamilyTable;                                                                                                                                                                                                                                        
