@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import Swal from "sweetalert2";
 import { SkuFamilyService } from "../../services/skuFamily/skuFamily.services";
+import { SubSkuFamilyService } from "../../services/skuFamily/subSkuFamily.services";
 import toastHelper from "../../utils/toastHelper";
 import SkuFamilyModal from "./SkuFamilyModal";
 import SubRowModal from "./SubRowModal";
@@ -84,6 +85,21 @@ const SkuFamilyTable: React.FC = () => {
     }
   };
 
+  const fetchSubRows = async (parentId: string) => {
+    try {
+      const response = await SubSkuFamilyService.getSubSkuFamilyList(1, 100, parentId);
+      if (response.data?.docs) {
+        setSubRows(prev => ({
+          ...prev,
+          [parentId]: response.data.docs
+        }));
+      }
+    } catch (err: any) {
+      console.error("Error fetching sub-rows:", err);
+      toastHelper.showTost("Failed to fetch sub-rows", "error");
+    }
+  };
+
   const handleSave = async (formData: FormData) => {
     try {
       if (editId) {
@@ -156,31 +172,21 @@ const SkuFamilyTable: React.FC = () => {
 
   const handleSubRowSave = async (formData: FormData) => {
     try {
-      // Create a new sub-row entry
-      const newSubRow: SkuFamily = {
-        _id: `sub-${Date.now()}`, // Temporary ID for local state
-        name: formData.get('name') as string,
-        code: formData.get('code') as string,
-        brand: formData.get('brand') as string,
-        description: formData.get('description') as string,
-        colorVariant: formData.get('colorVariant') as string,
-        country: formData.get('country') as string,
-        simType: formData.get('simType') as string,
-        networkBands: formData.get('networkBands') as string,
-        images: [], // Handle images if needed
-      };
-
-      // Add to subRows state
+      // Add skuFamilyId to formData
       if (parentRowId) {
-        setSubRows(prev => ({
-          ...prev,
-          [parentRowId]: [...(prev[parentRowId] || []), newSubRow]
-        }));
+        formData.append('skuFamilyId', parentRowId);
+      }
+
+      // Use SubSkuFamilyService to create the sub-row
+      await SubSkuFamilyService.createSubSkuFamily(formData);
+      
+      // Refresh the sub-rows for this parent
+      if (parentRowId) {
+        await fetchSubRows(parentRowId);
       }
 
       setIsSubRowModalOpen(false);
       setParentRowId(null);
-      toastHelper.showTost("Sub-row added successfully", "success");
     } catch (err: any) {
       console.error("Error saving sub-row:", err);
       toastHelper.showTost("Failed to save sub-row", "error");
@@ -188,10 +194,16 @@ const SkuFamilyTable: React.FC = () => {
   };
 
   const toggleRowExpansion = (rowId: string) => {
+    const isExpanding = !expandedRows[rowId];
     setExpandedRows(prev => ({
       ...prev,
       [rowId]: !prev[rowId]
     }));
+    
+    // Fetch sub-rows when expanding
+    if (isExpanding) {
+      fetchSubRows(rowId);
+    }
   };
 
   const handleSubRowEdit = (parentId: string, subRowId: string) => {
@@ -215,11 +227,11 @@ const SkuFamilyTable: React.FC = () => {
 
     if (confirmed.isConfirmed) {
       try {
-        setSubRows(prev => ({
-          ...prev,
-          [parentId]: prev[parentId]?.filter(row => row._id !== subRowId) || []
-        }));
-        toastHelper.showTost("Sub-row deleted successfully", "success");
+        // Use SubSkuFamilyService to delete the sub-row
+        await SubSkuFamilyService.deleteSubSkuFamily(subRowId);
+        
+        // Refresh the sub-rows for this parent
+        await fetchSubRows(parentId);
       } catch (err: any) {
         console.error("Error deleting sub-row:", err);
         toastHelper.showTost("Failed to delete sub-row", "error");
@@ -231,31 +243,17 @@ const SkuFamilyTable: React.FC = () => {
     try {
       if (!editingSubRow) return;
 
-      // Create updated sub-row entry
-      const updatedSubRow: SkuFamily = {
-        _id: editingSubRow.subRow._id, // Keep the same ID
-        name: formData.get('name') as string,
-        code: formData.get('code') as string,
-        brand: formData.get('brand') as string,
-        description: formData.get('description') as string,
-        colorVariant: formData.get('colorVariant') as string,
-        country: formData.get('country') as string,
-        simType: formData.get('simType') as string,
-        networkBands: formData.get('networkBands') as string,
-        images: editingSubRow.subRow.images, // Keep existing images
-      };
+      // Add skuFamilyId to formData
+      formData.append('skuFamilyId', editingSubRow.parentId);
 
-      // Update the sub-row in state
-      setSubRows(prev => ({
-        ...prev,
-        [editingSubRow.parentId]: prev[editingSubRow.parentId]?.map(row => 
-          row._id === editingSubRow.subRow._id ? updatedSubRow : row
-        ) || []
-      }));
+      // Use SubSkuFamilyService to update the sub-row
+      await SubSkuFamilyService.updateSubSkuFamily(editingSubRow.subRow._id!, formData);
+      
+      // Refresh the sub-rows for this parent
+      await fetchSubRows(editingSubRow.parentId);
 
       setIsSubRowEditModalOpen(false);
       setEditingSubRow(null);
-      toastHelper.showTost("Sub-row updated successfully", "success");
     } catch (err: any) {
       console.error("Error updating sub-row:", err);
       toastHelper.showTost("Failed to update sub-row", "error");
@@ -264,6 +262,15 @@ const SkuFamilyTable: React.FC = () => {
 
 
   const totalPages = Math.ceil(totalDocs / itemsPerPage);
+
+  // Helper function to display array data properly
+  const displayArrayData = (data: any): string => {
+    if (!data) return "N/A";
+    if (Array.isArray(data)) {
+      return data.length > 0 ? data.join(", ") : "N/A";
+    }
+    return data;
+  };
 
   // const placeholderImage =
   //   "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTMmyTPv4M5fFPvYLrMzMQcPD_VO34ByNjouQ&s";
@@ -392,7 +399,7 @@ const SkuFamilyTable: React.FC = () => {
                         {item.name || "N/A"}
                       </td>
                       <td className="w-24 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
-                        {item.colorVariant || "N/A"}
+                        {displayArrayData(item.colorVariant)}
                       </td>
                       <td className="w-20 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
                         {item.country || "N/A"}
@@ -501,7 +508,7 @@ const SkuFamilyTable: React.FC = () => {
                           {subRow.name || "N/A"}
                         </td>
                         <td className="w-24 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
-                          {subRow.colorVariant || "N/A"}
+                          {displayArrayData(subRow.colorVariant)}
                         </td>
                         <td className="w-20 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
                           {subRow.country || "N/A"}
@@ -610,6 +617,7 @@ const SkuFamilyTable: React.FC = () => {
           setParentRowId(null);
         }}
         onSave={handleSubRowSave}
+        skuFamilyId={parentRowId || undefined}
       />
       <SubRowModal
         isOpen={isSubRowEditModalOpen}
@@ -619,6 +627,7 @@ const SkuFamilyTable: React.FC = () => {
         }}
         onSave={handleSubRowEditSave}
         editItem={editingSubRow?.subRow}
+        skuFamilyId={editingSubRow?.parentId}
       />
       {selectedSkuFamily && (
         <div
@@ -721,9 +730,7 @@ const SkuFamilyTable: React.FC = () => {
                       Color Variant
                     </label>
                     <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
-                      {Array.isArray(selectedSkuFamily.colorVariant) 
-                        ? selectedSkuFamily.colorVariant.join(", ") 
-                        : selectedSkuFamily.colorVariant || "N/A"}
+                      {displayArrayData(selectedSkuFamily.colorVariant)}
                     </p>
                   </div>
 
@@ -732,9 +739,7 @@ const SkuFamilyTable: React.FC = () => {
                       Country
                     </label>
                     <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
-                      {Array.isArray(selectedSkuFamily.country) 
-                        ? selectedSkuFamily.country.join(", ") 
-                        : selectedSkuFamily.country || "N/A"}
+                      {selectedSkuFamily.country || "N/A"}
                     </p>
                   </div>
 
@@ -743,9 +748,7 @@ const SkuFamilyTable: React.FC = () => {
                       SIM Type
                     </label>
                     <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
-                      {Array.isArray(selectedSkuFamily.simType) 
-                        ? selectedSkuFamily.simType.join(", ") 
-                        : selectedSkuFamily.simType || "N/A"}
+                      {displayArrayData(selectedSkuFamily.simType)}
                     </p>
                   </div>
 
@@ -754,9 +757,7 @@ const SkuFamilyTable: React.FC = () => {
                       Network Bands
                     </label>
                     <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
-                      {Array.isArray(selectedSkuFamily.networkBands) 
-                        ? selectedSkuFamily.networkBands.join(", ") 
-                        : selectedSkuFamily.networkBands || "N/A"}
+                      {displayArrayData(selectedSkuFamily.networkBands)}
                     </p>
                   </div>
                 </div>

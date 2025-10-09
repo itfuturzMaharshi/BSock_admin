@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import Swal from "sweetalert2";
 import { SkuFamily } from "./types";
+import { SubSkuFamilyService } from "../../services/skuFamily/subSkuFamily.services";
 
 interface ValidationErrors {
   name?: string;
@@ -29,6 +30,7 @@ interface SubRowModalProps {
   onClose: () => void;
   onSave: (formData: FormData) => Promise<void>;
   editItem?: SkuFamily;
+  skuFamilyId?: string;
 }
 
 const SubRowModal: React.FC<SubRowModalProps> = ({
@@ -36,6 +38,7 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
   onClose,
   onSave,
   editItem,
+  skuFamilyId,
 }) => {
   const [formData, setFormData] = useState({
     name: "",
@@ -112,7 +115,7 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
             : editItem.colorVariant || "",
           country: Array.isArray(editItem.country) 
             ? editItem.country.join(", ") 
-            : editItem.country || "",
+            : editItem.country || "", // Country is not an array
           simType: Array.isArray(editItem.simType) 
             ? editItem.simType.join(", ") 
             : editItem.simType || "",
@@ -377,15 +380,33 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
       formDataToSend.append("code", formData.code.trim());
       formDataToSend.append("brand", formData.brand.trim());
       formDataToSend.append("description", formData.description.trim());
-      formDataToSend.append("colorVariant", formData.colorVariant);
-      formDataToSend.append("country", formData.country);
-      formDataToSend.append("simType", formData.simType);
-      formDataToSend.append("networkBands", formData.networkBands);
+      // Handle array fields - convert comma-separated strings to arrays
+      const colorVariantArray = formData.colorVariant ? formData.colorVariant.split(',').map(item => item.trim()).filter(item => item) : [];
+      const simTypeArray = formData.simType ? formData.simType.split(',').map(item => item.trim()).filter(item => item) : [];
+      const networkBandsArray = formData.networkBands ? formData.networkBands.split(',').map(item => item.trim()).filter(item => item) : [];
+      
+      formDataToSend.append("colorVariant", JSON.stringify(colorVariantArray));
+      formDataToSend.append("country", formData.country); // Country is not an array
+      formDataToSend.append("simType", JSON.stringify(simTypeArray));
+      formDataToSend.append("networkBands", JSON.stringify(networkBandsArray));
+      
+      // Add skuFamilyId if provided
+      if (skuFamilyId) {
+        formDataToSend.append("skuFamilyId", skuFamilyId);
+      }
+      
       newImages.forEach((image) => {
         formDataToSend.append("images", image);
       });
       if (existingImages.length > 0) {
         formDataToSend.append("keptImages", JSON.stringify(existingImages));
+      }
+
+      // Use SubSkuFamilyService API
+      if (editItem && editItem._id) {
+        await SubSkuFamilyService.updateSubSkuFamily(editItem._id, formDataToSend);
+      } else {
+        await SubSkuFamilyService.createSubSkuFamily(formDataToSend);
       }
 
       await onSave(formDataToSend);
