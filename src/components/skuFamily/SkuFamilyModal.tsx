@@ -1,26 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import Swal from "sweetalert2";
-
-interface SkuFamily {
-  _id?: string;
-  name: string;
-  code: string;
-  brand: string;
-  description: string;
-  images: string[];
-  colorVariant: string;
-  country: string;
-  simType: string;
-  networkBands: string;
-  countryVariant?: string;
-  isApproved?: boolean;
-  isDeleted?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-  updatedBy?: string;
-  approvedBy?: string | null;
-  __v?: string;
-}
+import { SkuFamily } from "./types";
 
 interface ValidationErrors {
   name?: string;
@@ -109,52 +89,35 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
   };
 
   useEffect(() => {
-    console.log("useEffect triggered - isOpen:", isOpen, "editItem:", editItem);
+    const parseMultiValue = (value: string | string[] | undefined): string[] => {
+      if (Array.isArray(value)) {
+        return value.map(item => String(item).trim()).filter(Boolean);
+      }
+      if (typeof value === 'string' && value.trim()) {
+        return value.split(',').map(item => item.trim()).filter(Boolean);
+      }
+      return [];
+    };
 
-    if (isOpen) {
-      // Always reset states first
+    const resetStates = () => {
       setNewImages([]);
       setImageError("");
       setFormErrors({});
       setApiError("");
+      setValidationErrors({});
+      setTouched({
+        name: false,
+        code: false,
+        brand: false,
+        description: false,
+        colorVariant: false,
+        country: false,
+        simType: false,
+        networkBands: false,
+      });
+    };
 
-      if (editItem) {
-        console.log("Edit item received:", editItem); // Debug log
-        console.log("Edit item images:", editItem.images); // Debug log
-
-        setFormData({
-          name: editItem.name || "",
-          code: editItem.code || "",
-          brand: editItem.brand || "",
-          description: editItem.description || "",
-          colorVariant: editItem.colorVariant ? editItem.colorVariant.split(", ").filter(item => item.trim() !== "") : [],
-          country: editItem.country ? editItem.country.split(", ").filter(item => item.trim() !== "") : [],
-          simType: editItem.simType ? editItem.simType.split(", ").filter(item => item.trim() !== "") : [],
-          networkBands: editItem.networkBands ? editItem.networkBands.split(", ").filter(item => item.trim() !== "") : [],
-        });
-
-        // Handle existing images properly - ensure it's always an array
-        const images = editItem.images || [];
-        console.log("Setting existing images:", images); // Debug log
-        const imageArray = Array.isArray(images)
-          ? images.filter((img) => img && img.trim() !== "")
-          : [];
-        console.log("Filtered existing images:", imageArray); // Debug log
-        setExistingImages(imageArray);
-      } else {
-        setFormData({
-          name: "",
-          code: "",
-          brand: "",
-          description: "",
-          colorVariant: [],
-          country: [],
-          simType: [],
-          networkBands: [],
-        });
-        setExistingImages([]);
-      }
-    } else {
+    if (!isOpen) {
       // Clean up when modal closes
       setFormData({
         name: "",
@@ -168,9 +131,58 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
       });
       setExistingImages([]);
       setNewImages([]);
-      setImageError("");
-      setFormErrors({});
-      setApiError("");
+      resetStates();
+      return;
+    }
+
+    resetStates();
+
+    if (editItem) {
+      // Process edit data
+      const colorVariant = parseMultiValue(editItem.colorVariant);
+      const country = parseMultiValue(editItem.country);
+      const simType = parseMultiValue(editItem.simType);
+      const networkBands = parseMultiValue(editItem.networkBands);
+
+      console.log('Setting edit form data:', {
+        colorVariant,
+        country,
+        simType,
+        networkBands
+      });
+
+      // Set form data
+      setFormData({
+        name: editItem.name || "",
+        code: editItem.code || "",
+        brand: editItem.brand || "",
+        description: editItem.description || "",
+        colorVariant,
+        country,
+        simType,
+        networkBands,
+      });
+
+      // Handle images
+      if (editItem.images) {
+        const imageArray = Array.isArray(editItem.images) 
+          ? editItem.images.filter(img => img && String(img).trim() !== "")
+          : [];
+        setExistingImages(imageArray);
+      }
+    } else {
+      // Reset for new item
+      setFormData({
+        name: "",
+        code: "",
+        brand: "",
+        description: "",
+        colorVariant: [],
+        country: [],
+        simType: [],
+        networkBands: [],
+      });
+      setExistingImages([]);
     }
   }, [isOpen, editItem]);
 
@@ -192,45 +204,6 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
 
 
 
-  // Multi-select handlers
-  const handleMultiSelectChange = (field: keyof typeof formData, value: string) => {
-    setFormData((prev) => {
-      const currentArray = prev[field] as string[];
-      if (currentArray.includes(value)) {
-        return { ...prev, [field]: currentArray.filter(item => item !== value) };
-      } else {
-        return { ...prev, [field]: [...currentArray, value] };
-      }
-    });
-    setFormErrors((prev) => ({ ...prev, [field]: "" }));
-    
-    // Validate the field if it's been touched
-    if (touched[field as keyof TouchedFields]) {
-      const newArray = (formData[field] as string[]).includes(value) 
-        ? (formData[field] as string[]).filter(item => item !== value)
-        : [...(formData[field] as string[]), value];
-      const error = validateField(field, newArray);
-      setValidationErrors((prev) => ({ ...prev, [field]: error }));
-    }
-  };
-
-  const handleAddCustomValue = (field: keyof typeof formData, customValue: string) => {
-    if (customValue.trim() && !(formData[field] as string[]).includes(customValue.trim())) {
-      setFormData((prev) => ({
-        ...prev,
-        [field]: [...(prev[field] as string[]), customValue.trim()]
-      }));
-      setFormErrors((prev) => ({ ...prev, [field]: "" }));
-    }
-  };
-
-  const handleRemoveValue = (field: keyof typeof formData, valueToRemove: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: (prev[field] as string[]).filter(item => item !== valueToRemove)
-    }));
-    setFormErrors((prev) => ({ ...prev, [field]: "" }));
-  };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -412,7 +385,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
     }
   };
 
-  // Multi-select component
+  // Multi-select component - Working implementation
   const MultiSelectField = ({ 
     field, 
     label, 
@@ -423,8 +396,78 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
     options: string[]; 
   }) => {
     const [customValue, setCustomValue] = useState("");
-    const selectedValues = formData[field] as string[];
+
+    // Get current values from formData
+    const currentValues = formData[field] as string[];
     const hasError = touched[field as keyof TouchedFields] && validationErrors[field];
+
+    // Handle checkbox change with improved state update
+    const handleCheckboxChange = (option: string) => {
+      const isCurrentlySelected = currentValues.includes(option);
+      
+      console.log(`Checkbox ${option} clicked:`, {
+        field,
+        currentValues,
+        isCurrentlySelected
+      });
+      
+      const newValues = isCurrentlySelected
+        ? currentValues.filter(item => item !== option)
+        : [...currentValues, option];
+      
+      setFormData(prev => ({
+        ...prev,
+        [field]: newValues
+      }));
+
+      setTouched(prev => ({
+        ...prev,
+        [field]: true
+      }));
+
+      // Log the update
+      console.log(`Updated ${field}:`, {
+        option,
+        wasSelected: isCurrentlySelected,
+        newValues
+      });
+    };
+
+    // Handle custom value add
+    const handleCustomAdd = () => {
+      if (customValue.trim() && !currentValues.includes(customValue.trim())) {
+        setFormData(prev => ({
+          ...prev,
+          [field]: [...currentValues, customValue.trim()]
+        }));
+        setCustomValue("");
+      }
+    };
+
+    // Handle value removal with improved state management
+    const handleRemove = (valueToRemove: string) => {
+      setFormData(prev => {
+        const currentFieldValues = prev[field] as string[];
+        const newValues = currentFieldValues.filter(item => item !== valueToRemove);
+        
+        console.log(`Removing value from ${field}:`, {
+          valueToRemove,
+          currentValues: currentFieldValues,
+          newValues
+        });
+        
+        return {
+          ...prev,
+          [field]: newValues
+        };
+      });
+      
+      // Update touched state
+      setTouched(prev => ({
+        ...prev,
+        [field]: true
+      }));
+    };
 
     return (
       <div>
@@ -432,64 +475,58 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
           {label}
         </label>
         <div className="space-y-2">
-          {/* Options checkboxes and custom input in one row */}
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Options checkboxes */}
-            <div className="flex flex-wrap gap-2">
-              {options.map((option) => (
-                <label
-                  key={option}
-                  className="flex items-center space-x-2 cursor-pointer p-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 rounded border border-transparent hover:border-gray-200 dark:hover:border-gray-600"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedValues.includes(option)}
-                    onChange={() => handleMultiSelectChange(field, option)}
-                    className="rounded border-gray-300 text-gray-600 focus:ring-gray-500"
-                    disabled={isLoading}
-                  />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">{option}</span>
-                </label>
-              ))}
-            </div>
-            
-            {/* Custom value input */}
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={customValue}
-                onChange={(e) => setCustomValue(e.target.value)}
-                placeholder={`Add custom ${label.toLowerCase()}`}
-                className="w-48 p-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 transition duration-200"
-                disabled={isLoading}
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  handleAddCustomValue(field, customValue);
-                  setCustomValue("");
-                }}
-                className="px-4 py-2.5 text-white text-sm rounded-lg hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ backgroundColor: '#0071E0' }}
-                disabled={isLoading || !customValue.trim()}
+          {/* Options checkboxes */}
+          <div className="flex flex-wrap gap-2">
+            {options.map((option) => (
+              <label
+                key={option}
+                className="flex items-center space-x-2 cursor-pointer p-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 rounded border border-transparent hover:border-gray-200 dark:hover:border-gray-600"
               >
-                <i className="fas fa-plus text-xs"></i>
-              </button>
-            </div>
+                <input
+                  type="checkbox"
+                  checked={currentValues.includes(option)}
+                  onChange={() => handleCheckboxChange(option)}
+                  className="rounded border-gray-300 text-gray-600 focus:ring-gray-500"
+                  disabled={isLoading}
+                />
+                <span className="text-sm text-gray-700 dark:text-gray-300">{option}</span>
+              </label>
+            ))}
           </div>
           
-          {/* Selected values display - below checkboxes and add button */}
-          {selectedValues.length > 0 && (
+          {/* Custom value input */}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={customValue}
+              onChange={(e) => setCustomValue(e.target.value)}
+              placeholder={`Add custom ${label.toLowerCase()}`}
+              className="w-48 p-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 transition duration-200"
+              disabled={isLoading}
+            />
+            <button
+              type="button"
+              onClick={handleCustomAdd}
+              className="px-4 py-2.5 text-white text-sm rounded-lg hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ backgroundColor: '#0071E0' }}
+              disabled={isLoading || !customValue.trim()}
+            >
+              <i className="fas fa-plus text-xs"></i>
+            </button>
+          </div>
+          
+          {/* Selected values display */}
+          {currentValues.length > 0 && (
             <div className="flex flex-wrap gap-2">
-              {selectedValues.map((value, index) => (
+              {currentValues.map((value, index) => (
                 <span
-                  key={index}
+                  key={`${field}-${value}-${index}`}
                   className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-600 rounded text-sm"
                 >
                   {value}
                   <button
                     type="button"
-                    onClick={() => handleRemoveValue(field, value)}
+                    onClick={() => handleRemove(value)}
                     className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 ml-1"
                     disabled={isLoading}
                   >
@@ -666,7 +703,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
             </div>
 
             {/* Color Variant Field */}
-            <div>
+            <div key={`colorVariant-${editItem?._id || 'new'}`}>
               <MultiSelectField
                 field="colorVariant"
                 label="Color Variant"
@@ -675,7 +712,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
             </div>
 
             {/* Country Field */}
-            <div>
+            <div key={`country-${editItem?._id || 'new'}`}>
               <MultiSelectField
                 field="country"
                 label="Country"
@@ -776,14 +813,14 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
 
             {/* SIM Type and Network Bands Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
+              <div key={`simType-${editItem?._id || 'new'}`}>
                 <MultiSelectField
                   field="simType"
                   label="SIM Type"
                   options={simOptions}
                 />
               </div>
-              <div>
+              <div key={`networkBands-${editItem?._id || 'new'}`}>
                 <MultiSelectField
                   field="networkBands"
                   label="Network Bands"

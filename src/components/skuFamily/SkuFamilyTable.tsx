@@ -6,28 +6,7 @@ import toastHelper from "../../utils/toastHelper";
 import SkuFamilyModal from "./SkuFamilyModal";
 import SubRowModal from "./SubRowModal";
 import placeholderImage from "../../../public/images/product/noimage.jpg";
-
-
-interface SkuFamily {
-  _id?: string;
-  name: string;
-  code: string;
-  brand: string;
-  description: string;
-  images: string[];
-  colorVariant: string;
-  country: string;
-  simType: string;
-  networkBands: string;
-  countryVariant?: string;
-  isApproved?: boolean;
-  isDeleted?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-  updatedBy?: string;
-  approvedBy?: string | null;
-  __v?: string;
-}
+import { SkuFamily } from "./types";
 
 const SkuFamilyTable: React.FC = () => {
   const [skuFamilyData, setSkuFamilyData] = useState<SkuFamily[]>([]);
@@ -43,11 +22,41 @@ const SkuFamilyTable: React.FC = () => {
   const [expandedRows, setExpandedRows] = useState<{[key: string]: boolean}>({});
   const [isSubRowEditModalOpen, setIsSubRowEditModalOpen] = useState<boolean>(false);
   const [editingSubRow, setEditingSubRow] = useState<{parentId: string, subRow: SkuFamily} | null>(null);
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [dropdownPosition, setDropdownPosition] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
+  const [selectedSkuFamily, setSelectedSkuFamily] = useState<SkuFamily | null>(null);
   const itemsPerPage = 10;
 
   useEffect(() => {
     fetchData();
   }, [currentPage, searchTerm]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!event.target) return;
+      if (!(event.target as HTMLElement).closest(".dropdown-container")) {
+        setOpenDropdownId(null);
+        setDropdownPosition(null);
+      }
+    };
+
+    const handleResize = () => {
+      if (openDropdownId) {
+        setOpenDropdownId(null);
+        setDropdownPosition(null);
+      }
+    };
+
+    document.addEventListener("click", handleClickOutside);
+    window.addEventListener("resize", handleResize);
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [openDropdownId]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -105,6 +114,8 @@ const SkuFamilyTable: React.FC = () => {
       setEditId(id);
       setIsModalOpen(true);
     }, 50);
+    setOpenDropdownId(null);
+    setDropdownPosition(null);
   };
 
   const handleDelete = async (id: string) => {
@@ -126,11 +137,21 @@ const SkuFamilyTable: React.FC = () => {
         toastHelper.showTost("Failed to delete SKU family", "error");
       }
     }
+    setOpenDropdownId(null);
+    setDropdownPosition(null);
+  };
+
+  const handleView = (skuFamily: SkuFamily) => {
+    setSelectedSkuFamily(skuFamily);
+    setOpenDropdownId(null);
+    setDropdownPosition(null);
   };
 
   const handleAddSubRow = (id: string) => {
     setParentRowId(id);
     setIsSubRowModalOpen(true);
+    setOpenDropdownId(null);
+    setDropdownPosition(null);
   };
 
   const handleSubRowSave = async (formData: FormData) => {
@@ -295,25 +316,10 @@ const SkuFamilyTable: React.FC = () => {
                   Name
                 </th>
                 <th className="w-24 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Code
-                </th>
-                <th className="w-24 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Brand
-                </th>
-                <th className="w-40 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Description
-                </th>
-                <th className="w-24 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Color Variant
                 </th>
                 <th className="w-20 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Country
-                </th>
-                <th className="w-20 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  SIM Type
-                </th>
-                <th className="w-24 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Network Bands
                 </th>
                 <th className="w-20 px-2 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Actions
@@ -323,7 +329,7 @@ const SkuFamilyTable: React.FC = () => {
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={11} className="p-12 text-center">
+                  <td colSpan={6} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
                       Loading SKU Families...
@@ -332,7 +338,7 @@ const SkuFamilyTable: React.FC = () => {
                 </tr>
               ) : !skuFamilyData || skuFamilyData.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="p-12 text-center">
+                  <td colSpan={6} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       No products found
                     </div>
@@ -386,50 +392,95 @@ const SkuFamilyTable: React.FC = () => {
                         {item.name || "N/A"}
                       </td>
                       <td className="w-24 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
-                        {item.code || "N/A"}
-                      </td>
-                      <td className="w-24 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
-                        {item.brand || "N/A"}
-                      </td>
-                      <td className="w-40 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
-                        {item.description || "N/A"}
-                      </td>
-                      <td className="w-24 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
                         {item.colorVariant || "N/A"}
                       </td>
                       <td className="w-20 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
                         {item.country || "N/A"}
                       </td>
-                      <td className="w-20 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
-                        {item.simType || "N/A"}
-                      </td>
-                      <td className="w-24 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
-                        {item.networkBands || "N/A"}
-                      </td>
-                      <td className="w-20 px-2 py-4 text-sm text-center">
-                        <div className="flex items-center justify-center gap-3" onClick={(e) => e.stopPropagation()}>
+                      <td className="w-20 px-2 py-4 text-sm text-center relative">
+                        <div className="dropdown-container relative">
                           <button
-                            onClick={() => item._id && handleAddSubRow(item._id)}
-                            disabled={!item._id}
-                            className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors disabled:opacity-50"
-                            title="Add Sub-Row"
+                            className="text-gray-600 dark:text-gray-400 hover:text-gray-800 p-1 rounded-full hover:bg-gray-100"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (openDropdownId === item._id) {
+                                setOpenDropdownId(null);
+                                setDropdownPosition(null);
+                              } else {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                const dropdownWidth = 192;
+                                const dropdownHeight = 200;
+                                let top = rect.bottom + 8;
+                                let left = rect.right - dropdownWidth;
+
+                                if (top + dropdownHeight > window.innerHeight) {
+                                  top = rect.top - dropdownHeight - 8;
+                                }
+                                if (left < 8) {
+                                  left = 8;
+                                }
+                                if (left + dropdownWidth > window.innerWidth - 8) {
+                                  left = window.innerWidth - dropdownWidth - 8;
+                                }
+
+                                setDropdownPosition({ top, left });
+                                setOpenDropdownId(item._id || null);
+                              }
+                            }}
                           >
-                            <i className="fas fa-plus"></i>
+                            <i className="fas fa-ellipsis-v"></i>
                           </button>
-                          <button
-                            onClick={() => item._id && handleEdit(item._id)}
-                            disabled={!item._id}
-                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors disabled:opacity-50"
-                          >
-                            <i className="fas fa-edit"></i>
-                          </button>
-                          <button
-                            onClick={() => item._id && handleDelete(item._id)}
-                            disabled={!item._id}
-                            className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors disabled:opacity-50"
-                          >
-                            <i className="fas fa-trash"></i>
-                          </button>
+                          {openDropdownId === item._id && dropdownPosition && (
+                            <div
+                              className="fixed w-48 bg-white border rounded-md shadow-lg"
+                              style={{
+                                top: `${dropdownPosition.top}px`,
+                                left: `${dropdownPosition.left}px`,
+                                zIndex: 9999,
+                              }}
+                            >
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  item._id && handleAddSubRow(item._id);
+                                }}
+                                className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-green-600"
+                              >
+                                <i className="fas fa-plus"></i>
+                                Add
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleView(item);
+                                }}
+                                className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-blue-600"
+                              >
+                                <i className="fas fa-eye"></i>
+                                View
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  item._id && handleEdit(item._id);
+                                }}
+                                className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-yellow-600"
+                              >
+                                <i className="fas fa-edit"></i>
+                                Edit
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  item._id && handleDelete(item._id);
+                                }}
+                                className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-red-600"
+                              >
+                                <i className="fas fa-trash"></i>
+                                Delete
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -450,25 +501,10 @@ const SkuFamilyTable: React.FC = () => {
                           {subRow.name || "N/A"}
                         </td>
                         <td className="w-24 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
-                          {subRow.code || "N/A"}
-                        </td>
-                        <td className="w-24 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
-                          {subRow.brand || "N/A"}
-                        </td>
-                        <td className="w-40 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
-                          {subRow.description || "N/A"}
-                        </td>
-                        <td className="w-24 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
                           {subRow.colorVariant || "N/A"}
                         </td>
                         <td className="w-20 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
                           {subRow.country || "N/A"}
-                        </td>
-                        <td className="w-20 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
-                          {subRow.simType || "N/A"}
-                        </td>
-                        <td className="w-24 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
-                          {subRow.networkBands || "N/A"}
                         </td>
                         <td className="w-20 px-2 py-4 text-sm text-center">
                           <div className="flex items-center justify-center gap-3">
@@ -498,18 +534,13 @@ const SkuFamilyTable: React.FC = () => {
                         </td>
                         <td className="w-20 px-2 py-4"></td>
                         <td className="w-32 px-2 py-4"></td>
-                        <td className="w-24 px-2 py-4"></td>
-                        <td className="w-24 px-2 py-4"></td>
-                        <td className="w-40 px-2 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
+                        <td className="w-24 px-2 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
                           <div className="flex items-center">
                             <i className="fas fa-info-circle mr-2"></i>
                             No variants available. Click edit to add variants.
                           </div>
                         </td>
-                        <td className="w-24 px-2 py-4"></td>
                         <td className="w-20 px-2 py-4"></td>
-                        <td className="w-20 px-2 py-4"></td>
-                        <td className="w-24 px-2 py-4"></td>
                         <td className="w-20 px-2 py-4"></td>
                       </tr>
                     )}
@@ -589,6 +620,184 @@ const SkuFamilyTable: React.FC = () => {
         onSave={handleSubRowEditSave}
         editItem={editingSubRow?.subRow}
       />
+      {selectedSkuFamily && (
+        <div
+          className="fixed inset-0 flex items-center justify-center bg-black/60 z-50 transition-opacity duration-300"
+          onClick={() => setSelectedSkuFamily(null)}
+        >
+          <div
+            className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-4xl w-full max-h-[85vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+              <div className="flex items-center space-x-4">
+                <img
+                  src={(function () {
+                    const base = (import.meta as any).env?.VITE_BASE_URL || "";
+                    const first = Array.isArray(selectedSkuFamily.images) && selectedSkuFamily.images.length > 0
+                      ? selectedSkuFamily.images[0]
+                      : "";
+                    if (!first) return placeholderImage;
+                    const isAbsolute = /^https?:\/\//i.test(first);
+                    return isAbsolute
+                      ? first
+                      : `${base}${first.startsWith("/") ? "" : "/"}${first}`;
+                  })()}
+                  alt={selectedSkuFamily.name || "SKU Family"}
+                  className="w-16 h-16 object-cover rounded-lg border border-gray-200 dark:border-gray-600 flex-shrink-0"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = placeholderImage;
+                  }}
+                />
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                    {selectedSkuFamily.name || "N/A"}
+                  </h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    SKU Family Details
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedSkuFamily(null)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-2 flex-shrink-0"
+                title="Close"
+              >
+                <i className="fas fa-times text-xl"></i>
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                    Basic Information
+                  </h3>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Name
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                      {selectedSkuFamily.name || "N/A"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Code
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                      {selectedSkuFamily.code || "N/A"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Brand
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                      {selectedSkuFamily.brand || "N/A"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Description
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                      {selectedSkuFamily.description || "N/A"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                    Technical Details
+                  </h3>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Color Variant
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                      {Array.isArray(selectedSkuFamily.colorVariant) 
+                        ? selectedSkuFamily.colorVariant.join(", ") 
+                        : selectedSkuFamily.colorVariant || "N/A"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Country
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                      {Array.isArray(selectedSkuFamily.country) 
+                        ? selectedSkuFamily.country.join(", ") 
+                        : selectedSkuFamily.country || "N/A"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      SIM Type
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                      {Array.isArray(selectedSkuFamily.simType) 
+                        ? selectedSkuFamily.simType.join(", ") 
+                        : selectedSkuFamily.simType || "N/A"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Network Bands
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                      {Array.isArray(selectedSkuFamily.networkBands) 
+                        ? selectedSkuFamily.networkBands.join(", ") 
+                        : selectedSkuFamily.networkBands || "N/A"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                  Images
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {selectedSkuFamily.images && selectedSkuFamily.images.length > 0 ? (
+                    selectedSkuFamily.images.map((image, index) => (
+                      <div key={index} className="relative">
+                        <img
+                          src={(function () {
+                            const base = (import.meta as any).env?.VITE_BASE_URL || "";
+                            const isAbsolute = /^https?:\/\//i.test(image);
+                            return isAbsolute
+                              ? image
+                              : `${base}${image.startsWith("/") ? "" : "/"}${image}`;
+                          })()}
+                          alt={`${selectedSkuFamily.name} - Image ${index + 1}`}
+                          className="w-full h-32 object-cover rounded-lg border border-gray-200 dark:border-gray-600"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).src = placeholderImage;
+                          }}
+                        />
+                      </div>
+                    ))
+                  ) : (
+                    <div className="col-span-full text-center py-8 text-gray-500 dark:text-gray-400">
+                      <i className="fas fa-image text-4xl mb-2"></i>
+                      <p>No images available</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

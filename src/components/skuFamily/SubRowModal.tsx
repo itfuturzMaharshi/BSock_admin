@@ -1,26 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import Swal from "sweetalert2";
-
-interface SkuFamily {
-  _id?: string;
-  name: string;
-  code: string;
-  brand: string;
-  description: string;
-  images: string[];
-  colorVariant: string;
-  country: string;
-  simType: string;
-  networkBands: string;
-  countryVariant?: string;
-  isApproved?: boolean;
-  isDeleted?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-  updatedBy?: string;
-  approvedBy?: string | null;
-  __v?: string;
-}
+import { SkuFamily } from "./types";
 
 interface ValidationErrors {
   name?: string;
@@ -127,10 +107,18 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
           code: editItem.code || "",
           brand: editItem.brand || "",
           description: editItem.description || "",
-          colorVariant: editItem.colorVariant || "",
-          country: editItem.country || "",
-          simType: editItem.simType || "",
-          networkBands: editItem.networkBands || "",
+          colorVariant: Array.isArray(editItem.colorVariant) 
+            ? editItem.colorVariant.join(", ") 
+            : editItem.colorVariant || "",
+          country: Array.isArray(editItem.country) 
+            ? editItem.country.join(", ") 
+            : editItem.country || "",
+          simType: Array.isArray(editItem.simType) 
+            ? editItem.simType.join(", ") 
+            : editItem.simType || "",
+          networkBands: Array.isArray(editItem.networkBands) 
+            ? editItem.networkBands.join(", ") 
+            : editItem.networkBands || "",
         });
 
         // Handle existing images properly - ensure it's always an array
