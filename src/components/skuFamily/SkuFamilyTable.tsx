@@ -4,6 +4,7 @@ import Swal from "sweetalert2";
 import { SkuFamilyService } from "../../services/skuFamily/skuFamily.services";
 import toastHelper from "../../utils/toastHelper";
 import SkuFamilyModal from "./SkuFamilModal";
+import SubRowModal from "./SubRowModal";
 import placeholderImage from "../../../public/images/product/noimage.jpg";
 
 
@@ -36,6 +37,12 @@ const SkuFamilyTable: React.FC = () => {
   const [editId, setEditId] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [totalDocs, setTotalDocs] = useState<number>(0);
+  const [isSubRowModalOpen, setIsSubRowModalOpen] = useState<boolean>(false);
+  const [parentRowId, setParentRowId] = useState<string | null>(null);
+  const [subRows, setSubRows] = useState<{[key: string]: SkuFamily[]}>({});
+  const [expandedRows, setExpandedRows] = useState<{[key: string]: boolean}>({});
+  const [isSubRowEditModalOpen, setIsSubRowEditModalOpen] = useState<boolean>(false);
+  const [editingSubRow, setEditingSubRow] = useState<{parentId: string, subRow: SkuFamily} | null>(null);
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -120,6 +127,120 @@ const SkuFamilyTable: React.FC = () => {
       }
     }
   };
+
+  const handleAddSubRow = (id: string) => {
+    setParentRowId(id);
+    setIsSubRowModalOpen(true);
+  };
+
+  const handleSubRowSave = async (formData: FormData) => {
+    try {
+      // Create a new sub-row entry
+      const newSubRow: SkuFamily = {
+        _id: `sub-${Date.now()}`, // Temporary ID for local state
+        name: formData.get('name') as string,
+        code: formData.get('code') as string,
+        brand: formData.get('brand') as string,
+        description: formData.get('description') as string,
+        colorVariant: formData.get('colorVariant') as string,
+        country: formData.get('country') as string,
+        simType: formData.get('simType') as string,
+        networkBands: formData.get('networkBands') as string,
+        images: [], // Handle images if needed
+      };
+
+      // Add to subRows state
+      if (parentRowId) {
+        setSubRows(prev => ({
+          ...prev,
+          [parentRowId]: [...(prev[parentRowId] || []), newSubRow]
+        }));
+      }
+
+      setIsSubRowModalOpen(false);
+      setParentRowId(null);
+      toastHelper.showTost("Sub-row added successfully", "success");
+    } catch (err: any) {
+      console.error("Error saving sub-row:", err);
+      toastHelper.showTost("Failed to save sub-row", "error");
+    }
+  };
+
+  const toggleRowExpansion = (rowId: string) => {
+    setExpandedRows(prev => ({
+      ...prev,
+      [rowId]: !prev[rowId]
+    }));
+  };
+
+  const handleSubRowEdit = (parentId: string, subRowId: string) => {
+    // Find the sub-row to edit
+    const subRow = subRows[parentId]?.find(row => row._id === subRowId);
+    if (subRow) {
+      setEditingSubRow({ parentId, subRow });
+      setIsSubRowEditModalOpen(true);
+    }
+  };
+
+  const handleSubRowDelete = async (parentId: string, subRowId: string) => {
+    const confirmed = await Swal.fire({
+      title: "Are you sure?",
+      text: "This will delete the sub-row!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, delete it!",
+      cancelButtonText: "No, cancel!",
+    });
+
+    if (confirmed.isConfirmed) {
+      try {
+        setSubRows(prev => ({
+          ...prev,
+          [parentId]: prev[parentId]?.filter(row => row._id !== subRowId) || []
+        }));
+        toastHelper.showTost("Sub-row deleted successfully", "success");
+      } catch (err: any) {
+        console.error("Error deleting sub-row:", err);
+        toastHelper.showTost("Failed to delete sub-row", "error");
+      }
+    }
+  };
+
+  const handleSubRowEditSave = async (formData: FormData) => {
+    try {
+      if (!editingSubRow) return;
+
+      // Create updated sub-row entry
+      const updatedSubRow: SkuFamily = {
+        _id: editingSubRow.subRow._id, // Keep the same ID
+        name: formData.get('name') as string,
+        code: formData.get('code') as string,
+        brand: formData.get('brand') as string,
+        description: formData.get('description') as string,
+        colorVariant: formData.get('colorVariant') as string,
+        country: formData.get('country') as string,
+        simType: formData.get('simType') as string,
+        networkBands: formData.get('networkBands') as string,
+        images: editingSubRow.subRow.images, // Keep existing images
+      };
+
+      // Update the sub-row in state
+      setSubRows(prev => ({
+        ...prev,
+        [editingSubRow.parentId]: prev[editingSubRow.parentId]?.map(row => 
+          row._id === editingSubRow.subRow._id ? updatedSubRow : row
+        ) || []
+      }));
+
+      setIsSubRowEditModalOpen(false);
+      setEditingSubRow(null);
+      toastHelper.showTost("Sub-row updated successfully", "success");
+    } catch (err: any) {
+      console.error("Error updating sub-row:", err);
+      toastHelper.showTost("Failed to update sub-row", "error");
+    }
+  };
+
 
   const totalPages = Math.ceil(totalDocs / itemsPerPage);
 
@@ -216,78 +337,159 @@ const SkuFamilyTable: React.FC = () => {
                 </tr>
               ) : (
                 skuFamilyData.map((item: SkuFamily, index: number) => (
-                  <tr
-                    key={item._id || index}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                  >
-                    <td className="px-6 py-4">
-                      <img
-                        src={(function () {
-                          const base =
-                            (import.meta as any).env?.VITE_BASE_URL || "";
-                          const first =
-                            Array.isArray(item.images) && item.images.length > 0
-                              ? item.images[0]
-                              : "";
-                          if (!first) return placeholderImage; // 👈 fallback if no image url
-                          const isAbsolute = /^https?:\/\//i.test(first);
-                          return isAbsolute
-                            ? first
-                            : `${base}${
-                                first.startsWith("/") ? "" : "/"
-                              }${first}`;
-                        })()}
-                        alt={item.name || "Product"}
-                        className="w-12 h-12 object-contain rounded-md border border-gray-200 dark:border-gray-600"
-                        onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).src =
-                            placeholderImage; // 👈 fallback if load fails
-                        }}
-                      />
-                    </td>
-                    <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-gray-200">
-                      {item.name || "N/A"}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.code || "N/A"}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.brand || "N/A"}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 max-w-xs overflow-hidden">
-                      {item.description || "N/A"}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.colorVariant || "N/A"}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.country || "N/A"}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.simType || "N/A"}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.networkBands || "N/A"}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-center">
-                      <div className="flex items-center justify-center gap-3">
-                        <button
-                          onClick={() => item._id && handleEdit(item._id)}
-                          disabled={!item._id}
-                          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors disabled:opacity-50"
-                        >
-                          <i className="fas fa-edit"></i>
-                        </button>
-                        <button
-                          onClick={() => item._id && handleDelete(item._id)}
-                          disabled={!item._id}
-                          className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors disabled:opacity-50"
-                        >
-                          <i className="fas fa-trash"></i>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                  <React.Fragment key={item._id || index}>
+                    {/* Main Row */}
+                    <tr 
+                      className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
+                      onClick={() => item._id && toggleRowExpansion(item._id)}
+                    >
+                      <td className="px-6 py-4">
+                        <div className="flex items-center">
+                          {item._id && (subRows[item._id] && subRows[item._id].length > 0) && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                item._id && toggleRowExpansion(item._id);
+                              }}
+                              className="mr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                            >
+                              <i className={`fas fa-chevron-${expandedRows[item._id] ? 'down' : 'right'} text-sm`}></i>
+                            </button>
+                          )}
+                          <img
+                            src={(function () {
+                              const base =
+                                (import.meta as any).env?.VITE_BASE_URL || "";
+                              const first =
+                                Array.isArray(item.images) && item.images.length > 0
+                                  ? item.images[0]
+                                  : "";
+                              if (!first) return placeholderImage; // 👈 fallback if no image url
+                              const isAbsolute = /^https?:\/\//i.test(first);
+                              return isAbsolute
+                                ? first
+                                : `${base}${
+                                    first.startsWith("/") ? "" : "/"
+                                  }${first}`;
+                            })()}
+                            alt={item.name || "Product"}
+                            className="w-12 h-12 object-contain rounded-md border border-gray-200 dark:border-gray-600"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLImageElement).src =
+                                placeholderImage; // 👈 fallback if load fails
+                            }}
+                          />
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-gray-200">
+                        {item.name || "N/A"}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                        {item.code || "N/A"}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                        {item.brand || "N/A"}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 max-w-xs overflow-hidden">
+                        {item.description || "N/A"}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                        {item.colorVariant || "N/A"}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                        {item.country || "N/A"}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                        {item.simType || "N/A"}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                        {item.networkBands || "N/A"}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-center">
+                        <div className="flex items-center justify-center gap-3" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={() => item._id && handleAddSubRow(item._id)}
+                            disabled={!item._id}
+                            className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors disabled:opacity-50"
+                            title="Add Sub-Row"
+                          >
+                            <i className="fas fa-plus"></i>
+                          </button>
+                          <button
+                            onClick={() => item._id && handleEdit(item._id)}
+                            disabled={!item._id}
+                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors disabled:opacity-50"
+                          >
+                            <i className="fas fa-edit"></i>
+                          </button>
+                          <button
+                            onClick={() => item._id && handleDelete(item._id)}
+                            disabled={!item._id}
+                            className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors disabled:opacity-50"
+                          >
+                            <i className="fas fa-trash"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    {/* Sub-rows */}
+                    {item._id && expandedRows[item._id] && subRows[item._id] && subRows[item._id].map((subRow, subIndex) => (
+                      <tr key={`sub-${item._id}-${subIndex}`} className="bg-gray-50 dark:bg-gray-800/50 border-l-4 border-blue-200 dark:border-blue-700">
+                        <td className="px-6 py-4 pl-12">
+                          <div className="flex items-center">
+                            <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
+                            <img
+                              src={placeholderImage}
+                              alt={subRow.name || "Sub-Product"}
+                              className="w-10 h-10 object-contain rounded-md border border-gray-200 dark:border-gray-600"
+                            />
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {subRow.name || "N/A"}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                          {subRow.code || "N/A"}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                          {subRow.brand || "N/A"}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 max-w-xs overflow-hidden">
+                          {subRow.description || "N/A"}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                          {subRow.colorVariant || "N/A"}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                          {subRow.country || "N/A"}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                          {subRow.simType || "N/A"}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                          {subRow.networkBands || "N/A"}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-center">
+                          <div className="flex items-center justify-center gap-3">
+                            <button
+                              onClick={() => handleSubRowEdit(item._id!, subRow._id!)}
+                              className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                              title="Edit Sub-Row"
+                            >
+                              <i className="fas fa-edit"></i>
+                            </button>
+                            <button
+                              onClick={() => handleSubRowDelete(item._id!, subRow._id!)}
+                              className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                              title="Delete Sub-Row"
+                            >
+                              <i className="fas fa-trash"></i>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </React.Fragment>
                 ))
               )}
             </tbody>
@@ -345,6 +547,23 @@ const SkuFamilyTable: React.FC = () => {
         editItem={
           editId ? skuFamilyData.find((item) => item._id === editId) : undefined
         }
+      />
+      <SubRowModal
+        isOpen={isSubRowModalOpen}
+        onClose={() => {
+          setIsSubRowModalOpen(false);
+          setParentRowId(null);
+        }}
+        onSave={handleSubRowSave}
+      />
+      <SubRowModal
+        isOpen={isSubRowEditModalOpen}
+        onClose={() => {
+          setIsSubRowEditModalOpen(false);
+          setEditingSubRow(null);
+        }}
+        onSave={handleSubRowEditSave}
+        editItem={editingSubRow?.subRow}
       />
     </div>
   );
