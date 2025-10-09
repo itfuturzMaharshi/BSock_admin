@@ -8,6 +8,7 @@ import "react-datepicker/dist/react-datepicker.css";
 
 interface FormData {
   skuFamilyId: string;
+  subSkuFamilyId: string;
   simType: string;
   color: string;
   ram: string;
@@ -25,6 +26,7 @@ interface FormData {
 
 interface ValidationErrors {
   skuFamilyId?: string;
+  subSkuFamilyId?: string;
   simType?: string;
   color?: string;
   ram?: string;
@@ -42,6 +44,7 @@ interface ValidationErrors {
 
 interface TouchedFields {
   skuFamilyId: boolean;
+  subSkuFamilyId: boolean;
   simType: boolean;
   color: boolean;
   ram: boolean;
@@ -72,6 +75,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
 }) => {
   const [formData, setFormData] = useState<FormData>({
     skuFamilyId: "",
+    subSkuFamilyId: "",
     simType: "",
     color: "",
     ram: "",
@@ -89,8 +93,13 @@ const ProductModal: React.FC<ProductModalProps> = ({
   const [skuFamilies, setSkuFamilies] = useState<
     { _id: string; name: string }[]
   >([]);
+  const [subSkuFamilies, setSubSkuFamilies] = useState<
+    { _id: string; name: string }[]
+  >([]);
   const [skuLoading, setSkuLoading] = useState<boolean>(false);
+  const [subSkuLoading, setSubSkuLoading] = useState<boolean>(false);
   const [skuError, setSkuError] = useState<string | null>(null);
+  const [subSkuError, setSubSkuError] = useState<string | null>(null);
   const [dateError, setDateError] = useState<string | null>(null);
   const [moqError, setMoqError] = useState<string | null>(null);
   const [priceError, setPriceError] = useState<string | null>(null);
@@ -99,6 +108,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
   );
   const [touched, setTouched] = useState<TouchedFields>({
     skuFamilyId: false,
+    subSkuFamilyId: false,
     simType: false,
     color: false,
     ram: false,
@@ -135,7 +145,22 @@ const ProductModal: React.FC<ProductModalProps> = ({
           setSkuLoading(false);
         }
       };
+
+      const fetchSubSkuFamilies = async () => {
+        try {
+          setSubSkuLoading(true);
+          setSubSkuError(null);
+          const list = await ProductService.getSubSkuFamilyListByName();
+          setSubSkuFamilies(list);
+        } catch (error: any) {
+          setSubSkuError(error.message || "Failed to load Sub SKU Families");
+        } finally {
+          setSubSkuLoading(false);
+        }
+      };
+
       fetchSkuFamilies();
+      fetchSubSkuFamilies();
     }
   }, [isOpen]);
 
@@ -146,8 +171,13 @@ const ProductModal: React.FC<ProductModalProps> = ({
           typeof editItem.skuFamilyId === "object"
             ? editItem.skuFamilyId._id || ""
             : editItem.skuFamilyId || "";
+        const subSkuId =
+          typeof editItem.subSkuFamilyId === "object"
+            ? editItem.subSkuFamilyId._id || ""
+            : editItem.subSkuFamilyId || "";
         setFormData({
           skuFamilyId: skuId,
+          subSkuFamilyId: subSkuId,
           simType: editItem.simType,
           color: editItem.color,
           ram: editItem.ram,
@@ -165,6 +195,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
       } else {
         setFormData({
           skuFamilyId: "",
+          subSkuFamilyId: "",
           simType: "",
           color: "",
           ram: "",
@@ -343,6 +374,8 @@ const ProductModal: React.FC<ProductModalProps> = ({
     switch (name) {
       case "skuFamilyId":
         return !value ? "SKU Family is required" : undefined;
+      case "subSkuFamilyId":
+        return !value ? "Sub SKU Family is required" : undefined;
       case "simType":
         return !value ? "SIM Type is required" : undefined;
       case "color":
@@ -400,6 +433,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
     // Only validate required fields
     const requiredFields: (keyof FormData)[] = [
       "skuFamilyId",
+      "subSkuFamilyId",
       "simType",
       "color",
       "ram",
@@ -465,6 +499,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
     // Mark all fields as touched
     setTouched({
       skuFamilyId: true,
+      subSkuFamilyId: true,
       simType: true,
       color: true,
       ram: true,
@@ -532,7 +567,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-6">
           <form id="product-form" onSubmit={handleSubmit} className="space-y-6">
-            {/* SKU Family ID, Country, and Sim Type Row */}
+            {/* SKU Family ID, Sub SKU Family, and Country Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
@@ -580,6 +615,50 @@ const ProductModal: React.FC<ProductModalProps> = ({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                  Sub SKU Family
+                </label>
+                <div className="relative">
+                  <select
+                    name="subSkuFamilyId"
+                    value={formData.subSkuFamilyId}
+                    onChange={handleInputChange}
+                    onBlur={handleBlur}
+                    className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
+                      touched.subSkuFamilyId && validationErrors.subSkuFamilyId
+                        ? "border-red-500 focus:ring-red-500"
+                        : "border-gray-200 dark:border-gray-700"
+                    }`}
+                    required
+                    disabled={subSkuLoading || subSkuError !== null}
+                  >
+                    <option value="" disabled>
+                      {subSkuLoading
+                        ? "Loading Sub SKU Families..."
+                        : subSkuError
+                        ? "Error loading Sub SKU Families"
+                        : "Select Sub SKU Family"}
+                    </option>
+                    {subSkuFamilies.map((subSku) => (
+                      <option key={subSku._id} value={subSku._id}>
+                        {subSku.name}
+                      </option>
+                    ))}
+                  </select>
+                  <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+                </div>
+                {touched.subSkuFamilyId && validationErrors.subSkuFamilyId && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {validationErrors.subSkuFamilyId}
+                  </p>
+                )}
+                {subSkuError && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {subSkuError}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                   Country
                 </label>
                 <div className="relative">
@@ -612,6 +691,10 @@ const ProductModal: React.FC<ProductModalProps> = ({
                   </p>
                 )}
               </div>
+            </div>
+
+            {/* SIM Type, Color, and RAM Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                   SIM Type
@@ -646,10 +729,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
                   </p>
                 )}
               </div>
-            </div>
-
-            {/* Color, RAM, and Storage Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                   Color
@@ -718,6 +797,10 @@ const ProductModal: React.FC<ProductModalProps> = ({
                   </p>
                 )}
               </div>
+            </div>
+
+            {/* Storage, Condition, and Price Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                   Storage
@@ -752,10 +835,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
                   </p>
                 )}
               </div>
-            </div>
-
-            {/* Condition, Price, and Stock Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                   Condition
@@ -820,6 +899,10 @@ const ProductModal: React.FC<ProductModalProps> = ({
                   </p>
                 )}
               </div>
+            </div>
+
+            {/* Stock, MOQ, and Purchase Type Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                   Stock
@@ -845,10 +928,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
                   </p>
                 )}
               </div>
-            </div>
-
-            {/* MOQ and Purchase Type Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                   MOQ
@@ -1010,9 +1089,9 @@ const ProductModal: React.FC<ProductModalProps> = ({
               type="submit"
               form="product-form"
               className="min-w-[160px] px-4 py-2 bg-[#0071E0] text-white rounded-lg hover:bg-blue-600 transition duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-              disabled={skuLoading || skuError !== null}
+              disabled={skuLoading || skuError !== null || subSkuLoading || subSkuError !== null}
             >
-              {skuLoading ? (
+              {skuLoading || subSkuLoading ? (
                 <svg
                   className="animate-spin h-4 w-4 text-white"
                   xmlns="http://www.w3.org/2000/svg"

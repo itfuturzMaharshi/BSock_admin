@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import Swal from "sweetalert2";
 import { format } from "date-fns";
 import toastHelper from "../../utils/toastHelper";
-import ProductModal from "./ProductModal";
+import ProductModal from "./ProductsModal";
 import UploadExcelModal from "./UploadExcelModal";
 import {
   ProductService,
@@ -230,6 +230,15 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
     return String(skuFamilyId);
   };
 
+  const getSubSkuFamilyText = (subSkuFamilyId: any): string => {
+    if (subSkuFamilyId == null) return "";
+    if (typeof subSkuFamilyId === "string") return subSkuFamilyId;
+    if (typeof subSkuFamilyId === "object") {
+      return subSkuFamilyId.name || subSkuFamilyId.code || subSkuFamilyId._id || "";
+    }
+    return String(subSkuFamilyId);
+  };
+
   const buildImageUrl = (relativeOrAbsolute: string): string => {
     if (!relativeOrAbsolute)
       return "https://via.placeholder.com/60x60?text=Product";
@@ -373,6 +382,9 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                   Name
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                  Sub Sku Name
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   SIM Type
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
@@ -401,7 +413,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={10} className="p-12 text-center">
+                  <td colSpan={11} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
                       Loading Products...
@@ -410,7 +422,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                 </tr>
               ) : productsData.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="p-12 text-center">
+                  <td colSpan={11} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       No products found
                     </div>
@@ -435,6 +447,9 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                     </td>
                     <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-gray-200">
                       {getSkuFamilyText(item.skuFamilyId)}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      {getSubSkuFamilyText(item.subSkuFamilyId)}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                       {item.simType}
@@ -680,6 +695,15 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                     </label>
                     <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
                       {getSkuFamilyText(selectedProduct.skuFamilyId)}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Sub SKU Family
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                      {getSubSkuFamilyText(selectedProduct.subSkuFamilyId)}
                     </p>
                   </div>
 

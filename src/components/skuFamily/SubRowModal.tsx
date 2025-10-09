@@ -29,7 +29,6 @@ interface SubRowModalProps {
   onClose: () => void;
   onSave: (formData: FormData) => Promise<void>;
   editItem?: SkuFamily;
-  skuFamilyId?: string;
   viewMode?: boolean;
 }
 
@@ -38,7 +37,6 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
   onClose,
   onSave,
   editItem,
-  skuFamilyId,
   viewMode = false,
 }) => {
   const [formData, setFormData] = useState({
@@ -431,10 +429,8 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
       formDataToSend.append("simType", JSON.stringify(simTypeArray));
       formDataToSend.append("networkBands", JSON.stringify(networkBandsArray));
       
-      // Add skuFamilyId if provided - only if not already present
-      if (skuFamilyId && !formDataToSend.has('skuFamilyId')) {
-        formDataToSend.append("skuFamilyId", skuFamilyId);
-      }
+      // Note: skuFamilyId is handled by the parent component (SkuFamilyTable)
+      // to avoid duplicate entries
       
       newImages.forEach((image) => {
         formDataToSend.append("images", image);

@@ -734,7 +734,6 @@ const SkuFamilyTable: React.FC = () => {
           setParentRowId(null);
         }}
         onSave={handleSubRowSave}
-        skuFamilyId={parentRowId || undefined}
       />
       <SubRowModal
         isOpen={isSubRowEditModalOpen}
@@ -744,7 +743,6 @@ const SkuFamilyTable: React.FC = () => {
         }}
         onSave={handleSubRowEditSave}
         editItem={editingSubRow?.subRow}
-        skuFamilyId={editingSubRow?.parentId}
       />
       {selectedSkuFamily && (
         <div
