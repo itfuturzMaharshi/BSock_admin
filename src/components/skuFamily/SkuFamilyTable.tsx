@@ -434,10 +434,10 @@ const SkuFamilyTable: React.FC = () => {
                     </tr>
                     {/* Sub-rows */}
                     {item._id && expandedRows[item._id] && subRows[item._id] && subRows[item._id].map((subRow, subIndex) => (
-                      <tr key={`sub-${item._id}-${subIndex}`} className="bg-gray-50 dark:bg-gray-800/50 border-l-4 border-blue-200 dark:border-blue-700">
+                      <tr key={`sub-${item._id}-${subIndex}`} className="bg-gray-50 dark:bg-gray-800/50">
                         <td className="px-6 py-4 pl-12">
                           <div className="flex items-center">
-                            <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
+                            <div className="w-2 h-2 bg-gray-400 rounded-full mr-3"></div>
                             <img
                               src={placeholderImage}
                               alt={subRow.name || "Sub-Product"}
