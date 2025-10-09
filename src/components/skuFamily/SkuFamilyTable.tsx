@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import Swal from "sweetalert2";
 import { SkuFamilyService } from "../../services/skuFamily/skuFamily.services";
 import toastHelper from "../../utils/toastHelper";
-import SkuFamilyModal from "./SkuFamilModal";
+import SkuFamilyModal from "./SkuFamilyModal";
 import SubRowModal from "./SubRowModal";
 import placeholderImage from "../../../public/images/product/noimage.jpg";
 
@@ -281,38 +281,41 @@ const SkuFamilyTable: React.FC = () => {
             Add SKU Family
           </button>
         </div>
-        <div className="max-w-full overflow-x-auto">
-          <table className="w-full table-auto">
+        <div className="w-full overflow-hidden">
+          <table className="w-full table-fixed">
             <thead className="bg-gray-100 dark:bg-gray-900">
               <tr>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                <th className="w-12 px-2 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                  <i className="fas fa-expand-arrows-alt text-gray-500"></i>
+                </th>
+                <th className="w-20 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Image
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                <th className="w-32 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Name
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                <th className="w-24 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Code
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                <th className="w-24 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Brand
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                <th className="w-40 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Description
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                <th className="w-24 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Color Variant
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                <th className="w-20 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Country
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                <th className="w-20 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   SIM Type
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                <th className="w-24 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Network Bands
                 </th>
-                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                <th className="w-20 px-2 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Actions
                 </th>
               </tr>
@@ -320,7 +323,7 @@ const SkuFamilyTable: React.FC = () => {
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={10} className="p-12 text-center">
+                  <td colSpan={11} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
                       Loading SKU Families...
@@ -329,7 +332,7 @@ const SkuFamilyTable: React.FC = () => {
                 </tr>
               ) : !skuFamilyData || skuFamilyData.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="p-12 text-center">
+                  <td colSpan={11} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       No products found
                     </div>
@@ -343,69 +346,67 @@ const SkuFamilyTable: React.FC = () => {
                       className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
                       onClick={() => item._id && toggleRowExpansion(item._id)}
                     >
-                      <td className="px-6 py-4">
-                        <div className="flex items-center">
-                          {item._id && (subRows[item._id] && subRows[item._id].length > 0) && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                item._id && toggleRowExpansion(item._id);
-                              }}
-                              className="mr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                            >
-                              <i className={`fas fa-chevron-${expandedRows[item._id] ? 'down' : 'right'} text-sm`}></i>
-                            </button>
-                          )}
-                          <img
-                            src={(function () {
-                              const base =
-                                (import.meta as any).env?.VITE_BASE_URL || "";
-                              const first =
-                                Array.isArray(item.images) && item.images.length > 0
-                                  ? item.images[0]
-                                  : "";
-                              if (!first) return placeholderImage; // 👈 fallback if no image url
-                              const isAbsolute = /^https?:\/\//i.test(first);
-                              return isAbsolute
-                                ? first
-                                : `${base}${
-                                    first.startsWith("/") ? "" : "/"
-                                  }${first}`;
-                            })()}
-                            alt={item.name || "Product"}
-                            className="w-12 h-12 object-contain rounded-md border border-gray-200 dark:border-gray-600"
-                            onError={(e) => {
-                              (e.currentTarget as HTMLImageElement).src =
-                                placeholderImage; // 👈 fallback if load fails
-                            }}
-                          />
-                        </div>
+                      <td className="w-12 px-2 py-4 text-center">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            item._id && toggleRowExpansion(item._id);
+                          }}
+                          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                        >
+                          <i className={`fas fa-chevron-${item._id && expandedRows[item._id] ? 'down' : 'right'} text-sm`}></i>
+                        </button>
                       </td>
-                      <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-gray-200">
+                      <td className="w-20 px-2 py-4">
+                        <img
+                          src={(function () {
+                            const base =
+                              (import.meta as any).env?.VITE_BASE_URL || "";
+                            const first =
+                              Array.isArray(item.images) && item.images.length > 0
+                                ? item.images[0]
+                                : "";
+                            if (!first) return placeholderImage; // 👈 fallback if no image url
+                            const isAbsolute = /^https?:\/\//i.test(first);
+                            return isAbsolute
+                              ? first
+                              : `${base}${
+                                  first.startsWith("/") ? "" : "/"
+                                }${first}`;
+                          })()}
+                          alt={item.name || "Product"}
+                          className="w-12 h-12 object-contain rounded-md border border-gray-200 dark:border-gray-600"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).src =
+                              placeholderImage; // 👈 fallback if load fails
+                          }}
+                        />
+                      </td>
+                      <td className="w-32 px-2 py-4 text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
                         {item.name || "N/A"}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      <td className="w-24 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
                         {item.code || "N/A"}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      <td className="w-24 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
                         {item.brand || "N/A"}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 max-w-xs overflow-hidden">
+                      <td className="w-40 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
                         {item.description || "N/A"}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      <td className="w-24 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
                         {item.colorVariant || "N/A"}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      <td className="w-20 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
                         {item.country || "N/A"}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      <td className="w-20 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
                         {item.simType || "N/A"}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      <td className="w-24 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
                         {item.networkBands || "N/A"}
                       </td>
-                      <td className="px-6 py-4 text-sm text-center">
+                      <td className="w-20 px-2 py-4 text-sm text-center">
                         <div className="flex items-center justify-center gap-3" onClick={(e) => e.stopPropagation()}>
                           <button
                             onClick={() => item._id && handleAddSubRow(item._id)}
@@ -435,41 +436,41 @@ const SkuFamilyTable: React.FC = () => {
                     {/* Sub-rows */}
                     {item._id && expandedRows[item._id] && subRows[item._id] && subRows[item._id].map((subRow, subIndex) => (
                       <tr key={`sub-${item._id}-${subIndex}`} className="bg-gray-50 dark:bg-gray-800/50">
-                        <td className="px-6 py-4 pl-12">
-                          <div className="flex items-center">
-                            <div className="w-2 h-2 bg-gray-400 rounded-full mr-3"></div>
-                            <img
-                              src={placeholderImage}
-                              alt={subRow.name || "Sub-Product"}
-                              className="w-10 h-10 object-contain rounded-md border border-gray-200 dark:border-gray-600"
-                            />
-                          </div>
+                        <td className="w-12 px-2 py-4 text-center">
+                          <div className="w-4 h-4 border-l-2 border-b-2 border-gray-300 dark:border-gray-500 ml-2"></div>
                         </td>
-                        <td className="px-6 py-4 text-sm font-medium text-gray-700 dark:text-gray-300">
+                        <td className="w-20 px-2 py-4 pl-4">
+                          <img
+                            src={placeholderImage}
+                            alt={subRow.name || "Sub-Product"}
+                            className="w-10 h-10 object-contain rounded-md border border-gray-200 dark:border-gray-600"
+                          />
+                        </td>
+                        <td className="w-32 px-2 py-4 text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
                           {subRow.name || "N/A"}
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                        <td className="w-24 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
                           {subRow.code || "N/A"}
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                        <td className="w-24 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
                           {subRow.brand || "N/A"}
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 max-w-xs overflow-hidden">
+                        <td className="w-40 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
                           {subRow.description || "N/A"}
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                        <td className="w-24 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
                           {subRow.colorVariant || "N/A"}
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                        <td className="w-20 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
                           {subRow.country || "N/A"}
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                        <td className="w-20 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
                           {subRow.simType || "N/A"}
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                        <td className="w-24 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
                           {subRow.networkBands || "N/A"}
                         </td>
-                        <td className="px-6 py-4 text-sm text-center">
+                        <td className="w-20 px-2 py-4 text-sm text-center">
                           <div className="flex items-center justify-center gap-3">
                             <button
                               onClick={() => handleSubRowEdit(item._id!, subRow._id!)}
@@ -489,6 +490,29 @@ const SkuFamilyTable: React.FC = () => {
                         </td>
                       </tr>
                     ))}
+                    {/* Empty sub-row message when no sub-rows exist */}
+                    {item._id && expandedRows[item._id] && (!subRows[item._id] || subRows[item._id].length === 0) && (
+                      <tr className="bg-gray-50 dark:bg-gray-800/50">
+                        <td className="w-12 px-2 py-4 text-center">
+                          <div className="w-4 h-4 border-l-2 border-b-2 border-gray-300 dark:border-gray-500 ml-2"></div>
+                        </td>
+                        <td className="w-20 px-2 py-4"></td>
+                        <td className="w-32 px-2 py-4"></td>
+                        <td className="w-24 px-2 py-4"></td>
+                        <td className="w-24 px-2 py-4"></td>
+                        <td className="w-40 px-2 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
+                          <div className="flex items-center">
+                            <i className="fas fa-info-circle mr-2"></i>
+                            No variants available. Click edit to add variants.
+                          </div>
+                        </td>
+                        <td className="w-24 px-2 py-4"></td>
+                        <td className="w-20 px-2 py-4"></td>
+                        <td className="w-20 px-2 py-4"></td>
+                        <td className="w-24 px-2 py-4"></td>
+                        <td className="w-20 px-2 py-4"></td>
+                      </tr>
+                    )}
                   </React.Fragment>
                 ))
               )}

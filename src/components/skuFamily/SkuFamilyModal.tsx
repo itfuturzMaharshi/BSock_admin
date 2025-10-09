@@ -62,10 +62,10 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
     code: "",
     brand: "",
     description: "",
-    colorVariant: "",
-    country: "",
-    simType: "",
-    networkBands: "",
+    colorVariant: [] as string[],
+    country: [] as string[],
+    simType: [] as string[],
+    networkBands: [] as string[],
   });
   const [newImages, setNewImages] = useState<File[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
@@ -127,10 +127,10 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
           code: editItem.code || "",
           brand: editItem.brand || "",
           description: editItem.description || "",
-          colorVariant: editItem.colorVariant || "",
-          country: editItem.country || "",
-          simType: editItem.simType || "",
-          networkBands: editItem.networkBands || "",
+          colorVariant: editItem.colorVariant ? editItem.colorVariant.split(", ").filter(item => item.trim() !== "") : [],
+          country: editItem.country ? editItem.country.split(", ").filter(item => item.trim() !== "") : [],
+          simType: editItem.simType ? editItem.simType.split(", ").filter(item => item.trim() !== "") : [],
+          networkBands: editItem.networkBands ? editItem.networkBands.split(", ").filter(item => item.trim() !== "") : [],
         });
 
         // Handle existing images properly - ensure it's always an array
@@ -147,10 +147,10 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
           code: "",
           brand: "",
           description: "",
-          colorVariant: "",
-          country: "",
-          simType: "",
-          networkBands: "",
+          colorVariant: [],
+          country: [],
+          simType: [],
+          networkBands: [],
         });
         setExistingImages([]);
       }
@@ -161,10 +161,10 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
         code: "",
         brand: "",
         description: "",
-        colorVariant: "",
-        country: "",
-        simType: "",
-        networkBands: "",
+        colorVariant: [],
+        country: [],
+        simType: [],
+        networkBands: [],
       });
       setExistingImages([]);
       setNewImages([]);
@@ -189,49 +189,47 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
     }
   };
 
-  const handleColorChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setFormData((prev) => ({ ...prev, colorVariant: e.target.value }));
-    setFormErrors((prev) => ({ ...prev, colorVariant: "" }));
 
+
+
+  // Multi-select handlers
+  const handleMultiSelectChange = (field: keyof typeof formData, value: string) => {
+    setFormData((prev) => {
+      const currentArray = prev[field] as string[];
+      if (currentArray.includes(value)) {
+        return { ...prev, [field]: currentArray.filter(item => item !== value) };
+      } else {
+        return { ...prev, [field]: [...currentArray, value] };
+      }
+    });
+    setFormErrors((prev) => ({ ...prev, [field]: "" }));
+    
     // Validate the field if it's been touched
-    if (touched.colorVariant) {
-      const error = validateField("colorVariant", e.target.value);
-      setValidationErrors((prev) => ({ ...prev, colorVariant: error }));
+    if (touched[field as keyof TouchedFields]) {
+      const newArray = (formData[field] as string[]).includes(value) 
+        ? (formData[field] as string[]).filter(item => item !== value)
+        : [...(formData[field] as string[]), value];
+      const error = validateField(field, newArray);
+      setValidationErrors((prev) => ({ ...prev, [field]: error }));
     }
   };
 
-  const handleSimTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const { value } = e.target;
-    setFormData((prev) => ({ ...prev, simType: value }));
-    setFormErrors((prev) => ({ ...prev, simType: "" }));
-
-    // Validate the field if it's been touched
-    if (touched.simType) {
-      const error = validateField("simType", value);
-      setValidationErrors((prev) => ({ ...prev, simType: error }));
+  const handleAddCustomValue = (field: keyof typeof formData, customValue: string) => {
+    if (customValue.trim() && !(formData[field] as string[]).includes(customValue.trim())) {
+      setFormData((prev) => ({
+        ...prev,
+        [field]: [...(prev[field] as string[]), customValue.trim()]
+      }));
+      setFormErrors((prev) => ({ ...prev, [field]: "" }));
     }
   };
 
-  const handleCountryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setFormData((prev) => ({ ...prev, country: e.target.value }));
-    setFormErrors((prev) => ({ ...prev, country: "" }));
-
-    // Validate the field if it's been touched
-    if (touched.country) {
-      const error = validateField("country", e.target.value);
-      setValidationErrors((prev) => ({ ...prev, country: error }));
-    }
-  };
-
-  const handleNetworkChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setFormData((prev) => ({ ...prev, networkBands: e.target.value }));
-    setFormErrors((prev) => ({ ...prev, networkBands: "" }));
-
-    // Validate the field if it's been touched
-    if (touched.networkBands) {
-      const error = validateField("networkBands", e.target.value);
-      setValidationErrors((prev) => ({ ...prev, networkBands: error }));
-    }
+  const handleRemoveValue = (field: keyof typeof formData, valueToRemove: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: (prev[field] as string[]).filter(item => item !== valueToRemove)
+    }));
+    setFormErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -302,15 +300,13 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
           ? "Description is required"
           : undefined;
       case "colorVariant":
-        return !value ? "Color Variant is required" : undefined;
+        return !value || (Array.isArray(value) && value.length === 0) ? "Color Variant is required" : undefined;
       case "country":
-        return !value ? "Country is required" : undefined;
+        return !value || (Array.isArray(value) && value.length === 0) ? "Country is required" : undefined;
       case "simType":
-        return !value || value.trim() === ""
-          ? "SIM Type is required"
-          : undefined;
+        return !value || (Array.isArray(value) && value.length === 0) ? "SIM Type is required" : undefined;
       case "networkBands":
-        return !value ? "Network Bands is required" : undefined;
+        return !value || (Array.isArray(value) && value.length === 0) ? "Network Bands is required" : undefined;
       default:
         return undefined;
     }
@@ -389,10 +385,10 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
       formDataToSend.append("code", formData.code.trim());
       formDataToSend.append("brand", formData.brand.trim());
       formDataToSend.append("description", formData.description.trim());
-      formDataToSend.append("colorVariant", formData.colorVariant);
-      formDataToSend.append("country", formData.country);
-      formDataToSend.append("simType", formData.simType);
-      formDataToSend.append("networkBands", formData.networkBands);
+      formDataToSend.append("colorVariant", formData.colorVariant.join(", "));
+      formDataToSend.append("country", formData.country.join(", "));
+      formDataToSend.append("simType", formData.simType.join(", "));
+      formDataToSend.append("networkBands", formData.networkBands.join(", "));
       newImages.forEach((image) => {
         formDataToSend.append("images", image);
       });
@@ -414,6 +410,103 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Multi-select component
+  const MultiSelectField = ({ 
+    field, 
+    label, 
+    options
+  }: { 
+    field: keyof typeof formData; 
+    label: string; 
+    options: string[]; 
+  }) => {
+    const [customValue, setCustomValue] = useState("");
+    const selectedValues = formData[field] as string[];
+    const hasError = touched[field as keyof TouchedFields] && validationErrors[field];
+
+    return (
+      <div>
+        <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+          {label}
+        </label>
+        <div className="space-y-2">
+          {/* Options checkboxes and custom input in one row */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Options checkboxes */}
+            <div className="flex flex-wrap gap-2">
+              {options.map((option) => (
+                <label
+                  key={option}
+                  className="flex items-center space-x-2 cursor-pointer p-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 rounded border border-transparent hover:border-gray-200 dark:hover:border-gray-600"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedValues.includes(option)}
+                    onChange={() => handleMultiSelectChange(field, option)}
+                    className="rounded border-gray-300 text-gray-600 focus:ring-gray-500"
+                    disabled={isLoading}
+                  />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">{option}</span>
+                </label>
+              ))}
+            </div>
+            
+            {/* Custom value input */}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={customValue}
+                onChange={(e) => setCustomValue(e.target.value)}
+                placeholder={`Add custom ${label.toLowerCase()}`}
+                className="w-48 p-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 transition duration-200"
+                disabled={isLoading}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  handleAddCustomValue(field, customValue);
+                  setCustomValue("");
+                }}
+                className="px-4 py-2.5 text-white text-sm rounded-lg hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ backgroundColor: '#0071E0' }}
+                disabled={isLoading || !customValue.trim()}
+              >
+                <i className="fas fa-plus text-xs"></i>
+              </button>
+            </div>
+          </div>
+          
+          {/* Selected values display - below checkboxes and add button */}
+          {selectedValues.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {selectedValues.map((value, index) => (
+                <span
+                  key={index}
+                  className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-600 rounded text-sm"
+                >
+                  {value}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveValue(field, value)}
+                    className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 ml-1"
+                    disabled={isLoading}
+                  >
+                    <i className="fas fa-times text-xs"></i>
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        {hasError && (
+          <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+            {validationErrors[field]}
+          </p>
+        )}
+      </div>
+    );
   };
 
   if (!isOpen) return null;
@@ -544,103 +637,50 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                 )}
               </div>
             </div>
-            {/* Description, Color Variant, and Country Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                  Description
-                </label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  onBlur={handleBlur}
-                  rows={5}
-                  className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm h-[42px] ${
-                    touched.description && validationErrors.description
-                      ? "border-red-500 focus:ring-red-500"
-                      : "border-gray-200 dark:border-gray-700"
-                  } resize-y`}
-                  placeholder="Enter Description"
-                  required
-                  disabled={isLoading}
-                />
-                {touched.description && validationErrors.description && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {validationErrors.description}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                  Color Variant
-                </label>
-                <div className="relative">
-                  <select
-                    name="colorVariant"
-                    value={formData.colorVariant}
-                    onChange={handleColorChange}
-                    onBlur={handleBlur}
-                    className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
-                      touched.colorVariant && validationErrors.colorVariant
-                        ? "border-red-500 focus:ring-red-500"
-                        : "border-gray-200 dark:border-gray-700"
-                    }`}
-                    required
-                    disabled={isLoading}
-                  >
-                    <option value="" disabled>
-                      Select Color Variant
-                    </option>
-                    {colorOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                  <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
-                </div>
-                {touched.colorVariant && validationErrors.colorVariant && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {validationErrors.colorVariant}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                  Country
-                </label>
-                <div className="relative">
-                  <select
-                    name="country"
-                    value={formData.country}
-                    onChange={handleCountryChange}
-                    onBlur={handleBlur}
-                    className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
-                      touched.country && validationErrors.country
-                        ? "border-red-500 focus:ring-red-500"
-                        : "border-gray-200 dark:border-gray-700"
-                    }`}
-                    required
-                    disabled={isLoading}
-                  >
-                    <option value="" disabled>
-                      Select Country
-                    </option>
-                    {countryOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                  <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
-                </div>
-                {touched.country && validationErrors.country && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {validationErrors.country}
-                  </p>
-                )}
-              </div>
+
+            {/* Description Field */}
+            <div>
+              <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                Description
+              </label>
+              <textarea
+                name="description"
+                value={formData.description}
+                onChange={handleInputChange}
+                onBlur={handleBlur}
+                rows={3}
+                className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm ${
+                  touched.description && validationErrors.description
+                    ? "border-red-500 focus:ring-red-500"
+                    : "border-gray-200 dark:border-gray-700"
+                } resize-y`}
+                placeholder="Enter Description"
+                required
+                disabled={isLoading}
+              />
+              {touched.description && validationErrors.description && (
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                  {validationErrors.description}
+                </p>
+              )}
+            </div>
+
+            {/* Color Variant Field */}
+            <div>
+              <MultiSelectField
+                field="colorVariant"
+                label="Color Variant"
+                options={colorOptions}
+              />
+            </div>
+
+            {/* Country Field */}
+            <div>
+              <MultiSelectField
+                field="country"
+                label="Country"
+                options={countryOptions}
+              />
             </div>
             <div>
               <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
@@ -733,76 +773,22 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                 <p className="text-red-500 text-sm mt-2">{imageError}</p>
               )}
             </div>
+
             {/* SIM Type and Network Bands Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                  SIM Type
-                </label>
-                <div className="relative">
-                  <select
-                    name="simType"
-                    value={formData.simType}
-                    onChange={handleSimTypeChange}
-                    onBlur={handleBlur}
-                    className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
-                      touched.simType && validationErrors.simType
-                        ? "border-red-500 focus:ring-red-500"
-                        : "border-gray-200 dark:border-gray-700"
-                    }`}
-                    required
-                    disabled={isLoading}
-                  >
-                    <option value="" disabled>
-                      Select SIM Type
-                    </option>
-                    {simOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                  <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
-                </div>
-                {touched.simType && validationErrors.simType && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {validationErrors.simType}
-                  </p>
-                )}
+                <MultiSelectField
+                  field="simType"
+                  label="SIM Type"
+                  options={simOptions}
+                />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                  Network Bands
-                </label>
-                <div className="relative">
-                  <select
-                    value={formData.networkBands}
-                    onChange={handleNetworkChange}
-                    onBlur={handleBlur}
-                    className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
-                      touched.networkBands && validationErrors.networkBands
-                        ? "border-red-500 focus:ring-red-500"
-                        : "border-gray-200 dark:border-gray-700"
-                    }`}
-                    required
-                    disabled={isLoading}
-                  >
-                    <option value="" disabled>
-                      Select Network Band
-                    </option>
-                    {networkOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                  <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
-                </div>
-                {touched.networkBands && validationErrors.networkBands && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {validationErrors.networkBands}
-                  </p>
-                )}
+                <MultiSelectField
+                  field="networkBands"
+                  label="Network Bands"
+                  options={networkOptions}
+                />
               </div>
             </div>
             {apiError && (
