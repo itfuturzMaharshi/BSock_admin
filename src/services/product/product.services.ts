@@ -245,21 +245,28 @@ export class ProductService {
   };
 
   // Get Sub SKU Family list by name
-  static getSubSkuFamilyListByName = async (): Promise<{ _id: string; name: string }[]> => {
+  static getSubSkuFamilyListByName = async (skuFamilyId?: string): Promise<{ _id: string; name: string }[]> => {
     const baseUrl = import.meta.env.VITE_BASE_URL;
     const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
-    const url = `${baseUrl}/api/${adminRoute}/subSkuFamily/list`;
+    const url = `${baseUrl}/api/${adminRoute}/subSkuFamily/listByName`;
+
+    const body: any = { page: 1, limit: 1000 };
+    if (skuFamilyId) {
+      body.skuFamilyId = skuFamilyId;
+    }
 
     try {
-      const res = await api.post(url, { page: 1, limit: 1000 });
+      const res = await api.post(url, body);
+      console.log("Sub SKU Family API Response:", res.data); // Debug log
       if (res.data?.status !== 200) {
         throw new Error(res.data?.message || 'Failed to fetch Sub SKU Families by name');
       }
       // Transform the response to match the expected format
-      const subSkuFamilies = res.data?.data?.docs || [];
+      const subSkuFamilies = res.data?.data || [];
+      console.log("Sub SKU Families data:", subSkuFamilies); // Debug log
       return subSkuFamilies.map((item: any) => ({
         _id: item._id,
-        name: item.name
+        name: item.value || item.name || item._id // Use value field from API response
       }));
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Failed to fetch Sub SKU Families by name';

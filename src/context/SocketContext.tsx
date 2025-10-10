@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { SocketService } from '../services/socket/socket';
+import { LOCAL_STORAGE_KEYS } from '../constants/localStorage';
 
 type SocketContextValue = {
   socket: any | null;
@@ -13,14 +14,14 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [socket, setSocket] = useState<any | null>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
     if (token) {
       SocketService.connect();
       setSocket(SocketService.instance);
     }
 
     const onStorage = (e: StorageEvent) => {
-      if (e.key === 'token') {
+      if (e.key === LOCAL_STORAGE_KEYS.TOKEN) {
         if (e.newValue) {
           SocketService.connect();
           setSocket(SocketService.instance);

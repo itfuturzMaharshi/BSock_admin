@@ -1,4 +1,5 @@
 import { io, Socket } from 'socket.io-client';
+import { LOCAL_STORAGE_KEYS } from '../../constants/localStorage';
 
 type UserType = 'admin' | 'customer' | 'seller';
 
@@ -6,7 +7,7 @@ class SocketServiceClass {
   private socket: Socket | null = null;
 
   connect(baseUrl?: string) {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
     if (!token) return;
 
     const url = baseUrl || (import.meta.env.VITE_BASE_URL as string);
@@ -62,7 +63,7 @@ class SocketServiceClass {
 
   // Get user data from localStorage
   private getUserData(): { userId: string; userType: UserType } | null {
-    const userId = localStorage.getItem('userId');
+    const userId = localStorage.getItem(LOCAL_STORAGE_KEYS.USER_ID);
     
     if (!userId) {
       console.warn('Missing userId in localStorage');

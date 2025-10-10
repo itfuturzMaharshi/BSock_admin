@@ -3,6 +3,7 @@ import Swal from "sweetalert2";
 import toastHelper from "../../utils/toastHelper";
 import AdminsModal from "./AdminsModal";
 import { AdminService, Admin, UpdateAdminRequest } from "../../services/admin/admin.services";
+import { LOCAL_STORAGE_KEYS } from "../../constants/localStorage";
 
 const AdminsTable: React.FC = () => {
   const [adminsData, setAdminsData] = useState<Admin[]>([]);
@@ -28,7 +29,7 @@ const AdminsTable: React.FC = () => {
       
       if (response.status === 200 && response.data) {
         // Filter out admins that have already logged in
-        const currentUserId = localStorage.getItem('userId');
+        const currentUserId = localStorage.getItem(LOCAL_STORAGE_KEYS.USER_ID);
         const filteredAdmins = response.data.docs.filter(admin => admin._id !== currentUserId);
         
         setAdminsData(filteredAdmins);

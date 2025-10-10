@@ -51,7 +51,6 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [imageError, setImageError] = useState<string>("");
-  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [apiError, setApiError] = useState<string>("");
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>(
@@ -91,9 +90,29 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
   useEffect(() => {
     const parseMultiValue = (value: string | string[] | undefined): string[] => {
       if (Array.isArray(value)) {
-        return value.map(item => String(item).trim()).filter(Boolean);
+        // Handle array of comma-separated strings (like your API response)
+        const result: string[] = [];
+        value.forEach(item => {
+          if (typeof item === 'string' && item.trim()) {
+            // Split by comma and add individual items
+            const splitItems = item.split(',').map(i => i.trim()).filter(Boolean);
+            result.push(...splitItems);
+          }
+        });
+        return result;
       }
       if (typeof value === 'string' && value.trim()) {
+        // Handle both comma-separated strings and JSON arrays
+        if (value.startsWith('[') && value.endsWith(']')) {
+          try {
+            const parsed = JSON.parse(value);
+            if (Array.isArray(parsed)) {
+              return parsed.map(item => String(item).trim()).filter(Boolean);
+            }
+          } catch (e) {
+            // If JSON parsing fails, fall back to comma splitting
+          }
+        }
         return value.split(',').map(item => item.trim()).filter(Boolean);
       }
       return [];
@@ -102,7 +121,6 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
     const resetStates = () => {
       setNewImages([]);
       setImageError("");
-      setFormErrors({});
       setApiError("");
       setValidationErrors({});
       setTouched({
@@ -145,10 +163,24 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
       const networkBands = parseMultiValue(editItem.networkBands);
 
       console.log('Setting edit form data:', {
-        colorVariant,
-        country,
-        simType,
-        networkBands
+        originalData: {
+          colorVariant: editItem.colorVariant,
+          country: editItem.country,
+          simType: editItem.simType,
+          networkBands: editItem.networkBands
+        },
+        parsedData: {
+          colorVariant,
+          country,
+          simType,
+          networkBands
+        },
+        dataTypes: {
+          colorVariant: typeof editItem.colorVariant,
+          country: typeof editItem.country,
+          simType: typeof editItem.simType,
+          networkBands: typeof editItem.networkBands
+        }
       });
 
       // Set form data
@@ -191,8 +223,6 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    setFormErrors((prev) => ({ ...prev, [name]: "" }));
-    console.log(formErrors);
 
     // Validate the field if it's been touched
     if (touched[name as keyof TouchedFields]) {
@@ -200,10 +230,6 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
       setValidationErrors((prev) => ({ ...prev, [name]: error }));
     }
   };
-
-
-
-
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -385,7 +411,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
     }
   };
 
-  // Multi-select component - Working implementation
+  // Fixed Multi-select component
   const MultiSelectField = ({ 
     field, 
     label, 
@@ -397,76 +423,102 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
   }) => {
     const [customValue, setCustomValue] = useState("");
 
-    // Get current values from formData
-    const currentValues = formData[field] as string[];
+    // Get current values from formData - ensure it's always an array
+    const currentValues = Array.isArray(formData[field]) 
+      ? (formData[field] as string[])
+      : [];
+    
+    // Debug logging for checkbox state
+    console.log(`MultiSelectField ${field} current values:`, currentValues);
+    
     const hasError = touched[field as keyof TouchedFields] && validationErrors[field];
 
-    // Handle checkbox change with improved state update
+    // Handle checkbox change with proper state update
     const handleCheckboxChange = (option: string) => {
       const isCurrentlySelected = currentValues.includes(option);
-      
-      console.log(`Checkbox ${option} clicked:`, {
-        field,
-        currentValues,
-        isCurrentlySelected
-      });
       
       const newValues = isCurrentlySelected
         ? currentValues.filter(item => item !== option)
         : [...currentValues, option];
       
+      console.log(`Checkbox change for ${field}:`, {
+        option,
+        isCurrentlySelected,
+        currentValues,
+        newValues
+      });
+      
+      // Update form data
       setFormData(prev => ({
         ...prev,
         [field]: newValues
       }));
 
+      // Mark field as touched
       setTouched(prev => ({
         ...prev,
         [field]: true
       }));
 
-      // Log the update
-      console.log(`Updated ${field}:`, {
-        option,
-        wasSelected: isCurrentlySelected,
-        newValues
-      });
+      // Clear validation error if values exist
+      if (newValues.length > 0) {
+        setValidationErrors(prev => ({
+          ...prev,
+          [field]: undefined
+        }));
+      }
     };
 
     // Handle custom value add
     const handleCustomAdd = () => {
-      if (customValue.trim() && !currentValues.includes(customValue.trim())) {
+      const trimmedValue = customValue.trim();
+      if (trimmedValue && !currentValues.includes(trimmedValue)) {
+        const newValues = [...currentValues, trimmedValue];
+        
         setFormData(prev => ({
           ...prev,
-          [field]: [...currentValues, customValue.trim()]
+          [field]: newValues
         }));
+        
         setCustomValue("");
+        
+        // Mark field as touched and clear error
+        setTouched(prev => ({
+          ...prev,
+          [field]: true
+        }));
+        
+        if (newValues.length > 0) {
+          setValidationErrors(prev => ({
+            ...prev,
+            [field]: undefined
+          }));
+        }
       }
     };
 
-    // Handle value removal with improved state management
+    // Handle value removal
     const handleRemove = (valueToRemove: string) => {
-      setFormData(prev => {
-        const currentFieldValues = prev[field] as string[];
-        const newValues = currentFieldValues.filter(item => item !== valueToRemove);
-        
-        console.log(`Removing value from ${field}:`, {
-          valueToRemove,
-          currentValues: currentFieldValues,
-          newValues
-        });
-        
-        return {
-          ...prev,
-          [field]: newValues
-        };
-      });
+      const newValues = currentValues.filter(item => item !== valueToRemove);
       
-      // Update touched state
+      setFormData(prev => ({
+        ...prev,
+        [field]: newValues
+      }));
+      
+      // Mark field as touched
       setTouched(prev => ({
         ...prev,
         [field]: true
       }));
+    };
+
+    // Handle Enter key in custom input
+    const handleKeyPress = (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleCustomAdd();
+      }
     };
 
     return (
@@ -500,6 +552,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
               type="text"
               value={customValue}
               onChange={(e) => setCustomValue(e.target.value)}
+              onKeyPress={handleKeyPress}
               placeholder={`Add custom ${label.toLowerCase()}`}
               className="w-48 p-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 transition duration-200"
               disabled={isLoading}
@@ -517,7 +570,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
           
           {/* Selected values display */}
           {currentValues.length > 0 && (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 mt-2">
               {currentValues.map((value, index) => (
                 <span
                   key={`${field}-${value}-${index}`}
@@ -549,8 +602,6 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
   if (!isOpen) return null;
 
   const title = editItem ? "Edit SKU Family" : "Create SKU Family";
-
-  console.log("Rendering modal with existing images:", existingImages); // Debug log
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50 transition-opacity duration-300">
@@ -703,7 +754,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
             </div>
 
             {/* Color Variant Field */}
-            <div key={`colorVariant-${editItem?._id || 'new'}`}>
+            <div>
               <MultiSelectField
                 field="colorVariant"
                 label="Color Variant"
@@ -712,13 +763,15 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
             </div>
 
             {/* Country Field */}
-            <div key={`country-${editItem?._id || 'new'}`}>
+            <div>
               <MultiSelectField
                 field="country"
                 label="Country"
                 options={countryOptions}
               />
             </div>
+
+            {/* Images Field */}
             <div>
               <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
                 Images
@@ -755,7 +808,6 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                           alt={`Existing ${index}`}
                           className="w-full h-full object-cover rounded-md border border-gray-200 dark:border-gray-600"
                           onError={(e) => {
-                            console.log("Image load error for URL:", url); // Debug log
                             (e.currentTarget as HTMLImageElement).src =
                               placeholderImage;
                           }}
@@ -813,14 +865,14 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
 
             {/* SIM Type and Network Bands Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div key={`simType-${editItem?._id || 'new'}`}>
+              <div>
                 <MultiSelectField
                   field="simType"
                   label="SIM Type"
                   options={simOptions}
                 />
               </div>
-              <div key={`networkBands-${editItem?._id || 'new'}`}>
+              <div>
                 <MultiSelectField
                   field="networkBands"
                   label="Network Bands"

@@ -9,6 +9,7 @@ import Input from "../form/input/InputField";
 import Checkbox from "../form/input/Checkbox";
 import { LoginAdminService } from "../../services/loginAdmin/loginAdmin.services";
 import { SocketService } from "../../services/socket/socket";
+import { LOCAL_STORAGE_KEYS } from "../../constants/localStorage";
 
 // Validation schema
 const signInSchema = yup.object({
@@ -55,7 +56,7 @@ export default function SignInForm() {
 
       // Check if login was successful and token exists
       if (response.status === 200 && response.token) {
-        localStorage.setItem("token", response.token);
+        localStorage.setItem(LOCAL_STORAGE_KEYS.TOKEN, response.token);
         // Connect socket after login
         try { SocketService.connect(); } catch {}
         navigate("/home");

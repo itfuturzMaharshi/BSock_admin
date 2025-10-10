@@ -131,6 +131,22 @@ const ProductModal: React.FC<ProductModalProps> = ({
   const storageOptions = ["128GB", "256GB", "512GB", "1TB"];
   const conditionOptions = ["AAA", "A+", "Mixed"];
 
+  const fetchSubSkuFamiliesBySkuFamilyId = async (skuFamilyId: string) => {
+    try {
+      setSubSkuLoading(true);
+      setSubSkuError(null);
+      console.log("Fetching Sub SKU Families for SKU Family ID:", skuFamilyId); // Debug log
+      const list = await ProductService.getSubSkuFamilyListByName(skuFamilyId);
+      console.log("Received Sub SKU Families:", list); // Debug log
+      setSubSkuFamilies(list);
+    } catch (error: any) {
+      console.error("Error fetching Sub SKU Families:", error); // Debug log
+      setSubSkuError(error.message || "Failed to load Sub SKU Families");
+    } finally {
+      setSubSkuLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
       const fetchSkuFamilies = async () => {
@@ -160,7 +176,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
       };
 
       fetchSkuFamilies();
-      fetchSubSkuFamilies();
+      // Don't fetch Sub SKU Families initially - they will be loaded when SKU Family is selected
     }
   }, [isOpen]);
 
@@ -275,6 +291,17 @@ const ProductModal: React.FC<ProductModalProps> = ({
 
       return next;
     });
+
+    // Handle SKU Family selection - fetch Sub SKU Families
+    if (name === "skuFamilyId" && value) {
+      console.log("SKU Family selected:", value); // Debug log
+      fetchSubSkuFamiliesBySkuFamilyId(value);
+      // Clear Sub SKU Family selection when SKU Family changes
+      setFormData((prev) => ({
+        ...prev,
+        subSkuFamilyId: ""
+      }));
+    }
 
     // Validate the field if it's been touched
     if (touched[name as keyof TouchedFields]) {
@@ -629,14 +656,16 @@ const ProductModal: React.FC<ProductModalProps> = ({
                         : "border-gray-200 dark:border-gray-700"
                     }`}
                     required
-                    disabled={subSkuLoading || subSkuError !== null}
+                    disabled={subSkuLoading || subSkuError !== null || !formData.skuFamilyId}
                   >
                     <option value="" disabled>
                       {subSkuLoading
                         ? "Loading Sub SKU Families..."
                         : subSkuError
                         ? "Error loading Sub SKU Families"
-                        : "Select Sub SKU Family"}
+                        : formData.skuFamilyId
+                        ? "Select Sub SKU Family"
+                        : "Select SKU Family first"}
                     </option>
                     {subSkuFamilies.map((subSku) => (
                       <option key={subSku._id} value={subSku._id}>

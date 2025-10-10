@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { SocketService } from '../socket/socket';
+import { LOCAL_STORAGE_KEYS } from '../../constants/localStorage';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_BASE_URL || 'http://localhost:3200',
@@ -9,7 +10,7 @@ const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -40,8 +41,8 @@ api.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      localStorage.removeItem(LOCAL_STORAGE_KEYS.TOKEN);
+      localStorage.removeItem(LOCAL_STORAGE_KEYS.USER);
       // Ensure socket disconnects on auth loss
       try { SocketService.disconnect(); } catch {}
       window.location.href = '/#/signin';
