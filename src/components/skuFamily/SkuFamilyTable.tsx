@@ -19,18 +19,28 @@ const SkuFamilyTable: React.FC = () => {
   const [totalDocs, setTotalDocs] = useState<number>(0);
   const [isSubRowModalOpen, setIsSubRowModalOpen] = useState<boolean>(false);
   const [parentRowId, setParentRowId] = useState<string | null>(null);
-  const [subRows, setSubRows] = useState<{[key: string]: SkuFamily[]}>({});
-  const [expandedRows, setExpandedRows] = useState<{[key: string]: boolean}>({});
-  const [isSubRowEditModalOpen, setIsSubRowEditModalOpen] = useState<boolean>(false);
-  const [editingSubRow, setEditingSubRow] = useState<{parentId: string, subRow: SkuFamily} | null>(null);
+  const [subRows, setSubRows] = useState<{ [key: string]: SkuFamily[] }>({});
+  const [expandedRows, setExpandedRows] = useState<{ [key: string]: boolean }>(
+    {}
+  );
+  const [isSubRowEditModalOpen, setIsSubRowEditModalOpen] =
+    useState<boolean>(false);
+  const [editingSubRow, setEditingSubRow] = useState<{
+    parentId: string;
+    subRow: SkuFamily;
+  } | null>(null);
   const [selectedSubRow, setSelectedSubRow] = useState<SkuFamily | null>(null);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [dropdownPosition, setDropdownPosition] = useState<{
     top: number;
     left: number;
   } | null>(null);
-  const [selectedSkuFamily, setSelectedSkuFamily] = useState<SkuFamily | null>(null);
-  const [openSubRowDropdownId, setOpenSubRowDropdownId] = useState<string | null>(null);
+  const [selectedSkuFamily, setSelectedSkuFamily] = useState<SkuFamily | null>(
+    null
+  );
+  const [openSubRowDropdownId, setOpenSubRowDropdownId] = useState<
+    string | null
+  >(null);
   const [subRowDropdownPosition, setSubRowDropdownPosition] = useState<{
     top: number;
     left: number;
@@ -48,7 +58,9 @@ const SkuFamilyTable: React.FC = () => {
         setOpenDropdownId(null);
         setDropdownPosition(null);
       }
-      if (!(event.target as HTMLElement).closest(".subrow-dropdown-container")) {
+      if (
+        !(event.target as HTMLElement).closest(".subrow-dropdown-container")
+      ) {
         setOpenSubRowDropdownId(null);
         setSubRowDropdownPosition(null);
       }
@@ -101,11 +113,15 @@ const SkuFamilyTable: React.FC = () => {
 
   const fetchSubRows = async (parentId: string) => {
     try {
-      const response = await SubSkuFamilyService.getSubSkuFamilyList(1, 100, parentId);
+      const response = await SubSkuFamilyService.getSubSkuFamilyList(
+        1,
+        100,
+        parentId
+      );
       if (response.data?.docs) {
-        setSubRows(prev => ({
+        setSubRows((prev) => ({
           ...prev,
-          [parentId]: response.data.docs
+          [parentId]: response.data.docs,
         }));
       }
     } catch (err: any) {
@@ -134,11 +150,11 @@ const SkuFamilyTable: React.FC = () => {
     console.log("HandleEdit called with ID:", id);
     const selectedItem = skuFamilyData.find((item) => item._id === id);
     console.log("Selected item for edit:", selectedItem); // Debug log
-    
+
     // Close modal first to reset state
     setIsModalOpen(false);
     setEditId(null);
-    
+
     // Use setTimeout to ensure state is reset before opening again
     setTimeout(() => {
       setEditId(id);
@@ -194,12 +210,12 @@ const SkuFamilyTable: React.FC = () => {
     try {
       // Add skuFamilyId to formData
       if (parentRowId) {
-        formData.append('skuFamilyId', parentRowId);
+        formData.append("skuFamilyId", parentRowId);
       }
 
       // Use SubSkuFamilyService to create the sub-row
       await SubSkuFamilyService.createSubSkuFamily(formData);
-      
+
       // Refresh the sub-rows for this parent
       if (parentRowId) {
         await fetchSubRows(parentRowId);
@@ -215,11 +231,11 @@ const SkuFamilyTable: React.FC = () => {
 
   const toggleRowExpansion = (rowId: string) => {
     const isExpanding = !expandedRows[rowId];
-    setExpandedRows(prev => ({
+    setExpandedRows((prev) => ({
       ...prev,
-      [rowId]: !prev[rowId]
+      [rowId]: !prev[rowId],
     }));
-    
+
     // Fetch sub-rows when expanding
     if (isExpanding) {
       fetchSubRows(rowId);
@@ -228,7 +244,7 @@ const SkuFamilyTable: React.FC = () => {
 
   const handleSubRowEdit = (parentId: string, subRowId: string) => {
     // Find the sub-row to edit
-    const subRow = subRows[parentId]?.find(row => row._id === subRowId);
+    const subRow = subRows[parentId]?.find((row) => row._id === subRowId);
     if (subRow) {
       setEditingSubRow({ parentId, subRow });
       setIsSubRowEditModalOpen(true);
@@ -249,7 +265,7 @@ const SkuFamilyTable: React.FC = () => {
       try {
         // Use SubSkuFamilyService to delete the sub-row
         await SubSkuFamilyService.deleteSubSkuFamily(subRowId);
-        
+
         // Refresh the sub-rows for this parent
         await fetchSubRows(parentId);
       } catch (err: any) {
@@ -264,13 +280,16 @@ const SkuFamilyTable: React.FC = () => {
       if (!editingSubRow) return;
 
       // Add skuFamilyId to formData (ensure it's a string, not array) - only if not already present
-      if (!formData.has('skuFamilyId')) {
-        formData.append('skuFamilyId', editingSubRow.parentId);
+      if (!formData.has("skuFamilyId")) {
+        formData.append("skuFamilyId", editingSubRow.parentId);
       }
 
       // Use SubSkuFamilyService to update the sub-row
-      await SubSkuFamilyService.updateSubSkuFamily(editingSubRow.subRow._id!, formData);
-      
+      await SubSkuFamilyService.updateSubSkuFamily(
+        editingSubRow.subRow._id!,
+        formData
+      );
+
       // Refresh the sub-rows for this parent
       await fetchSubRows(editingSubRow.parentId);
 
@@ -282,13 +301,12 @@ const SkuFamilyTable: React.FC = () => {
     }
   };
 
-
   const totalPages = Math.ceil(totalDocs / itemsPerPage);
 
   // Helper function to display array data properly
   const displayArrayData = (data: any): string => {
     if (!data) return "N/A";
-    
+
     // Handle deeply nested arrays by flattening them
     const flattenArray = (arr: any): any[] => {
       if (!Array.isArray(arr)) return [arr];
@@ -297,7 +315,11 @@ const SkuFamilyTable: React.FC = () => {
           return flat.concat(flattenArray(item));
         }
         // Handle stringified arrays
-        if (typeof item === 'string' && item.startsWith('[') && item.endsWith(']')) {
+        if (
+          typeof item === "string" &&
+          item.startsWith("[") &&
+          item.endsWith("]")
+        ) {
           try {
             const parsed = JSON.parse(item);
             return flat.concat(flattenArray(parsed));
@@ -308,25 +330,33 @@ const SkuFamilyTable: React.FC = () => {
         return flat.concat(item);
       }, []);
     };
-    
+
     if (Array.isArray(data)) {
       const flattened = flattenArray(data);
-      const cleanData = flattened.filter(item => item && item !== 'N/A' && item.trim() !== '');
+      const cleanData = flattened.filter(
+        (item) => item && item !== "N/A" && item.trim() !== ""
+      );
       return cleanData.length > 0 ? cleanData.join(", ") : "N/A";
     }
-    
+
     // Handle string that might be a JSON array
-    if (typeof data === 'string' && data.startsWith('[') && data.endsWith(']')) {
+    if (
+      typeof data === "string" &&
+      data.startsWith("[") &&
+      data.endsWith("]")
+    ) {
       try {
         const parsed = JSON.parse(data);
         const flattened = flattenArray(parsed);
-        const cleanData = flattened.filter(item => item && item !== 'N/A' && item.trim() !== '');
+        const cleanData = flattened.filter(
+          (item) => item && item !== "N/A" && item.trim() !== ""
+        );
         return cleanData.length > 0 ? cleanData.join(", ") : "N/A";
       } catch {
         return data;
       }
     }
-    
+
     return data;
   };
 
@@ -374,9 +404,9 @@ const SkuFamilyTable: React.FC = () => {
                 <th className="w-12 px-2 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   <i className="fas fa-expand-arrows-alt text-gray-500"></i>
                 </th>
-                <th className="w-20 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                {/* <th className="w-20 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Image
-                </th>
+                </th> */}
                 <th className="w-32 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Name
                 </th>
@@ -413,7 +443,7 @@ const SkuFamilyTable: React.FC = () => {
                 skuFamilyData.map((item: SkuFamily, index: number) => (
                   <React.Fragment key={item._id || index}>
                     {/* Main Row */}
-                    <tr 
+                    <tr
                       className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
                       onClick={() => item._id && toggleRowExpansion(item._id)}
                     >
@@ -425,34 +455,16 @@ const SkuFamilyTable: React.FC = () => {
                           }}
                           className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                         >
-                          <i className={`fas fa-chevron-${item._id && expandedRows[item._id] ? 'down' : 'right'} text-sm`}></i>
+                          <i
+                            className={`fas fa-chevron-${
+                              item._id && expandedRows[item._id]
+                                ? "down"
+                                : "right"
+                            } text-sm`}
+                          ></i>
                         </button>
                       </td>
-                      <td className="w-20 px-2 py-4">
-                        <img
-                          src={(function () {
-                            const base =
-                              (import.meta as any).env?.VITE_BASE_URL || "";
-                            const first =
-                              Array.isArray(item.images) && item.images.length > 0
-                                ? item.images[0]
-                                : "";
-                            if (!first) return placeholderImage; // 👈 fallback if no image url
-                            const isAbsolute = /^https?:\/\//i.test(first);
-                            return isAbsolute
-                              ? first
-                              : `${base}${
-                                  first.startsWith("/") ? "" : "/"
-                                }${first}`;
-                          })()}
-                          alt={item.name || "Product"}
-                          className="w-12 h-12 object-contain rounded-md border border-gray-200 dark:border-gray-600"
-                          onError={(e) => {
-                            (e.currentTarget as HTMLImageElement).src =
-                              placeholderImage; // 👈 fallback if load fails
-                          }}
-                        />
-                      </td>
+
                       <td className="w-32 px-2 py-4 text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
                         {item.name || "N/A"}
                       </td>
@@ -472,7 +484,8 @@ const SkuFamilyTable: React.FC = () => {
                                 setOpenDropdownId(null);
                                 setDropdownPosition(null);
                               } else {
-                                const rect = e.currentTarget.getBoundingClientRect();
+                                const rect =
+                                  e.currentTarget.getBoundingClientRect();
                                 const dropdownWidth = 192;
                                 const dropdownHeight = 200;
                                 let top = rect.bottom + 8;
@@ -484,7 +497,10 @@ const SkuFamilyTable: React.FC = () => {
                                 if (left < 8) {
                                   left = 8;
                                 }
-                                if (left + dropdownWidth > window.innerWidth - 8) {
+                                if (
+                                  left + dropdownWidth >
+                                  window.innerWidth - 8
+                                ) {
                                   left = window.innerWidth - dropdownWidth - 8;
                                 }
 
@@ -550,124 +566,146 @@ const SkuFamilyTable: React.FC = () => {
                       </td>
                     </tr>
                     {/* Sub-rows */}
-                    {item._id && expandedRows[item._id] && subRows[item._id] && subRows[item._id].map((subRow, subIndex) => (
-                      <tr key={`sub-${item._id}-${subIndex}`} className="bg-gray-50 dark:bg-gray-800/50">
-                        <td className="w-12 px-2 py-4 text-center">
-                          <div className="w-4 h-4 border-l-2 border-b-2 border-gray-300 dark:border-gray-500 ml-2"></div>
-                        </td>
-                        <td className="w-20 px-2 py-4 pl-4">
-                          <img
-                            src={placeholderImage}
-                            alt={subRow.name || "Sub-Product"}
-                            className="w-10 h-10 object-contain rounded-md border border-gray-200 dark:border-gray-600"
-                          />
-                        </td>
-                        <td className="w-32 px-2 py-4 text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
-                          {subRow.name || "N/A"}
-                        </td>
-                        <td className="w-24 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
-                          {displayArrayData(subRow.colorVariant)}
-                        </td>
-                        <td className="w-20 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
-                          {subRow.country || "N/A"}
-                        </td>
-                        <td className="w-20 px-2 py-4 text-sm text-center">
-                          <div className="subrow-dropdown-container relative">
-                            <button
-                              className="text-gray-600 dark:text-gray-400 hover:text-gray-800 p-1 rounded-full hover:bg-gray-100"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const subRowId = `${item._id}-${subRow._id}`;
-                                if (openSubRowDropdownId === subRowId) {
-                                  setOpenSubRowDropdownId(null);
-                                  setSubRowDropdownPosition(null);
-                                } else {
-                                  const rect = e.currentTarget.getBoundingClientRect();
-                                  const dropdownWidth = 192;
-                                  const dropdownHeight = 200;
-                                  let top = rect.bottom + 8;
-                                  let left = rect.right - dropdownWidth;
+                    {item._id &&
+                      expandedRows[item._id] &&
+                      subRows[item._id] &&
+                      subRows[item._id].map((subRow, subIndex) => (
+                        <tr
+                          key={`sub-${item._id}-${subIndex}`}
+                          className="bg-gray-50 dark:bg-gray-800/50"
+                        >
+                          <td className="w-12 px-2 py-4 text-center">
+                            <div className="w-4 h-4 border-l-2 border-b-2 border-gray-300 dark:border-gray-500 ml-2"></div>
+                          </td>
+                          <td className="w-32 px-2 py-4 text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={placeholderImage}
+                                alt={subRow.name || "Sub-Product"}
+                                className="w-10 h-10 object-contain rounded-md border border-gray-200 dark:border-gray-600 flex-shrink-0"
+                              />
+                              <span className="truncate">{subRow.name || "N/A"}</span>
+                            </div>
+                          </td>
+                          <td className="w-24 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
+                            {displayArrayData(subRow.colorVariant)}
+                          </td>
+                          <td className="w-20 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
+                            {subRow.country || "N/A"}
+                          </td>
+                          <td className="w-20 px-2 py-4 text-sm text-center">
+                            <div className="subrow-dropdown-container relative">
+                              <button
+                                className="text-gray-600 dark:text-gray-400 hover:text-gray-800 p-1 rounded-full hover:bg-gray-100"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const subRowId = `${item._id}-${subRow._id}`;
+                                  if (openSubRowDropdownId === subRowId) {
+                                    setOpenSubRowDropdownId(null);
+                                    setSubRowDropdownPosition(null);
+                                  } else {
+                                    const rect =
+                                      e.currentTarget.getBoundingClientRect();
+                                    const dropdownWidth = 192;
+                                    const dropdownHeight = 200;
+                                    let top = rect.bottom + 8;
+                                    let left = rect.right - dropdownWidth;
 
-                                  if (top + dropdownHeight > window.innerHeight) {
-                                    top = rect.top - dropdownHeight - 8;
-                                  }
-                                  if (left < 8) {
-                                    left = 8;
-                                  }
-                                  if (left + dropdownWidth > window.innerWidth - 8) {
-                                    left = window.innerWidth - dropdownWidth - 8;
-                                  }
+                                    if (
+                                      top + dropdownHeight >
+                                      window.innerHeight
+                                    ) {
+                                      top = rect.top - dropdownHeight - 8;
+                                    }
+                                    if (left < 8) {
+                                      left = 8;
+                                    }
+                                    if (
+                                      left + dropdownWidth >
+                                      window.innerWidth - 8
+                                    ) {
+                                      left =
+                                        window.innerWidth - dropdownWidth - 8;
+                                    }
 
-                                  setSubRowDropdownPosition({ top, left });
-                                  setOpenSubRowDropdownId(subRowId);
-                                }
-                              }}
-                            >
-                              <i className="fas fa-ellipsis-v"></i>
-                            </button>
-                            {openSubRowDropdownId === `${item._id}-${subRow._id}` && subRowDropdownPosition && (
-                              <div
-                                className="fixed w-48 bg-white border rounded-md shadow-lg"
-                                style={{
-                                  top: `${subRowDropdownPosition.top}px`,
-                                  left: `${subRowDropdownPosition.left}px`,
-                                  zIndex: 9999,
+                                    setSubRowDropdownPosition({ top, left });
+                                    setOpenSubRowDropdownId(subRowId);
+                                  }
                                 }}
                               >
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleSubRowView(subRow);
-                                  }}
-                                  className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-blue-600"
-                                >
-                                  <i className="fas fa-eye"></i>
-                                  View
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleSubRowEdit(item._id!, subRow._id!);
-                                  }}
-                                  className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-yellow-600"
-                                >
-                                  <i className="fas fa-edit"></i>
-                                  Edit
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleSubRowDelete(item._id!, subRow._id!);
-                                  }}
-                                  className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-red-600"
-                                >
-                                  <i className="fas fa-trash"></i>
-                                  Delete
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                                <i className="fas fa-ellipsis-v"></i>
+                              </button>
+                              {openSubRowDropdownId ===
+                                `${item._id}-${subRow._id}` &&
+                                subRowDropdownPosition && (
+                                  <div
+                                    className="fixed w-48 bg-white border rounded-md shadow-lg"
+                                    style={{
+                                      top: `${subRowDropdownPosition.top}px`,
+                                      left: `${subRowDropdownPosition.left}px`,
+                                      zIndex: 9999,
+                                    }}
+                                  >
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleSubRowView(subRow);
+                                      }}
+                                      className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-blue-600"
+                                    >
+                                      <i className="fas fa-eye"></i>
+                                      View
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleSubRowEdit(
+                                          item._id!,
+                                          subRow._id!
+                                        );
+                                      }}
+                                      className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-yellow-600"
+                                    >
+                                      <i className="fas fa-edit"></i>
+                                      Edit
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleSubRowDelete(
+                                          item._id!,
+                                          subRow._id!
+                                        );
+                                      }}
+                                      className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-red-600"
+                                    >
+                                      <i className="fas fa-trash"></i>
+                                      Delete
+                                    </button>
+                                  </div>
+                                )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
                     {/* Empty sub-row message when no sub-rows exist */}
-                    {item._id && expandedRows[item._id] && (!subRows[item._id] || subRows[item._id].length === 0) && (
-                      <tr className="bg-gray-50 dark:bg-gray-800/50">
-                        <td className="w-12 px-2 py-4 text-center">
-                          <div className="w-4 h-4 border-l-2 border-b-2 border-gray-300 dark:border-gray-500 ml-2"></div>
-                        </td>
-                        <td className="w-20 px-2 py-4"></td>
-                        <td className="w-32 px-2 py-4"></td>
-                        <td className="w-24 px-2 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
-                          <div className="flex items-center">
-                            <i className="fas fa-info-circle mr-2"></i>
-                            No variants available. Click edit to add variants.
-                          </div>
-                        </td>
-                        <td className="w-20 px-2 py-4"></td>
-                        <td className="w-20 px-2 py-4"></td>
-                      </tr>
-                    )}
+                    {item._id &&
+                      expandedRows[item._id] &&
+                      (!subRows[item._id] ||
+                        subRows[item._id].length === 0) && (
+                        <tr className="bg-gray-50 dark:bg-gray-800/50">
+                          <td className="w-12 px-2 py-4 text-center">
+                            <div className="w-4 h-4 border-l-2 border-b-2 border-gray-300 dark:border-gray-500 ml-2"></div>
+                          </td>
+                          <td className="px-2 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400" colSpan={3}>
+                            <div className="flex items-center">
+                              <i className="fas fa-info-circle mr-2"></i>
+                              No variants available. Click edit to add variants.
+                            </div>
+                          </td>
+                          <td className="w-20 px-2 py-4"></td>
+                        </tr>
+                      )}
                   </React.Fragment>
                 ))
               )}
@@ -758,9 +796,11 @@ const SkuFamilyTable: React.FC = () => {
                 <img
                   src={(function () {
                     const base = (import.meta as any).env?.VITE_BASE_URL || "";
-                    const first = Array.isArray(selectedSkuFamily.images) && selectedSkuFamily.images.length > 0
-                      ? selectedSkuFamily.images[0]
-                      : "";
+                    const first =
+                      Array.isArray(selectedSkuFamily.images) &&
+                      selectedSkuFamily.images.length > 0
+                        ? selectedSkuFamily.images[0]
+                        : "";
                     if (!first) return placeholderImage;
                     const isAbsolute = /^https?:\/\//i.test(first);
                     return isAbsolute
@@ -770,7 +810,8 @@ const SkuFamilyTable: React.FC = () => {
                   alt={selectedSkuFamily.name || "SKU Family"}
                   className="w-16 h-16 object-cover rounded-lg border border-gray-200 dark:border-gray-600 flex-shrink-0"
                   onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src = placeholderImage;
+                    (e.currentTarget as HTMLImageElement).src =
+                      placeholderImage;
                   }}
                 />
                 <div>
@@ -883,21 +924,26 @@ const SkuFamilyTable: React.FC = () => {
                   Images
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {selectedSkuFamily.images && selectedSkuFamily.images.length > 0 ? (
+                  {selectedSkuFamily.images &&
+                  selectedSkuFamily.images.length > 0 ? (
                     selectedSkuFamily.images.map((image, index) => (
                       <div key={index} className="relative">
                         <img
                           src={(function () {
-                            const base = (import.meta as any).env?.VITE_BASE_URL || "";
+                            const base =
+                              (import.meta as any).env?.VITE_BASE_URL || "";
                             const isAbsolute = /^https?:\/\//i.test(image);
                             return isAbsolute
                               ? image
-                              : `${base}${image.startsWith("/") ? "" : "/"}${image}`;
+                              : `${base}${
+                                  image.startsWith("/") ? "" : "/"
+                                }${image}`;
                           })()}
                           alt={`${selectedSkuFamily.name} - Image ${index + 1}`}
                           className="w-full h-32 object-cover rounded-lg border border-gray-200 dark:border-gray-600"
                           onError={(e) => {
-                            (e.currentTarget as HTMLImageElement).src = placeholderImage;
+                            (e.currentTarget as HTMLImageElement).src =
+                              placeholderImage;
                           }}
                         />
                       </div>
@@ -928,9 +974,11 @@ const SkuFamilyTable: React.FC = () => {
                 <img
                   src={(function () {
                     const base = (import.meta as any).env?.VITE_BASE_URL || "";
-                    const first = Array.isArray(selectedSubRow.images) && selectedSubRow.images.length > 0
-                      ? selectedSubRow.images[0]
-                      : "";
+                    const first =
+                      Array.isArray(selectedSubRow.images) &&
+                      selectedSubRow.images.length > 0
+                        ? selectedSubRow.images[0]
+                        : "";
                     if (!first) return placeholderImage;
                     const isAbsolute = /^https?:\/\//i.test(first);
                     return isAbsolute
@@ -940,7 +988,8 @@ const SkuFamilyTable: React.FC = () => {
                   alt={selectedSubRow.name || "Sub SKU Family"}
                   className="w-16 h-16 object-cover rounded-lg border border-gray-200 dark:border-gray-600 flex-shrink-0"
                   onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src = placeholderImage;
+                    (e.currentTarget as HTMLImageElement).src =
+                      placeholderImage;
                   }}
                 />
                 <div>
@@ -1058,16 +1107,20 @@ const SkuFamilyTable: React.FC = () => {
                       <div key={index} className="relative">
                         <img
                           src={(function () {
-                            const base = (import.meta as any).env?.VITE_BASE_URL || "";
+                            const base =
+                              (import.meta as any).env?.VITE_BASE_URL || "";
                             const isAbsolute = /^https?:\/\//i.test(image);
                             return isAbsolute
                               ? image
-                              : `${base}${image.startsWith("/") ? "" : "/"}${image}`;
+                              : `${base}${
+                                  image.startsWith("/") ? "" : "/"
+                                }${image}`;
                           })()}
                           alt={`${selectedSubRow.name} - Image ${index + 1}`}
                           className="w-full h-32 object-cover rounded-lg border border-gray-200 dark:border-gray-600"
                           onError={(e) => {
-                            (e.currentTarget as HTMLImageElement).src = placeholderImage;
+                            (e.currentTarget as HTMLImageElement).src =
+                              placeholderImage;
                           }}
                         />
                       </div>
@@ -1087,5 +1140,5 @@ const SkuFamilyTable: React.FC = () => {
     </div>
   );
 };
-                      
-export default SkuFamilyTable;                                                                                                                                                                                                                                        
+
+export default SkuFamilyTable;

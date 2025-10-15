@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import Swal from "sweetalert2";
 import { SkuFamily } from "./types";
 
@@ -49,8 +49,8 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
   });
   const [newImages, setNewImages] = useState<File[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
-  const [isDragging, setIsDragging] = useState<boolean>(false);
-  const [imageError, setImageError] = useState<string>("");
+  // const [isDragging, setIsDragging] = useState<boolean>(false);
+  // const [imageError, setImageError] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [apiError, setApiError] = useState<string>("");
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>(
@@ -66,26 +66,26 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
     simType: false,
     networkBands: false,
   });
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // const fileInputRef = useRef<HTMLInputElement>(null);
 
   const colorOptions = ["Graphite", "Silver", "Gold", "Sierra Blue", "Mixed"];
   const countryOptions = ["Hongkong", "Dubai", "Singapore"];
   const simOptions = ["E-Sim", "Physical Sim"];
   const networkOptions = ["TMobile", "AT&T"];
-  const MAX_IMAGES = 5;
-  const placeholderImage =
-    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTMmyTPv4M5fFPvYLrMzMQcPD_VO34ByNjouQ&s";
+  // const MAX_IMAGES = 5;
+  // const placeholderImage =
+  //   "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTMmyTPv4M5fFPvYLrMzMQcPD_VO34ByNjouQ&s";
 
   // Move base URL to the top level so it's available everywhere
-  const base = (import.meta as any).env?.VITE_BASE_URL || "";
+  // const base = (import.meta as any).env?.VITE_BASE_URL || "";
 
-  const getImageUrl = (path: string): string => {
-    if (!path) return placeholderImage;
-    const isAbsolute = /^https?:\/\//i.test(path);
-    return isAbsolute
-      ? path
-      : `${base}${path.startsWith("/") ? "" : "/"}${path}`;
-  };
+  // const getImageUrl = (path: string): string => {
+  //   if (!path) return placeholderImage;
+  //   const isAbsolute = /^https?:\/\//i.test(path);
+  //   return isAbsolute
+  //     ? path
+  //     : `${base}${path.startsWith("/") ? "" : "/"}${path}`;
+  // };
 
   useEffect(() => {
     const parseMultiValue = (value: string | string[] | undefined): string[] => {
@@ -120,7 +120,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
 
     const resetStates = () => {
       setNewImages([]);
-      setImageError("");
+      // setImageError("");
       setApiError("");
       setValidationErrors({});
       setTouched({
@@ -231,57 +231,57 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
     }
   };
 
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
+  // const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+  //   e.preventDefault();
+  //   setIsDragging(true);
+  // };
 
-  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(false);
-  };
+  // const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+  //   e.preventDefault();
+  //   setIsDragging(false);
+  // };
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const files = Array.from(e.dataTransfer.files).filter((file) =>
-      file.type.startsWith("image/")
-    );
-    const totalImages = existingImages.length + newImages.length + files.length;
-    if (totalImages > MAX_IMAGES) {
-      setImageError(`Maximum ${MAX_IMAGES} images allowed`);
-      return;
-    }
-    if (files.length > 0) {
-      setImageError("");
-      setNewImages((prev) => [...prev, ...files]);
-    }
-  };
+  // const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  //   e.preventDefault();
+  //   setIsDragging(false);
+  //   const files = Array.from(e.dataTransfer.files).filter((file) =>
+  //     file.type.startsWith("image/")
+  //   );
+  //   const totalImages = existingImages.length + newImages.length + files.length;
+  //   if (totalImages > MAX_IMAGES) {
+  //     setImageError(`Maximum ${MAX_IMAGES} images allowed`);
+  //     return;
+  //   }
+  //   if (files.length > 0) {
+  //     setImageError("");
+  //     setNewImages((prev) => [...prev, ...files]);
+  //   }
+  // };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files ? Array.from(e.target.files) : [];
-    const totalImages = existingImages.length + newImages.length + files.length;
-    if (totalImages > MAX_IMAGES) {
-      setImageError(`Maximum ${MAX_IMAGES} images allowed`);
-      return;
-    }
-    setImageError("");
-    setNewImages((prev) => [...prev, ...files]);
-  };
+  // const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   const files = e.target.files ? Array.from(e.target.files) : [];
+  //   const totalImages = existingImages.length + newImages.length + files.length;
+  //   if (totalImages > MAX_IMAGES) {
+  //     setImageError(`Maximum ${MAX_IMAGES} images allowed`);
+  //     return;
+  //   }
+  //   setImageError("");
+  //   setNewImages((prev) => [...prev, ...files]);
+  // };
 
-  const handleClick = () => {
-    fileInputRef.current?.click();
-  };
+  // const handleClick = () => {
+  //   fileInputRef.current?.click();
+  // };
 
-  const handleRemoveExisting = (index: number) => {
-    setExistingImages((prev) => prev.filter((_, i) => i !== index));
-    setImageError("");
-  };
+  // const handleRemoveExisting = (index: number) => {
+  //   setExistingImages((prev) => prev.filter((_, i) => i !== index));
+  //   setImageError("");
+  // };
 
-  const handleRemoveNew = (index: number) => {
-    setNewImages((prev) => prev.filter((_, i) => i !== index));
-    setImageError("");
-  };
+  // const handleRemoveNew = (index: number) => {
+  //   setNewImages((prev) => prev.filter((_, i) => i !== index));
+  //   setImageError("");
+  // };
 
   const validateField = (
     name: keyof typeof formData,
@@ -772,9 +772,9 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
             </div>
 
             {/* Images Field */}
-            <div>
+            {/* <div>
               <label className="block text-base font-medium text-gray-950 dark:text-gray-200 mb-2">
-                Images
+                Imagesss
               </label>
               <div
                 onDragOver={handleDragOver}
@@ -861,7 +861,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
               {imageError && (
                 <p className="text-red-500 text-sm mt-2">{imageError}</p>
               )}
-            </div>
+            </div> */}
 
             {/* SIM Type and Network Bands Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
