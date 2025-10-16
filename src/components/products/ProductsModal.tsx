@@ -5,6 +5,7 @@ import {
 } from "../../services/product/product.services";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import Select from 'react-select';
 
 interface FormData {
   skuFamilyId: string;
@@ -134,7 +135,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
   // Function to parse Sub SKU Family response and extract values
   const parseSubSkuFamilyResponse = (response: string) => {
     try {
-      // Example: "test 123_iphone_Silver_[\"E-Sim\"]_AT&T_Hongkong"
       const parts = response.split('_');
       
       if (parts.length < 6) {
@@ -142,12 +142,11 @@ const ProductModal: React.FC<ProductModalProps> = ({
         return null;
       }
 
-      const firstName = parts[0]; // "test 123"
-      const color = parts[2]; // "Silver"
-      const simTypeRaw = parts[3]; // "[\"E-Sim\"]"
-      const country = parts[5]; // "Hongkong"
+      const firstName = parts[0];
+      const color = parts[2];
+      const simTypeRaw = parts[3];
+      const country = parts[5];
       
-      // Extract SIM type from the array format
       const simTypeMatch = simTypeRaw.match(/\["([^"]+)"\]/);
       const simType = simTypeMatch ? simTypeMatch[1] : simTypeRaw;
 
@@ -167,15 +166,69 @@ const ProductModal: React.FC<ProductModalProps> = ({
     try {
       setSubSkuLoading(true);
       setSubSkuError(null);
-      console.log("Fetching Sub SKU Families for SKU Family ID:", skuFamilyId); // Debug log
+      console.log("Fetching Sub SKU Families for SKU Family ID:", skuFamilyId);
       const list = await ProductService.getSubSkuFamilyListByName(skuFamilyId);
-      console.log("Received Sub SKU Families:", list); // Debug log
+      console.log("Received Sub SKU Families:", list);
       setSubSkuFamilies(list);
     } catch (error: any) {
-      console.error("Error fetching Sub SKU Families:", error); // Debug log
+      console.error("Error fetching Sub SKU Families:", error);
       setSubSkuError(error.message || "Failed to load Sub SKU Families");
     } finally {
       setSubSkuLoading(false);
+    }
+  };
+
+  // Handle SKU Family selection for react-select
+  const handleSkuFamilyChange = (selectedOption: any) => {
+    const value = selectedOption?.value || '';
+    setFormData(prev => {
+      const next = { ...prev, skuFamilyId: value } as FormData;
+      
+      // Clear Sub SKU Family selection when SKU Family changes
+      next.subSkuFamilyId = "";
+      next.color = "";
+      next.simType = "";
+      next.country = "";
+      
+      if (value) {
+        fetchSubSkuFamiliesBySkuFamilyId(value);
+      }
+      
+      return next;
+    });
+    
+    // Validate
+    if (touched.skuFamilyId) {
+      const error = validateField("skuFamilyId", value);
+      setValidationErrors(prev => ({ ...prev, skuFamilyId: error }));
+    }
+  };
+
+  // Handle Sub SKU Family selection for react-select
+  const handleSubSkuFamilyChange = (selectedOption: any) => {
+    const value = selectedOption?.value || '';
+    setFormData(prev => {
+      const next = { ...prev, subSkuFamilyId: value } as FormData;
+      
+      if (value) {
+        const selectedSubSku = subSkuFamilies.find(subSku => subSku._id === value);
+        if (selectedSubSku) {
+          const parsedData = parseSubSkuFamilyResponse(selectedSubSku.name);
+          if (parsedData) {
+            next.color = parsedData.color;
+            next.simType = parsedData.simType;
+            next.country = parsedData.country;
+          }
+        }
+      }
+      
+      return next;
+    });
+    
+    // Validate
+    if (touched.subSkuFamilyId) {
+      const error = validateField("subSkuFamilyId", value);
+      setValidationErrors(prev => ({ ...prev, subSkuFamilyId: error }));
     }
   };
 
@@ -194,9 +247,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
         }
       };
 
-
       fetchSkuFamilies();
-      // Don't fetch Sub SKU Families initially - they will be loaded when SKU Family is selected
     }
   }, [isOpen]);
 
@@ -228,6 +279,11 @@ const ProductModal: React.FC<ProductModalProps> = ({
           isFlashDeal: `${(editItem as any).isFlashDeal ?? false}`,
           expiryTime: editItem.expiryTime || "",
         });
+        
+        // If editing, fetch sub SKUs if SKU family is selected
+        if (skuId) {
+          fetchSubSkuFamiliesBySkuFamilyId(skuId);
+        }
       } else {
         setFormData({
           skuFamilyId: "",
@@ -270,21 +326,17 @@ const ProductModal: React.FC<ProductModalProps> = ({
         updatedValue = value;
       }
 
-      // Start with previous, then apply the change
       let next = { ...previous, [name]: updatedValue } as FormData;
 
-      // If isFlashDeal becomes "false", clear expiryTime
       if (name === "isFlashDeal" && updatedValue === "false") {
         next.expiryTime = "";
         setDateError(null);
       }
 
-      // If purchaseType switches to 'full', sync moq to stock
       if (name === "purchaseType" && updatedValue === "full") {
         next.moq = Number(previous.stock) || 0;
       }
 
-      // If stock changes and purchaseType is 'full', keep moq in sync
       if (name === "stock" && previous.purchaseType === "full") {
         next.moq =
           typeof updatedValue === "number"
@@ -292,66 +344,18 @@ const ProductModal: React.FC<ProductModalProps> = ({
             : parseFloat(String(updatedValue)) || 0;
       }
 
-      // Validate MOQ vs Stock for 'partial' type
-      // const numericStock = parseFloat(String(name === "stock" ? updatedValue : previous.stock)) || 0;
-      // const numericMoq = parseFloat(String(name === "moq" ? updatedValue : previous.moq)) || 0;
       const purchaseType = String(
         name === "purchaseType" ? updatedValue : previous.purchaseType
       );
       if (purchaseType === "partial") {
-        // if (numericMoq >= numericStock) {
-        //   setMoqError("MOQ must be less than Stock");
-        // } else {
         setMoqError(null);
-        // }
       } else {
-        // For 'full', equality is enforced elsewhere; no error
         setMoqError(null);
       }
 
       return next;
     });
 
-    // Handle SKU Family selection - fetch Sub SKU Families
-    if (name === "skuFamilyId" && value) {
-      console.log("SKU Family selected:", value); // Debug log
-      fetchSubSkuFamiliesBySkuFamilyId(value);
-      // Clear Sub SKU Family selection when SKU Family changes
-      setFormData((prev) => ({
-        ...prev,
-        subSkuFamilyId: "",
-        color: "",
-        simType: "",
-        country: "",
-      }));
-    }
-
-    // Handle Sub SKU Family selection - parse response and auto-populate fields
-    if (name === "subSkuFamilyId" && value) {
-      console.log("Sub SKU Family selected:", value); // Debug log
-      
-      // Find the selected Sub SKU Family to get its full name
-      const selectedSubSku = subSkuFamilies.find(subSku => subSku._id === value);
-      if (selectedSubSku) {
-        console.log("Selected Sub SKU Family name:", selectedSubSku.name); // Debug log
-        
-        // Parse the response to extract values
-        const parsedData = parseSubSkuFamilyResponse(selectedSubSku.name);
-        if (parsedData) {
-          console.log("Parsed data:", parsedData); // Debug log
-          
-          // Auto-populate the fields with parsed values
-          setFormData((prev) => ({
-            ...prev,
-            color: parsedData.color,
-            simType: parsedData.simType,
-            country: parsedData.country,
-          }));
-        }
-      }
-    }
-
-    // Validate the field if it's been touched
     if (touched[name as keyof TouchedFields]) {
       const error = validateField(name as keyof FormData, value);
       setValidationErrors((prev) => ({ ...prev, [name]: error }));
@@ -366,7 +370,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
       }));
       setDateError(null);
 
-      // Validate the field if it's been touched
       if (touched.expiryTime) {
         const error = validateField("expiryTime", date.toISOString());
         setValidationErrors((prev) => ({ ...prev, expiryTime: error }));
@@ -378,7 +381,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
       }));
       setDateError("Please select a valid future date and time");
 
-      // Validate the field if it's been touched
       if (touched.expiryTime) {
         const error = validateField("expiryTime", "");
         setValidationErrors((prev) => ({ ...prev, expiryTime: error }));
@@ -386,7 +388,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
     }
   };
 
-  // Ensure numeric-only input for price, stock, and moq (text inputs)
   const handleNumericChange = (
     name: "price" | "stock" | "moq",
     e: React.ChangeEvent<HTMLInputElement>,
@@ -394,9 +395,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
   ) => {
     let value = e.target.value;
 
-    // Strip invalid characters
     if (allowDecimal) {
-      // Keep digits and at most one dot
       value = value.replace(/[^0-9.]/g, "");
       const parts = value.split(".");
       if (parts.length > 2) {
@@ -409,21 +408,13 @@ const ProductModal: React.FC<ProductModalProps> = ({
     setFormData((previous) => {
       const next: FormData = { ...previous, [name]: value } as FormData;
 
-      // Keep MOQ synced with stock when purchaseType is 'full'
       if (name === "stock" && previous.purchaseType === "full") {
         const numeric = value === "" ? 0 : parseFloat(value) || 0;
         next.moq = numeric;
       }
 
-      // Validate MOQ vs Stock for 'partial' type
-      // const numericStock = parseFloat(String(name === "stock" ? value : previous.stock)) || 0;
-      // const numericMoq = parseFloat(String(name === "moq" ? value : previous.moq)) || 0;
       if (previous.purchaseType === "partial") {
-        // if (numericMoq >= numericStock) {
-        //   setMoqError("MOQ must be less than Stock");
-        // } else {
         setMoqError(null);
-        // }
       } else {
         setMoqError(null);
       }
@@ -431,7 +422,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
       return next;
     });
 
-    // Validate price if changed
     if (name === "price") {
       const numeric = parseFloat(value) || 0;
       if (value !== "" && numeric <= 0) {
@@ -505,7 +495,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
     const errors: ValidationErrors = {};
     let isValid = true;
 
-    // Only validate required fields
     const requiredFields: (keyof FormData)[] = [
       "skuFamilyId",
       "subSkuFamilyId",
@@ -529,7 +518,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
       }
     });
 
-    // Validate expiry time only if flash deal is enabled
     if (formData.isFlashDeal === "true") {
       const error = validateField("expiryTime", formData.expiryTime);
       if (error) {
@@ -538,7 +526,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
       }
     }
 
-    // Additional MOQ validation
     const numericStock = parseFloat(String(formData.stock));
     const numericMoq = parseFloat(String(formData.moq));
     if (
@@ -571,7 +558,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    // Mark all fields as touched
     setTouched({
       skuFamilyId: true,
       subSkuFamilyId: true,
@@ -608,6 +594,100 @@ const ProductModal: React.FC<ProductModalProps> = ({
 
   const title = editItem ? "Edit Product" : "Create Product";
 
+  const skuFamilyOptions = skuFamilies.map(sku => ({ 
+    value: sku._id, 
+    label: sku.name 
+  }));
+
+  const selectedSkuFamily = skuFamilyOptions.find(option => option.value === formData.skuFamilyId);
+  
+  const subSkuFamilyOptions = subSkuFamilies.map(subSku => {
+    const parsedData = parseSubSkuFamilyResponse(subSku.name);
+    const displayName = parsedData ? parsedData.displayName : subSku.name;
+    return { value: subSku._id, label: displayName };
+  });
+
+  const selectedSubSkuFamily = subSkuFamilyOptions.find(option => option.value === formData.subSkuFamilyId);
+
+  // Custom styles for react-select to match existing design
+  const customSelectStyles = {
+    control: (provided: any, state: any) => ({
+      ...provided,
+      backgroundColor: state.isDisabled ? '#f9fafb' : '#f9fafb',
+      borderColor: touched.skuFamilyId && validationErrors.skuFamilyId 
+        ? '#ef4444' 
+        : state.isFocused 
+        ? '#3b82f6' 
+        : '#e5e7eb',
+      boxShadow: state.isFocused ? '0 0 0 1px #3b82f6' : 'none',
+      minHeight: '42px',
+      borderRadius: '0.5rem',
+      '&:hover': {
+        borderColor: state.isFocused ? '#3b82f6' : '#d1d5db'
+      }
+    }),
+    menu: (provided: any) => ({
+      ...provided,
+      backgroundColor: 'white',
+      borderRadius: '0.5rem',
+      zIndex: 9999
+    }),
+    option: (provided: any, state: any) => ({
+      ...provided,
+      backgroundColor: state.isSelected 
+        ? '#3b82f6' 
+        : state.isFocused 
+        ? '#f3f4f6' 
+        : 'white',
+      color: state.isSelected ? 'white' : '#111827',
+      '&:hover': {
+        backgroundColor: '#f3f4f6'
+      }
+    }),
+    singleValue: (provided: any) => ({
+      ...provided,
+      color: '#111827'
+    }),
+    placeholder: (provided: any) => ({
+      ...provided,
+      color: '#6b7280'
+    }),
+    indicatorSeparator: () => ({
+      display: 'none'
+    }),
+    dropdownIndicator: (provided: any) => ({
+      ...provided,
+      color: '#6b7280',
+      '&:hover': {
+        color: '#374151'
+      }
+    }),
+    // Dark mode styles
+    dark: {
+      control: {
+        backgroundColor: '#1f2937',
+        borderColor: '#374151',
+        color: 'white'
+      },
+      menu: {
+        backgroundColor: '#1f2937'
+      },
+      option: {
+        backgroundColor: '#1f2937',
+        color: 'white',
+        '&:hover': {
+          backgroundColor: '#374151'
+        }
+      },
+      singleValue: {
+        color: 'white'
+      },
+      placeholder: {
+        color: '#9ca3af'
+      }
+    }
+  };
+
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50 transition-opacity duration-300">
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-[800px] max-h-[80vh] transform transition-all duration-300 scale-100 flex flex-col">
@@ -642,41 +722,29 @@ const ProductModal: React.FC<ProductModalProps> = ({
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-6">
           <form id="product-form" onSubmit={handleSubmit} className="space-y-6">
-            {/* SKU Family ID, Sub SKU Family, and Country Row */}
+            {/* SKU Family ID, Sub SKU Family, and RAM Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                   SKU Family ID
                 </label>
-                <div className="relative">
-                  <select
-                    name="skuFamilyId"
-                    value={formData.skuFamilyId}
-                    onChange={handleInputChange}
-                    onBlur={handleBlur}
-                    className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
-                      touched.skuFamilyId && validationErrors.skuFamilyId
-                        ? "border-red-500 focus:ring-red-500"
-                        : "border-gray-200 dark:border-gray-700"
-                    }`}
-                    required
-                    disabled={skuLoading || skuError !== null}
-                  >
-                    <option value="" disabled>
-                      {skuLoading
-                        ? "Loading SKU Families..."
-                        : skuError
-                        ? "Error loading SKU Families"
-                        : "Select SKU Family"}
-                    </option>
-                    {skuFamilies.map((sku) => (
-                      <option key={sku._id} value={sku._id}>
-                        {sku.name}
-                      </option>
-                    ))}
-                  </select>
-                  <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
-                </div>
+                <Select
+                  options={skuFamilyOptions}
+                  value={selectedSkuFamily}
+                  onChange={handleSkuFamilyChange}
+                  onBlur={() => {
+                    setTouched((prev) => ({ ...prev, skuFamilyId: true }));
+                    const error = validateField("skuFamilyId", formData.skuFamilyId);
+                    setValidationErrors((prev) => ({ ...prev, skuFamilyId: error }));
+                  }}
+                  isDisabled={skuLoading || skuError !== null}
+                  placeholder={skuLoading ? "Loading SKU Families..." : skuError ? "Error loading SKU Families" : "Select SKU Family"}
+                  isSearchable={true}
+                  isLoading={skuLoading}
+                  styles={customSelectStyles}
+                  className="basic-select"
+                  classNamePrefix="select"
+                />
                 {touched.skuFamilyId && validationErrors.skuFamilyId && (
                   <p className="mt-1 text-xs text-red-600 dark:text-red-400">
                     {validationErrors.skuFamilyId}
@@ -688,51 +756,28 @@ const ProductModal: React.FC<ProductModalProps> = ({
                   </p>
                 )}
               </div>
+              
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                   Sub SKU Family
                 </label>
-                <div className="relative">
-                  <select
-                    name="subSkuFamilyId"
-                    value={formData.subSkuFamilyId}
-                    onChange={handleInputChange}
-                    onBlur={handleBlur}
-                    className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
-                      touched.subSkuFamilyId && validationErrors.subSkuFamilyId
-                        ? "border-red-500 focus:ring-red-500"
-                        : "border-gray-200 dark:border-gray-700"
-                    }`}
-                    required
-                    disabled={
-                      subSkuLoading ||
-                      subSkuError !== null ||
-                      !formData.skuFamilyId
-                    }
-                  >
-                    <option value="" disabled>
-                      {subSkuLoading
-                        ? "Loading Sub SKU Families..."
-                        : subSkuError
-                        ? "Error loading Sub SKU Families"
-                        : formData.skuFamilyId
-                        ? "Select Sub SKU Family"
-                        : "Select SKU Family first"}
-                    </option>
-                    {subSkuFamilies.map((subSku) => {
-                      // Parse the Sub SKU Family name to get display name
-                      const parsedData = parseSubSkuFamilyResponse(subSku.name);
-                      const displayName = parsedData ? parsedData.displayName : subSku.name;
-                      
-                      return (
-                        <option key={subSku._id} value={subSku._id}>
-                          {displayName}
-                        </option>
-                      );
-                    })}
-                  </select>
-                  <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
-                </div>
+                <Select
+                  options={subSkuFamilyOptions}
+                  value={selectedSubSkuFamily}
+                  onChange={handleSubSkuFamilyChange}
+                  onBlur={() => {
+                    setTouched((prev) => ({ ...prev, subSkuFamilyId: true }));
+                    const error = validateField("subSkuFamilyId", formData.subSkuFamilyId);
+                    setValidationErrors((prev) => ({ ...prev, subSkuFamilyId: error }));
+                  }}
+                  isDisabled={subSkuLoading || subSkuError !== null || !formData.skuFamilyId}
+                  placeholder={subSkuLoading ? "Loading Sub SKU Families..." : subSkuError ? "Error loading Sub SKU Families" : formData.skuFamilyId ? "Select Sub SKU Family" : "Select SKU Family first"}
+                  isSearchable={true}
+                  isLoading={subSkuLoading}
+                  styles={customSelectStyles}
+                  className="basic-select"
+                  classNamePrefix="select"
+                />
                 {touched.subSkuFamilyId && validationErrors.subSkuFamilyId && (
                   <p className="mt-1 text-xs text-red-600 dark:text-red-400">
                     {validationErrors.subSkuFamilyId}
@@ -814,6 +859,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
               </div>
             </div>
 
+            {/* Rest of your form remains exactly the same... */}
             {/* SIM Type, Color, and Country Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
@@ -1117,7 +1163,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
 
             {/* Expiry Time, Is Negotiable, and Is Flash Deal Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Is Negotiable Checkbox */}
               <div className="flex items-center mt-6">
                 <input
                   type="checkbox"
@@ -1131,7 +1176,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
                 </label>
               </div>
 
-              {/* Is Flash Deal Checkbox */}
               <div className="flex items-center mt-6">
                 <input
                   type="checkbox"
@@ -1145,7 +1189,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
                 </label>
               </div>
 
-              {/* Flash Deal Expiry Time */}
               {formData.isFlashDeal === "true" && (
                 <div>
                   <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
@@ -1219,7 +1262,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
             >
               {skuLoading || subSkuLoading ? (
                 <svg
-                  className="animate-spin h-4 w-4 text-white"
+                  className="animate-spin h-4 w-4 text-white mr-2"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
@@ -1235,17 +1278,11 @@ const ProductModal: React.FC<ProductModalProps> = ({
                   <path
                     className="opacity-75"
                     fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 
-           0 5.373 0 12h4zm2 5.291A7.962 
-           7.962 0 014 12H0c0 3.042 1.135 
-           5.824 3 7.938l3-2.647z"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                   ></path>
                 </svg>
-              ) : editItem ? (
-                "Update Product"
-              ) : (
-                "Create Product"
-              )}
+              ) : null}
+              {editItem ? "Update Product" : "Create Product"}
             </button>
           </div>
         </div>
