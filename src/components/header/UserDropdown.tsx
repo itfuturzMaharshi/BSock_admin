@@ -4,6 +4,7 @@ import { Dropdown } from "../ui/dropdown/Dropdown";
 import { Link } from "react-router";
 import { UserProfileService } from "../../services/adminProfile/adminProfile.services";
 import { SocketService } from "../../services/socket/socket";
+import { LOCAL_STORAGE_KEYS } from "../../constants/localStorage";
 
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
@@ -87,7 +88,7 @@ export default function UserDropdown() {
           className="flex items-center gap-3 px-3 py-2 mt-3 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
           onClick={() => {
             try { SocketService.disconnect(); } catch {}
-            localStorage.removeItem('token');
+            localStorage.removeItem(LOCAL_STORAGE_KEYS.TOKEN);
           }}
         >
           <i className="fas fa-sign-out-alt text-gray-500 group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-300 text-lg"></i>

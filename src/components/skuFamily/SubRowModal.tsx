@@ -1,26 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import Swal from "sweetalert2";
-
-interface SkuFamily {
-  _id?: string;
-  name: string;
-  code: string;
-  brand: string;
-  description: string;
-  images: string[];
-  colorVariant: string;
-  country: string;
-  simType: string;
-  networkBands: string;
-  countryVariant?: string;
-  isApproved?: boolean;
-  isDeleted?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-  updatedBy?: string;
-  approvedBy?: string | null;
-  __v?: string;
-}
+import { SkuFamily } from "./types";
 
 interface ValidationErrors {
   name?: string;
@@ -44,18 +24,20 @@ interface TouchedFields {
   networkBands: boolean;
 }
 
-interface SkuFamilyModalProps {
+interface SubRowModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (formData: FormData) => Promise<void>;
   editItem?: SkuFamily;
+  viewMode?: boolean;
 }
 
-const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
+const SubRowModal: React.FC<SubRowModalProps> = ({
   isOpen,
   onClose,
   onSave,
   editItem,
+  viewMode = false,
 }) => {
   const [formData, setFormData] = useState({
     name: "",
@@ -89,10 +71,58 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Helper function to clean and flatten array data
+  const cleanArrayData = (data: any): string => {
+    if (!data) return "";
+    
+    // If it's already a clean string, return it
+    if (typeof data === 'string' && !data.startsWith('[')) {
+      return data;
+    }
+    
+    // If it's an array, join it
+    if (Array.isArray(data)) {
+      return data.join(", ");
+    }
+    
+    // If it's a stringified array, try to parse and clean it
+    if (typeof data === 'string' && data.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed)) {
+          // Recursively clean nested arrays
+          const flattenArray = (arr: any[]): string[] => {
+            return arr.reduce((flat: string[], item: any) => {
+              if (Array.isArray(item)) {
+                return flat.concat(flattenArray(item));
+              }
+              if (typeof item === 'string' && item.startsWith('[')) {
+                try {
+                  const nested = JSON.parse(item);
+                  return flat.concat(flattenArray(Array.isArray(nested) ? nested : [nested]));
+                } catch {
+                  return flat.concat(item);
+                }
+              }
+              return flat.concat(String(item));
+            }, []);
+          };
+          
+          const cleaned = flattenArray(parsed).filter(item => item && item.trim() !== '');
+          return cleaned.join(", ");
+        }
+      } catch {
+        return data;
+      }
+    }
+    
+    return String(data);
+  };
+
   const colorOptions = ["Graphite", "Silver", "Gold", "Sierra Blue", "Mixed"];
   const countryOptions = ["Hongkong", "Dubai", "Singapore"];
   const simOptions = ["E-Sim", "Physical Sim"];
-  const networkOptions = ["TMobile", "AT&S"];
+  const networkOptions = ["TMobile", "AT&T"];
   const MAX_IMAGES = 5;
   const placeholderImage =
     "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTMmyTPv4M5fFPvYLrMzMQcPD_VO34ByNjouQ&s";
@@ -127,10 +157,10 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
           code: editItem.code || "",
           brand: editItem.brand || "",
           description: editItem.description || "",
-          colorVariant: editItem.colorVariant || "",
-          country: editItem.country || "",
-          simType: editItem.simType || "",
-          networkBands: editItem.networkBands || "",
+          colorVariant: cleanArrayData(editItem.colorVariant),
+          country: cleanArrayData(editItem.country), // Country is not an array
+          simType: cleanArrayData(editItem.simType),
+          networkBands: cleanArrayData(editItem.networkBands),
         });
 
         // Handle existing images properly - ensure it's always an array
@@ -389,22 +419,32 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
       formDataToSend.append("code", formData.code.trim());
       formDataToSend.append("brand", formData.brand.trim());
       formDataToSend.append("description", formData.description.trim());
-      formDataToSend.append("colorVariant", formData.colorVariant);
-      formDataToSend.append("country", formData.country);
-      formDataToSend.append("simType", formData.simType);
-      formDataToSend.append("networkBands", formData.networkBands);
+      // Handle array fields - convert comma-separated strings to arrays
+      const colorVariantArray = formData.colorVariant ? formData.colorVariant.split(',').map(item => item.trim()).filter(item => item) : [];
+      const simTypeArray = formData.simType ? formData.simType.split(',').map(item => item.trim()).filter(item => item) : [];
+      const networkBandsArray = formData.networkBands ? formData.networkBands.split(',').map(item => item.trim()).filter(item => item) : [];
+      
+      formDataToSend.append("colorVariant", JSON.stringify(colorVariantArray));
+      formDataToSend.append("country", formData.country); // Country is not an array
+      formDataToSend.append("simType", JSON.stringify(simTypeArray));
+      formDataToSend.append("networkBands", JSON.stringify(networkBandsArray));
+      
+      // Note: skuFamilyId is handled by the parent component (SkuFamilyTable)
+      // to avoid duplicate entries
+      
       newImages.forEach((image) => {
         formDataToSend.append("images", image);
       });
-      if (editItem && existingImages.length > 0) {
+      if (existingImages.length > 0) {
         formDataToSend.append("keptImages", JSON.stringify(existingImages));
       }
 
+      // Let the parent component handle the API call
       await onSave(formDataToSend);
       onClose();
     } catch (error) {
       const errorMessage =
-        (error as Error).message || "Failed to save SKU family";
+        (error as Error).message || "Failed to save sub-row";
       setApiError(errorMessage);
       Swal.fire({
         icon: "error",
@@ -418,9 +458,9 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
 
   if (!isOpen) return null;
 
-  const title = editItem ? "Edit SKU Family" : "Create SKU Family";
+  const title = viewMode ? "View Sub-Row" : editItem ? "Edit Sub-Row" : "Add Sub-Row";
 
-  console.log("Rendering modal with existing images:", existingImages); // Debug log
+  console.log("Rendering sub-row modal with existing images:", existingImages); // Debug log
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50 transition-opacity duration-300">
@@ -462,7 +502,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-6">
           <form
-            id="sku-family-form"
+            id="sub-row-form"
             onSubmit={handleSubmit}
             className="space-y-6"
           >
@@ -485,7 +525,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                   }`}
                   placeholder="Enter Name"
                   required
-                  disabled={isLoading}
+                  disabled={isLoading || viewMode}
                 />
                 {touched.name && validationErrors.name && (
                   <p className="mt-1 text-xs text-red-600 dark:text-red-400">
@@ -510,7 +550,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                   }`}
                   placeholder="Enter Code"
                   required
-                  disabled={isLoading}
+                  disabled={isLoading || viewMode}
                 />
                 {touched.code && validationErrors.code && (
                   <p className="mt-1 text-xs text-red-600 dark:text-red-400">
@@ -535,7 +575,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                   }`}
                   placeholder="Enter Brand"
                   required
-                  disabled={isLoading}
+                  disabled={isLoading || viewMode}
                 />
                 {touched.brand && validationErrors.brand && (
                   <p className="mt-1 text-xs text-red-600 dark:text-red-400">
@@ -563,7 +603,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                   } resize-y`}
                   placeholder="Enter Description"
                   required
-                  disabled={isLoading}
+                  disabled={isLoading || viewMode}
                 />
                 {touched.description && validationErrors.description && (
                   <p className="mt-1 text-xs text-red-600 dark:text-red-400">
@@ -587,7 +627,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                         : "border-gray-200 dark:border-gray-700"
                     }`}
                     required
-                    disabled={isLoading}
+                    disabled={isLoading || viewMode}
                   >
                     <option value="" disabled>
                       Select Color Variant
@@ -622,7 +662,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                         : "border-gray-200 dark:border-gray-700"
                     }`}
                     required
-                    disabled={isLoading}
+                    disabled={isLoading || viewMode}
                   >
                     <option value="" disabled>
                       Select Country
@@ -664,7 +704,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                   accept="image/*"
                   multiple
                   className="hidden"
-                  disabled={isLoading}
+                  disabled={isLoading || viewMode}
                 />
                 {existingImages.length + newImages.length > 0 ? (
                   <div className="flex flex-wrap gap-3 justify-start">
@@ -683,17 +723,19 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                               placeholderImage;
                           }}
                         />
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemoveExisting(index);
-                          }}
-                          className="absolute top-1 right-1 bg-red-500 text-white w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-600 transition-colors shadow-md"
-                          disabled={isLoading}
-                        >
-                          <i className="fas fa-trash text-xs"></i>
-                        </button>
+                        {!viewMode && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveExisting(index);
+                            }}
+                            className="absolute top-1 right-1 bg-red-500 text-white w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-600 transition-colors shadow-md"
+                            disabled={isLoading}
+                          >
+                            <i className="fas fa-trash text-xs"></i>
+                          </button>
+                        )}
                       </div>
                     ))}
                     {newImages.map((image, index) => (
@@ -703,21 +745,23 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                           alt={`Uploaded ${index}`}
                           className="w-full h-full object-cover rounded-md border border-gray-200 dark:border-gray-600"
                         />
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemoveNew(index);
-                          }}
-                          className="absolute top-1 right-1 bg-red-500 text-white w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-600 transition-colors shadow-md"
-                          disabled={isLoading}
-                        >
-                          <i className="fas fa-trash text-xs"></i>
-                        </button>
+                        {!viewMode && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveNew(index);
+                            }}
+                            className="absolute top-1 right-1 bg-red-500 text-white w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-600 transition-colors shadow-md"
+                            disabled={isLoading}
+                          >
+                            <i className="fas fa-trash text-xs"></i>
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>
-                ) : (
+                ) : !viewMode ? (
                   <>
                     <i className="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-2"></i>
                     <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">
@@ -727,6 +771,11 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                       Supports JPG, PNG, GIF (max {MAX_IMAGES} images)
                     </p>
                   </>
+                ) : (
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    <i className="fas fa-image text-4xl mb-2"></i>
+                    <p>No images available</p>
+                  </div>
                 )}
               </div>
               {imageError && (
@@ -751,7 +800,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                         : "border-gray-200 dark:border-gray-700"
                     }`}
                     required
-                    disabled={isLoading}
+                    disabled={isLoading || viewMode}
                   >
                     <option value="" disabled>
                       Select SIM Type
@@ -785,7 +834,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                         : "border-gray-200 dark:border-gray-700"
                     }`}
                     required
-                    disabled={isLoading}
+                    disabled={isLoading || viewMode}
                   >
                     <option value="" disabled>
                       Select Network Band
@@ -820,41 +869,41 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
               className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition duration-200 text-sm"
               disabled={isLoading}
             >
-              Cancel
+              {viewMode ? "Close" : "Cancel"}
             </button>
-            <button
-              type="submit"
-              form="sku-family-form"
-              className="min-w-[160px] px-4 py-2 bg-[#0071E0] text-white rounded-lg hover:bg-blue-600 transition duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <svg
-                  className="animate-spin h-4 w-4 text-white"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  ></circle>
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
-                </svg>
-              ) : editItem ? (
-                "Update SKU Family"
-              ) : (
-                "Create SKU Family"
-              )}
-            </button>
+            {!viewMode && (
+              <button
+                type="submit"
+                form="sub-row-form"
+                className="min-w-[160px] px-4 py-2 bg-[#0071E0] text-white rounded-lg hover:bg-blue-600 transition duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <svg
+                    className="animate-spin h-4 w-4 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                ) : (
+                  "Add Sub-Row"
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -862,4 +911,4 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
   );
 };
 
-export default SkuFamilyModal;
+export default SubRowModal;

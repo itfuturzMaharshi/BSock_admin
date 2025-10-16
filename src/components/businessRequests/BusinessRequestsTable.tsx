@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Swal from "sweetalert2";
 import { BusinessRequestsService } from "../../services/businessRequests/businessRequests.services";
+import { LOCAL_STORAGE_KEYS } from "../../constants/localStorage";
 
 interface BusinessRequest {
   _id?: string;
@@ -42,7 +43,7 @@ const BusinessRequestsTable: React.FC = () => {
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem("br_status_overrides");
+      const raw = localStorage.getItem(LOCAL_STORAGE_KEYS.BR_STATUS_OVERRIDES);
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed && typeof parsed === "object") {
@@ -55,7 +56,7 @@ const BusinessRequestsTable: React.FC = () => {
   useEffect(() => {
     try {
       localStorage.setItem(
-        "br_status_overrides",
+        LOCAL_STORAGE_KEYS.BR_STATUS_OVERRIDES,
         JSON.stringify(statusOverrides)
       );
     } catch {}

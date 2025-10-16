@@ -8,6 +8,7 @@ import "react-datepicker/dist/react-datepicker.css";
 
 interface FormData {
   skuFamilyId: string;
+  subSkuFamilyId: string;
   simType: string;
   color: string;
   ram: string;
@@ -25,6 +26,7 @@ interface FormData {
 
 interface ValidationErrors {
   skuFamilyId?: string;
+  subSkuFamilyId?: string;
   simType?: string;
   color?: string;
   ram?: string;
@@ -42,6 +44,7 @@ interface ValidationErrors {
 
 interface TouchedFields {
   skuFamilyId: boolean;
+  subSkuFamilyId: boolean;
   simType: boolean;
   color: boolean;
   ram: boolean;
@@ -72,6 +75,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
 }) => {
   const [formData, setFormData] = useState<FormData>({
     skuFamilyId: "",
+    subSkuFamilyId: "",
     simType: "",
     color: "",
     ram: "",
@@ -89,8 +93,13 @@ const ProductModal: React.FC<ProductModalProps> = ({
   const [skuFamilies, setSkuFamilies] = useState<
     { _id: string; name: string }[]
   >([]);
+  const [subSkuFamilies, setSubSkuFamilies] = useState<
+    { _id: string; name: string }[]
+  >([]);
   const [skuLoading, setSkuLoading] = useState<boolean>(false);
+  const [subSkuLoading, setSubSkuLoading] = useState<boolean>(false);
   const [skuError, setSkuError] = useState<string | null>(null);
+  const [subSkuError, setSubSkuError] = useState<string | null>(null);
   const [dateError, setDateError] = useState<string | null>(null);
   const [moqError, setMoqError] = useState<string | null>(null);
   const [priceError, setPriceError] = useState<string | null>(null);
@@ -99,6 +108,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
   );
   const [touched, setTouched] = useState<TouchedFields>({
     skuFamilyId: false,
+    subSkuFamilyId: false,
     simType: false,
     color: false,
     ram: false,
@@ -121,6 +131,54 @@ const ProductModal: React.FC<ProductModalProps> = ({
   const storageOptions = ["128GB", "256GB", "512GB", "1TB"];
   const conditionOptions = ["AAA", "A+", "Mixed"];
 
+  // Function to parse Sub SKU Family response and extract values
+  const parseSubSkuFamilyResponse = (response: string) => {
+    try {
+      // Example: "test 123_iphone_Silver_[\"E-Sim\"]_AT&T_Hongkong"
+      const parts = response.split('_');
+      
+      if (parts.length < 6) {
+        console.warn('Unexpected Sub SKU Family format:', response);
+        return null;
+      }
+
+      const firstName = parts[0]; // "test 123"
+      const color = parts[2]; // "Silver"
+      const simTypeRaw = parts[3]; // "[\"E-Sim\"]"
+      const country = parts[5]; // "Hongkong"
+      
+      // Extract SIM type from the array format
+      const simTypeMatch = simTypeRaw.match(/\["([^"]+)"\]/);
+      const simType = simTypeMatch ? simTypeMatch[1] : simTypeRaw;
+
+      return {
+        displayName: firstName,
+        color: color,
+        simType: simType,
+        country: country
+      };
+    } catch (error) {
+      console.error('Error parsing Sub SKU Family response:', error);
+      return null;
+    }
+  };
+
+  const fetchSubSkuFamiliesBySkuFamilyId = async (skuFamilyId: string) => {
+    try {
+      setSubSkuLoading(true);
+      setSubSkuError(null);
+      console.log("Fetching Sub SKU Families for SKU Family ID:", skuFamilyId); // Debug log
+      const list = await ProductService.getSubSkuFamilyListByName(skuFamilyId);
+      console.log("Received Sub SKU Families:", list); // Debug log
+      setSubSkuFamilies(list);
+    } catch (error: any) {
+      console.error("Error fetching Sub SKU Families:", error); // Debug log
+      setSubSkuError(error.message || "Failed to load Sub SKU Families");
+    } finally {
+      setSubSkuLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
       const fetchSkuFamilies = async () => {
@@ -135,7 +193,10 @@ const ProductModal: React.FC<ProductModalProps> = ({
           setSkuLoading(false);
         }
       };
+
+
       fetchSkuFamilies();
+      // Don't fetch Sub SKU Families initially - they will be loaded when SKU Family is selected
     }
   }, [isOpen]);
 
@@ -146,8 +207,13 @@ const ProductModal: React.FC<ProductModalProps> = ({
           typeof editItem.skuFamilyId === "object"
             ? editItem.skuFamilyId._id || ""
             : editItem.skuFamilyId || "";
+        const subSkuId =
+          typeof editItem.subSkuFamilyId === "object"
+            ? editItem.subSkuFamilyId._id || ""
+            : editItem.subSkuFamilyId || "";
         setFormData({
           skuFamilyId: skuId,
+          subSkuFamilyId: subSkuId,
           simType: editItem.simType,
           color: editItem.color,
           ram: editItem.ram,
@@ -165,6 +231,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
       } else {
         setFormData({
           skuFamilyId: "",
+          subSkuFamilyId: "",
           simType: "",
           color: "",
           ram: "",
@@ -244,6 +311,45 @@ const ProductModal: React.FC<ProductModalProps> = ({
 
       return next;
     });
+
+    // Handle SKU Family selection - fetch Sub SKU Families
+    if (name === "skuFamilyId" && value) {
+      console.log("SKU Family selected:", value); // Debug log
+      fetchSubSkuFamiliesBySkuFamilyId(value);
+      // Clear Sub SKU Family selection when SKU Family changes
+      setFormData((prev) => ({
+        ...prev,
+        subSkuFamilyId: "",
+        color: "",
+        simType: "",
+        country: "",
+      }));
+    }
+
+    // Handle Sub SKU Family selection - parse response and auto-populate fields
+    if (name === "subSkuFamilyId" && value) {
+      console.log("Sub SKU Family selected:", value); // Debug log
+      
+      // Find the selected Sub SKU Family to get its full name
+      const selectedSubSku = subSkuFamilies.find(subSku => subSku._id === value);
+      if (selectedSubSku) {
+        console.log("Selected Sub SKU Family name:", selectedSubSku.name); // Debug log
+        
+        // Parse the response to extract values
+        const parsedData = parseSubSkuFamilyResponse(selectedSubSku.name);
+        if (parsedData) {
+          console.log("Parsed data:", parsedData); // Debug log
+          
+          // Auto-populate the fields with parsed values
+          setFormData((prev) => ({
+            ...prev,
+            color: parsedData.color,
+            simType: parsedData.simType,
+            country: parsedData.country,
+          }));
+        }
+      }
+    }
 
     // Validate the field if it's been touched
     if (touched[name as keyof TouchedFields]) {
@@ -343,6 +449,8 @@ const ProductModal: React.FC<ProductModalProps> = ({
     switch (name) {
       case "skuFamilyId":
         return !value ? "SKU Family is required" : undefined;
+      case "subSkuFamilyId":
+        return !value ? "Sub SKU Family is required" : undefined;
       case "simType":
         return !value ? "SIM Type is required" : undefined;
       case "color":
@@ -400,6 +508,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
     // Only validate required fields
     const requiredFields: (keyof FormData)[] = [
       "skuFamilyId",
+      "subSkuFamilyId",
       "simType",
       "color",
       "ram",
@@ -465,6 +574,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
     // Mark all fields as touched
     setTouched({
       skuFamilyId: true,
+      subSkuFamilyId: true,
       simType: true,
       color: true,
       ram: true,
@@ -532,7 +642,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-6">
           <form id="product-form" onSubmit={handleSubmit} className="space-y-6">
-            {/* SKU Family ID, Country, and Sim Type Row */}
+            {/* SKU Family ID, Sub SKU Family, and Country Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
@@ -580,6 +690,62 @@ const ProductModal: React.FC<ProductModalProps> = ({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                  Sub SKU Family
+                </label>
+                <div className="relative">
+                  <select
+                    name="subSkuFamilyId"
+                    value={formData.subSkuFamilyId}
+                    onChange={handleInputChange}
+                    onBlur={handleBlur}
+                    className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
+                      touched.subSkuFamilyId && validationErrors.subSkuFamilyId
+                        ? "border-red-500 focus:ring-red-500"
+                        : "border-gray-200 dark:border-gray-700"
+                    }`}
+                    required
+                    disabled={
+                      subSkuLoading ||
+                      subSkuError !== null ||
+                      !formData.skuFamilyId
+                    }
+                  >
+                    <option value="" disabled>
+                      {subSkuLoading
+                        ? "Loading Sub SKU Families..."
+                        : subSkuError
+                        ? "Error loading Sub SKU Families"
+                        : formData.skuFamilyId
+                        ? "Select Sub SKU Family"
+                        : "Select SKU Family first"}
+                    </option>
+                    {subSkuFamilies.map((subSku) => {
+                      // Parse the Sub SKU Family name to get display name
+                      const parsedData = parseSubSkuFamilyResponse(subSku.name);
+                      const displayName = parsedData ? parsedData.displayName : subSku.name;
+                      
+                      return (
+                        <option key={subSku._id} value={subSku._id}>
+                          {displayName}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+                </div>
+                {touched.subSkuFamilyId && validationErrors.subSkuFamilyId && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {validationErrors.subSkuFamilyId}
+                  </p>
+                )}
+                {subSkuError && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {subSkuError}
+                  </p>
+                )}
+              </div>
+              {/* <div>
+                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                   Country
                 </label>
                 <div className="relative">
@@ -611,7 +777,45 @@ const ProductModal: React.FC<ProductModalProps> = ({
                     {validationErrors.country}
                   </p>
                 )}
+              </div> */}
+              <div>
+                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                  RAM
+                </label>
+                <div className="relative">
+                  <select
+                    name="ram"
+                    value={formData.ram}
+                    onChange={handleInputChange}
+                    onBlur={handleBlur}
+                    className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
+                      touched.ram && validationErrors.ram
+                        ? "border-red-500 focus:ring-red-500"
+                        : "border-gray-200 dark:border-gray-700"
+                    }`}
+                    required
+                  >
+                    <option value="" disabled>
+                      Select RAM
+                    </option>
+                    {ramOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                  <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+                </div>
+                {touched.ram && validationErrors.ram && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {validationErrors.ram}
+                  </p>
+                )}
               </div>
+            </div>
+
+            {/* SIM Type, Color, and Country Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                   SIM Type
@@ -646,10 +850,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
                   </p>
                 )}
               </div>
-            </div>
-
-            {/* Color, RAM, and Storage Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                   Color
@@ -686,25 +886,25 @@ const ProductModal: React.FC<ProductModalProps> = ({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                  RAM
+                  Country
                 </label>
                 <div className="relative">
                   <select
-                    name="ram"
-                    value={formData.ram}
+                    name="country"
+                    value={formData.country}
                     onChange={handleInputChange}
                     onBlur={handleBlur}
                     className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
-                      touched.ram && validationErrors.ram
+                      touched.country && validationErrors.country
                         ? "border-red-500 focus:ring-red-500"
                         : "border-gray-200 dark:border-gray-700"
                     }`}
                     required
                   >
                     <option value="" disabled>
-                      Select RAM
+                      Select Country
                     </option>
-                    {ramOptions.map((option) => (
+                    {countryOptions.map((option) => (
                       <option key={option} value={option}>
                         {option}
                       </option>
@@ -712,12 +912,16 @@ const ProductModal: React.FC<ProductModalProps> = ({
                   </select>
                   <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
                 </div>
-                {touched.ram && validationErrors.ram && (
+                {touched.country && validationErrors.country && (
                   <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {validationErrors.ram}
+                    {validationErrors.country}
                   </p>
                 )}
               </div>
+            </div>
+
+            {/* Storage, Condition, and Price Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                   Storage
@@ -752,10 +956,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
                   </p>
                 )}
               </div>
-            </div>
-
-            {/* Condition, Price, and Stock Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                   Condition
@@ -820,6 +1020,10 @@ const ProductModal: React.FC<ProductModalProps> = ({
                   </p>
                 )}
               </div>
+            </div>
+
+            {/* Stock, MOQ, and Purchase Type Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                   Stock
@@ -845,10 +1049,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
                   </p>
                 )}
               </div>
-            </div>
-
-            {/* MOQ and Purchase Type Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                   MOQ
@@ -947,50 +1147,50 @@ const ProductModal: React.FC<ProductModalProps> = ({
 
               {/* Flash Deal Expiry Time */}
               {formData.isFlashDeal === "true" && (
-              <div>
-                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                  Expiry Time
-                </label>
-                <DatePicker
-                  selected={
-                    formData.expiryTime ? new Date(formData.expiryTime) : null
-                  }
-                  onChange={handleDateChange}
-                  onBlur={() => {
-                    setTouched((prev) => ({ ...prev, expiryTime: true }));
-                    const error = validateField(
-                      "expiryTime",
-                      formData.expiryTime
-                    );
-                    setValidationErrors((prev) => ({
-                      ...prev,
-                      expiryTime: error,
-                    }));
-                  }}
-                  showTimeSelect
-                  timeFormat="HH:mm"
-                  timeIntervals={15}
-                  dateFormat="yyyy-MM-dd HH:mm"
-                  placeholderText="Select date and time"
-                  className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm ${
-                    touched.expiryTime && validationErrors.expiryTime
-                      ? "border-red-500 focus:ring-red-500"
-                      : "border-gray-200 dark:border-gray-700"
-                  }`}
-                  minDate={new Date()}
-                  required={formData.isFlashDeal === "true"}
-                />
-                {touched.expiryTime && validationErrors.expiryTime && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {validationErrors.expiryTime}
-                  </p>
-                )}
-                {dateError && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {dateError}
-                  </p>
-                )}
-              </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                    Expiry Time
+                  </label>
+                  <DatePicker
+                    selected={
+                      formData.expiryTime ? new Date(formData.expiryTime) : null
+                    }
+                    onChange={handleDateChange}
+                    onBlur={() => {
+                      setTouched((prev) => ({ ...prev, expiryTime: true }));
+                      const error = validateField(
+                        "expiryTime",
+                        formData.expiryTime
+                      );
+                      setValidationErrors((prev) => ({
+                        ...prev,
+                        expiryTime: error,
+                      }));
+                    }}
+                    showTimeSelect
+                    timeFormat="HH:mm"
+                    timeIntervals={15}
+                    dateFormat="yyyy-MM-dd HH:mm"
+                    placeholderText="Select date and time"
+                    className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm ${
+                      touched.expiryTime && validationErrors.expiryTime
+                        ? "border-red-500 focus:ring-red-500"
+                        : "border-gray-200 dark:border-gray-700"
+                    }`}
+                    minDate={new Date()}
+                    required={formData.isFlashDeal === "true"}
+                  />
+                  {touched.expiryTime && validationErrors.expiryTime && (
+                    <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                      {validationErrors.expiryTime}
+                    </p>
+                  )}
+                  {dateError && (
+                    <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                      {dateError}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           </form>
@@ -1010,9 +1210,14 @@ const ProductModal: React.FC<ProductModalProps> = ({
               type="submit"
               form="product-form"
               className="min-w-[160px] px-4 py-2 bg-[#0071E0] text-white rounded-lg hover:bg-blue-600 transition duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-              disabled={skuLoading || skuError !== null}
+              disabled={
+                skuLoading ||
+                skuError !== null ||
+                subSkuLoading ||
+                subSkuError !== null
+              }
             >
-              {skuLoading ? (
+              {skuLoading || subSkuLoading ? (
                 <svg
                   className="animate-spin h-4 w-4 text-white"
                   xmlns="http://www.w3.org/2000/svg"

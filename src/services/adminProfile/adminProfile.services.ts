@@ -1,5 +1,6 @@
 import toastHelper from '../../utils/toastHelper';
 import api from '../api/api';
+import { LOCAL_STORAGE_KEYS } from '../../constants/localStorage';
 
 interface ProfileResponse {
   status: number;
@@ -51,7 +52,7 @@ export class UserProfileService {
       const responseData = res.data;
 
       if (res.status === 200) {
-        localStorage.setItem('userId', responseData.data._id);
+        localStorage.setItem(LOCAL_STORAGE_KEYS.USER_ID, responseData.data._id);
         // toastHelper.showTost(responseData.message || 'Profile fetched successfully!', 'success');
       } else {
         toastHelper.showTost(responseData.message || 'Failed to fetch profile', 'warning');

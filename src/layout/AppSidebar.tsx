@@ -276,7 +276,7 @@ const AppSidebar: React.FC = () => {
           !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
         }`}
       >
-        <Link to="/">
+        <>
           {isExpanded || isHovered || isMobileOpen ? (
             <div className="flex items-center gap-3 text-xl font-bold text-gray-800 dark:text-white">
               <i className="fas fa-mobile-alt text-3xl text-[#0071E0] dark:text-blue-400"></i>
@@ -285,7 +285,7 @@ const AppSidebar: React.FC = () => {
           ) : (
             <i className="fas fa-mobile-alt text-5xl text-blue-600 dark:text-blue-400"></i>
           )}
-        </Link>
+        </>
       </div>
       <div className="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar">
         <nav className="mb-5">

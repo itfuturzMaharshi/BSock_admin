@@ -3,6 +3,7 @@ import Swal from "sweetalert2";
 import { format } from "date-fns";
 import toastHelper from "../../utils/toastHelper";
 import { AdminOrderService, Order, TrackingItem, OrderItem } from "../../services/order/adminOrder.services";
+import { LOCAL_STORAGE_KEYS } from "../../constants/localStorage";
 
 const OrdersTable: React.FC = () => {
   const [ordersData, setOrdersData] = useState<Order[]>([]);
@@ -26,7 +27,7 @@ const OrdersTable: React.FC = () => {
 
   useEffect(() => {
     // Get current admin ID from localStorage
-    const adminId = localStorage.getItem("adminId") || "";
+    const adminId = localStorage.getItem(LOCAL_STORAGE_KEYS.ADMIN_ID) || "";
     setCurrentAdminId(adminId);
     fetchOrders();
   }, [currentPage, searchTerm, statusFilter]);
@@ -133,194 +134,208 @@ const OrdersTable: React.FC = () => {
   };
 
   const handleUpdateStatus = async (order: Order) => {
-    const currentStatus = order.status;
-    const availableStatusOptions = getAvailableStatusOptions(order);
-    
-    // Check if current admin has permission to update this order's status
-    const canUpdateStatus = order.verifiedBy === currentAdminId || order.approvedBy === currentAdminId;
-    
-    // If no options available (shouldn't happen, but safety check)
-    if (availableStatusOptions.length === 0) {
-      toastHelper.showTost("No status options available for this order", "warning");
-      return;
-    }
-    
-    // Check if admin has permission to update status
-    // Allow updates for new orders (request status) or if admin has permission
-    const isNewOrder = currentStatus === "request" && !order.verifiedBy && !order.approvedBy;
-    
-    // Allow status updates for all statuses in the flow
-    // No need for complex permission checks since we're following the flow
-    if (!isNewOrder && !canUpdateStatus && ["verified", "approved"].includes(currentStatus)) {
-      // Only restrict if it's not a new order and admin doesn't have permission
-      // For the flow-based approach, we'll allow updates
-    }
-
-    let selectedStatus = currentStatus;
-    let editedCartItems: OrderItem[] = [...order.cartItems];
-    let message = "";
-
-    const modalHtml = `
-      <div style="text-align: left; padding: 20px; font-family: 'Inter', sans-serif; max-height: 500px; overflow-y: auto;">
-        <div style="margin-bottom: 20px;">
-          <label for="statusSelect" style="display: block; font-size: 14px; font-weight: 600; color: #1F2937; margin-bottom: 8px;">Select Status</label>
-          <select id="statusSelect" class="swal2-select" style="width: 100%; padding: 10px; font-size: 14px; margin:0px; border: 1px solid #D1D5DB; border-radius: 6px; background-color: #F9FAFB; color: #1F2937; outline: none; transition: border-color 0.2s;">
-            ${availableStatusOptions
-              .map(
-                (status) =>
-                  `<option value="${status}" ${
-                    status === currentStatus ? "selected" : ""
-                  }>${status.charAt(0).toUpperCase() + status.slice(1)}</option>`
-              )
-              .join("")}
-          </select>
-        </div>
-        <div id="cartItemsContainer" style="margin-bottom: 20px; display: none;">
-          <h4 style="font-size: 16px; font-weight: 600; color: #1F2937; margin-bottom: 12px;">Edit Quantities</h4>
-          ${order.cartItems
-            .map(
-              (item, index) =>
-                `
-                <div style="margin-bottom: 16px; padding: 12px; background-color: #F9FAFB; border-radius: 6px; border: 1px solid #E5E7EB;">
-                  <label style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 6px;">
-                    ${item.skuFamilyId?.name || item.productId.name}
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    value="${item.quantity}"
-                    class="swal2-input quantity-input"
-                    data-item-index="${index}"
-                    style="width: 100%; margin:0px; padding: 8px; font-size: 14px; border: 1px solid #D1D5DB; border-radius: 6px; background-color: #FFFFFF; color: #1F2937; outline: none; transition: border-color 0.2s;"
-                  />
-                </div>
-                `
-            )
-            .join("")}
-        </div>
-        <div>
-          <label for="messageInput" style="display: block; font-size: 14px; font-weight: 600; color: #1F2937; margin-bottom: 8px;">Message (Optional)</label>
-          <textarea
-            id="messageInput"
-            class="swal2-textarea"
-            placeholder="Enter a message for this status change"
-            style="width: 100%; margin:0px; padding: 10px; font-size: 14px; border: 1px solid #D1D5DB; border-radius: 6px; background-color: #F9FAFB; color: #1F2937; min-height: 100px; resize: vertical; outline: none; transition: border-color 0.2s;"
-          ></textarea>
-        </div>
-      </div>
-    `;
-
-    const result = await Swal.fire({
-      title: `Update Status for Order`,
-      html: modalHtml,
-      showCancelButton: true,
-      confirmButtonText: "Change Status",
-      cancelButtonText: "Cancel",
-      width: 600,
-      customClass: {
-        popup: "swal2-custom-popup",
-        title: "swal2-custom-title",
-        confirmButton: "swal2-custom-confirm",
-        cancelButton: "swal2-custom-cancel",
-      },
-      preConfirm: () => {
-        const statusSelect = document.getElementById("statusSelect") as HTMLSelectElement;
-        const quantityInputs = document.querySelectorAll(".quantity-input") as NodeListOf<HTMLInputElement>;
-        const messageInput = document.getElementById("messageInput") as HTMLTextAreaElement;
-
-        if (!statusSelect) {
-          Swal.showValidationMessage('Status select element not found');
-          return false;
-        }
-
-        selectedStatus = statusSelect.value;
-        message = messageInput?.value || "";
-
-        console.log('Selected Status:', selectedStatus);
-        console.log('Current Status:', currentStatus);
-        console.log('Message:', message);
-
-        if (["verified", "approved"].includes(selectedStatus) && ["request", "accepted"].includes(currentStatus)) {
-          editedCartItems = order.cartItems.map((item, index) => ({
-            ...item,
-            quantity: parseInt(quantityInputs[index]?.value) || item.quantity,
-          }));
-        } else {
-          editedCartItems = order.cartItems;
-        }
-
-        return true;
-      },
-      didOpen: () => {
-        const statusSelect = document.getElementById("statusSelect") as HTMLSelectElement;
-        const cartItemsContainer = document.getElementById("cartItemsContainer") as HTMLElement;
-
-        statusSelect.addEventListener("change", () => {
-          const newStatus = statusSelect.value;
-          // Hide cart items for cancel status
-          cartItemsContainer.style.display =
-            newStatus !== "cancel" && 
-            ["verified", "approved"].includes(newStatus) && 
-            ["request", "accepted"].includes(currentStatus)
-              ? "block"
-              : "none";
-        });
-
-        // Add focus styles for inputs
-        const inputs = document.querySelectorAll(".swal2-input, .swal2-select, .swal2-textarea");
-        inputs.forEach((input) => {
-          input.addEventListener("focus", () => {
-            (input as HTMLElement).style.borderColor = "#3B82F6";
-            (input as HTMLElement).style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
-          });
-          input.addEventListener("blur", () => {
-            (input as HTMLElement).style.borderColor = "#D1D5DB";
-            (input as HTMLElement).style.boxShadow = "none";
-          });
-        });
-      },
-    });
-
-    if (result.isConfirmed) {
-      // Check if status actually changed
-      if (selectedStatus === currentStatus && !message) {
-        toastHelper.showTost("No changes made to the order status", "info");
+    try {
+      const currentStatus = order.status;
+      const availableStatusOptions = getAvailableStatusOptions(order);
+      
+      // Check if current admin has permission to update this order's status
+      const canUpdateStatus = order.verifiedBy === currentAdminId || order.approvedBy === currentAdminId;
+      
+      // If no options available (shouldn't happen, but safety check)
+      if (availableStatusOptions.length === 0) {
+        toastHelper.showTost("No status options available for this order", "warning");
         return;
       }
-
-      try {
-        // Don't send cart items for cancel status
-        const cartItemsToSend =
-          selectedStatus !== "cancel" && 
-          ["request", "accepted"].includes(currentStatus) && 
-          ["verified", "approved"].includes(selectedStatus)
-            ? editedCartItems
-            : undefined;
-
-        console.log('Updating order status:', {
-          orderId: order._id,
-          selectedStatus,
-          cartItemsToSend,
-          message
-        });
-
-        const response = await AdminOrderService.updateOrderStatus(
-          order._id,
-          selectedStatus,
-          cartItemsToSend,
-          message || undefined
-        );
-
-        console.log('Update response:', response);
-
-        if (response !== false) {
-          // Success message is already shown in the service
-          fetchOrders();
-        }
-      } catch (error) {
-        console.error("Failed to update order status:", error);
-        toastHelper.showTost("Failed to update order status", "error");
+      
+      // Check if admin has permission to update status
+      // Allow updates for new orders (request status) or if admin has permission
+      const isNewOrder = currentStatus === "request" && !order.verifiedBy && !order.approvedBy;
+      
+      // Allow status updates for all statuses in the flow
+      // No need for complex permission checks since we're following the flow
+      if (!isNewOrder && !canUpdateStatus && ["verified", "approved"].includes(currentStatus)) {
+        // Only restrict if it's not a new order and admin doesn't have permission
+        // For the flow-based approach, we'll allow updates
       }
+
+      let selectedStatus = currentStatus;
+      let editedCartItems: OrderItem[] = [...order.cartItems];
+      let message = "";
+
+      // Create a simpler modal HTML structure
+      const modalHtml = `
+        <div style="text-align: left; padding: 20px; font-family: 'Inter', sans-serif; max-height: 500px; overflow-y: auto;">
+          <div style="margin-bottom: 20px;">
+            <label for="statusSelect" style="display: block; font-size: 14px; font-weight: 600; color: #1F2937; margin-bottom: 8px;">Select Status</label>
+            <select id="statusSelect" style="width: 100%; padding: 10px; font-size: 14px; margin:0px; border: 1px solid #D1D5DB; border-radius: 6px; background-color: #F9FAFB; color: #1F2937; outline: none; transition: border-color 0.2s;">
+              ${availableStatusOptions
+                .map(
+                  (status) =>
+                    `<option value="${status}" ${
+                      status === currentStatus ? "selected" : ""
+                    }>${status.charAt(0).toUpperCase() + status.slice(1)}</option>`
+                )
+                .join("")}
+            </select>
+          </div>
+          <div id="cartItemsContainer" style="margin-bottom: 20px; display: none;">
+            <h4 style="font-size: 16px; font-weight: 600; color: #1F2937; margin-bottom: 12px;">Edit Quantities</h4>
+            ${order.cartItems
+              .map(
+                (item, index) =>
+                  `
+                  <div style="margin-bottom: 16px; padding: 12px; background-color: #F9FAFB; border-radius: 6px; border: 1px solid #E5E7EB;">
+                    <label style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 6px;">
+                      ${item.skuFamilyId?.name || item.productId?.name}
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value="${item.quantity}"
+                      class="quantity-input"
+                      data-item-index="${index}"
+                      style="width: 100%; margin:0px; padding: 8px; font-size: 14px; border: 1px solid #D1D5DB; border-radius: 6px; background-color: #FFFFFF; color: #1F2937; outline: none; transition: border-color 0.2s;"
+                    />
+                  </div>
+                  `
+              )
+              .join("")}
+          </div>
+          <div>
+            <label for="messageInput" style="display: block; font-size: 14px; font-weight: 600; color: #1F2937; margin-bottom: 8px;">Message (Optional)</label>
+            <textarea
+              id="messageInput"
+              placeholder="Enter a message for this status change"
+              style="width: 100%; margin:0px; padding: 10px; font-size: 14px; border: 1px solid #D1D5DB; border-radius: 6px; background-color: #F9FAFB; color: #1F2937; min-height: 100px; resize: vertical; outline: none; transition: border-color 0.2s;"
+            ></textarea>
+          </div>
+        </div>
+      `;
+
+      const result = await Swal.fire({
+        title: `Update Status for Order`,
+        html: modalHtml,
+        showCancelButton: true,
+        confirmButtonText: "Change Status",
+        cancelButtonText: "Cancel",
+        width: 600,
+        allowOutsideClick: false,
+        allowEscapeKey: true,
+        showLoaderOnConfirm: true,
+        preConfirm: () => {
+          try {
+            const statusSelect = document.getElementById("statusSelect") as HTMLSelectElement;
+            const quantityInputs = document.querySelectorAll(".quantity-input") as NodeListOf<HTMLInputElement>;
+            const messageInput = document.getElementById("messageInput") as HTMLTextAreaElement;
+
+            if (!statusSelect) {
+              Swal.showValidationMessage('Status select element not found');
+              return false;
+            }
+
+            selectedStatus = statusSelect.value;
+            message = messageInput?.value || "";
+
+            console.log('Selected Status:', selectedStatus);
+            console.log('Current Status:', currentStatus);
+            console.log('Message:', message);
+
+            if (["verified", "approved"].includes(selectedStatus) && ["request", "accepted"].includes(currentStatus)) {
+              editedCartItems = order.cartItems.map((item, index) => ({
+                ...item,
+                quantity: parseInt(quantityInputs[index]?.value) || item.quantity,
+              }));
+            } else {
+              editedCartItems = order.cartItems;
+            }
+
+            return true;
+          } catch (error) {
+            console.error('Error in preConfirm:', error);
+            Swal.showValidationMessage('An error occurred while processing the form');
+            return false;
+          }
+        },
+        didOpen: () => {
+          try {
+            const statusSelect = document.getElementById("statusSelect") as HTMLSelectElement;
+            const cartItemsContainer = document.getElementById("cartItemsContainer") as HTMLElement;
+
+            if (statusSelect && cartItemsContainer) {
+              statusSelect.addEventListener("change", () => {
+                const newStatus = statusSelect.value;
+                // Hide cart items for cancel status
+                cartItemsContainer.style.display =
+                  newStatus !== "cancel" && 
+                  ["verified", "approved"].includes(newStatus) && 
+                  ["request", "accepted"].includes(currentStatus)
+                    ? "block"
+                    : "none";
+              });
+
+              // Add focus styles for inputs
+              const inputs = document.querySelectorAll("input, select, textarea");
+              inputs.forEach((input) => {
+                input.addEventListener("focus", () => {
+                  (input as HTMLElement).style.borderColor = "#3B82F6";
+                  (input as HTMLElement).style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                });
+                input.addEventListener("blur", () => {
+                  (input as HTMLElement).style.borderColor = "#D1D5DB";
+                  (input as HTMLElement).style.boxShadow = "none";
+                });
+              });
+            }
+          } catch (error) {
+            console.error('Error in didOpen:', error);
+          }
+        },
+      });
+
+      if (result.isConfirmed) {
+        // Check if status actually changed
+        if (selectedStatus === currentStatus && !message) {
+          toastHelper.showTost("No changes made to the order status", "info");
+          return;
+        }
+
+        try {
+          // Don't send cart items for cancel status
+          const cartItemsToSend =
+            selectedStatus !== "cancel" && 
+            ["request", "accepted"].includes(currentStatus) && 
+            ["verified", "approved"].includes(selectedStatus)
+              ? editedCartItems
+              : undefined;
+
+          console.log('Updating order status:', {
+            orderId: order._id,
+            selectedStatus,
+            cartItemsToSend,
+            message
+          });
+
+          const response = await AdminOrderService.updateOrderStatus(
+            order._id,
+            selectedStatus,
+            cartItemsToSend,
+            message || undefined
+          );
+
+          console.log('Update response:', response);
+
+          if (response !== false) {
+            // Success message is already shown in the service
+            fetchOrders();
+          }
+        } catch (error) {
+          console.error("Failed to update order status:", error);
+          toastHelper.showTost("Failed to update order status", "error");
+        }
+      }
+    } catch (error) {
+      console.error("Error in handleUpdateStatus:", error);
+      toastHelper.showTost("Failed to open status update modal", "error");
     }
   };
 

@@ -4,6 +4,7 @@ import api from '../api/api';
 export interface Product {
   _id?: string;
   skuFamilyId: string | { _id: string; name: string; images?: string[] };
+  subSkuFamilyId?: string | { _id: string; name: string; images?: string[] };
   specification: string;
   simType: string;
   color: string;
@@ -61,7 +62,13 @@ export class ProductService {
     const url = `${baseUrl}/api/${adminRoute}/product/create`;
 
     try {
-      const res = await api.post(url, productData);
+      // Ensure subSkuFamilyId is included in the request data
+      const requestData = {
+        ...productData,
+        subSkuFamilyId: productData.subSkuFamilyId || null
+      };
+      
+      const res = await api.post(url, requestData);
       toastHelper.showTost(res.data.message || 'Product created successfully!', 'success');
       return res.data;
     } catch (err: any) {
@@ -78,7 +85,13 @@ export class ProductService {
     const url = `${baseUrl}/api/${adminRoute}/product/update`;
 
     try {
-      const data = { id, ...productData };
+      // Ensure subSkuFamilyId is included in the request data
+      const data = { 
+        id, 
+        ...productData,
+        subSkuFamilyId: productData.subSkuFamilyId || null
+      };
+      
       const res = await api.post(url, data);
       toastHelper.showTost(res.data.message || 'Product updated successfully!', 'success');
       return res.data;
@@ -226,6 +239,37 @@ export class ProductService {
       return res.data?.data;
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Failed to fetch SKU Families by name';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
+
+  // Get Sub SKU Family list by name
+  static getSubSkuFamilyListByName = async (skuFamilyId?: string): Promise<{ _id: string; name: string }[]> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/subSkuFamily/listByName`;
+
+    const body: any = { page: 1, limit: 1000 };
+    if (skuFamilyId) {
+      body.skuFamilyId = skuFamilyId;
+    }
+
+    try {
+      const res = await api.post(url, body);
+      console.log("Sub SKU Family API Response:", res.data); // Debug log
+      if (res.data?.status !== 200) {
+        throw new Error(res.data?.message || 'Failed to fetch Sub SKU Families by name');
+      }
+      // Transform the response to match the expected format
+      const subSkuFamilies = res.data?.data || [];
+      console.log("Sub SKU Families data:", subSkuFamilies); // Debug log
+      return subSkuFamilies.map((item: any) => ({
+        _id: item._id,
+        name: item.value || item.name || item._id // Use value field from API response
+      }));
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to fetch Sub SKU Families by name';
       toastHelper.showTost(errorMessage, 'error');
       throw new Error(errorMessage);
     }
