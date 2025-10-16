@@ -4,20 +4,23 @@ import { LOCAL_STORAGE_KEYS } from '../constants/localStorage';
 
 type SocketContextValue = {
   socket: any | null;
+  socketService: typeof SocketService | null;
 };
 
-const SocketContext = createContext<SocketContextValue>({ socket: null });
+const SocketContext = createContext<SocketContextValue>({ socket: null, socketService: null });
 
 export const useSocket = () => useContext(SocketContext);
 
 export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [socket, setSocket] = useState<any | null>(null);
+  const [socketService, setSocketService] = useState<typeof SocketService | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
     if (token) {
       SocketService.connect();
       setSocket(SocketService.instance);
+      setSocketService(SocketService);
     }
 
     const onStorage = (e: StorageEvent) => {
@@ -25,9 +28,11 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         if (e.newValue) {
           SocketService.connect();
           setSocket(SocketService.instance);
+          setSocketService(SocketService);
         } else {
           SocketService.disconnect();
           setSocket(null);
+          setSocketService(null);
         }
       }
     };
@@ -35,7 +40,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
-  const value = useMemo(() => ({ socket }), [socket]);
+  const value = useMemo(() => ({ socket, socketService }), [socket, socketService]);
   return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>;
 }
 
