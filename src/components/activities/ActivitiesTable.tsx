@@ -23,6 +23,7 @@ const ActivitiesTable = () => {
   const totalPages = useMemo(() => Math.max(1, Math.ceil(totalDocs / limit)), [totalDocs, limit])
   const [isViewOpen, setIsViewOpen] = useState<boolean>(false)
   const [selectedItem, setSelectedItem] = useState<any | null>(null)
+  const [activeTab, setActiveTab] = useState<'products' | 'orders'>('products')
 
   useEffect(() => {
     const fetchData = async () => {
@@ -128,141 +129,178 @@ const ActivitiesTable = () => {
   return (
     <>
     <div className="p-4">
-      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-sm">
-        <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-          <div className="flex items-center gap-3 flex-1">
-            <div className="relative flex-1">
-              <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-              <input
-                type="text"
-                placeholder="Search by SKU Family ID or other..."
-                className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full"
-                value={searchTerm}
-                onChange={handleSearchChange}
-              />
-            </div>
-          </div>
-          <div className="flex items-center gap-3"></div>
+      {/* Professional Tab Navigation */}
+      <div className="mb-6">
+        <div className="border-b border-gray-200 dark:border-gray-700">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
+                activeTab === 'products'
+                  ? 'border-[#0071E0] text-[#0071E0] dark:text-[#0071E0]'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+              }`}
+              onClick={() => setActiveTab('products')}
+            >
+              Products
+            </button>
+            <button
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
+                activeTab === 'orders'
+                  ? 'border-[#0071E0] text-[#0071E0] dark:text-[#0071E0]'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+              }`}
+              onClick={() => setActiveTab('orders')}
+            >
+              Orders
+            </button>
+          </nav>
         </div>
+      </div>
 
-        <div className="max-w-full overflow-x-auto">
-          <table className="w-full table-auto">
-            <thead className="bg-gray-100 dark:bg-gray-900">
-              <tr>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Image
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Name
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Sub Sku Name
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  SIM Type
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Color
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  RAM
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Storage
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Price
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Created At
-                </th>
-                {/* <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Status
-                </th> */}
-                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {loading ? (
-                <tr>
-                  <td colSpan={11} className="p-12 text-center">
-                    <div className="text-gray-500 dark:text-gray-400 text-lg">
-                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
-                      Loading Products...
-                    </div>
-                  </td>
-                </tr>
-              ) : items.length === 0 ? (
-                <tr>
-                  <td colSpan={11} className="p-12 text-center">
-                    <div className="text-gray-500 dark:text-gray-400 text-lg">
-                      No items to display
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                items.map((item: any, index: number) => {
-                  const product = item?.productData || item?.data || item
-                  const skuFamily = product?.skuFamilyId
-                  const subSkuFamily = product?.subSkuFamilyId
-                  const images: string[] = (skuFamily?.images || product?.images || []) as string[]
-                  const imageUrl = images?.[0] || placeholderImage
-                  return (
-                    <tr key={`${item.productId || item._id}-${index}`} className="hover:bg-gray-50 dark:hover:bg-gray-700/40">
-                      <td className="px-6 py-4 align-middle">
-                        <img src={imageUrl} alt="Product" className="h-10 w-10 object-cover rounded" />
-                      </td>
-                      <td className="px-6 py-4 align-middle text-sm text-gray-700 dark:text-gray-200">
-                        {skuFamily?.name || product?.name || '—'}
-                      </td>
-                      <td className="px-6 py-4 align-middle text-sm text-gray-700 dark:text-gray-200">
-                        {subSkuFamily?.name || '—'}
-                      </td>
-                      <td className="px-6 py-4 align-middle text-sm text-gray-700 dark:text-gray-200">{product?.simType || '—'}</td>
-                      <td className="px-6 py-4 align-middle text-sm text-gray-700 dark:text-gray-200">{product?.color || '—'}</td>
-                      <td className="px-6 py-4 align-middle text-sm text-gray-700 dark:text-gray-200">{product?.ram || '—'}</td>
-                      <td className="px-6 py-4 align-middle text-sm text-gray-700 dark:text-gray-200">{product?.storage || '—'}</td>
-                      <td className="px-6 py-4 align-middle text-sm text-gray-700 dark:text-gray-200">{product?.price ?? '—'}</td>
-                      <td className="px-6 py-4 align-middle text-sm text-gray-700 dark:text-gray-200">{formatExpiryTime(item?.createdAt)}</td>
-                      {/* <td className="px-6 py-4 align-middle text-center">
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${product?.status === 'approved' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'}`}>
-                          {product?.status || '—'}
-                        </span>
-                      </td> */}
-                      <td className="px-6 py-4 align-middle text-center">
-                        <div className="flex items-center justify-center gap-3">
-                          <button
-                            title="View"
-                            className="text-blue-600 hover:text-blue-700"
-                            onClick={() => handleView(item)}
-                          >
-                            <i className="fas fa-eye"></i>
-                          </button>
-                          <button
-                            title="Restore"
-                            className="text-amber-600 hover:text-amber-700"
-                            onClick={() => handleRestore(item)}
-                          >
-                            <i className="fas fa-rotate-left"></i>
-                          </button>
+      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-sm">
+
+        {activeTab === 'products' ? (
+          <>
+            <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+              <div className="flex items-center gap-3 flex-1">
+                <div className="relative flex-1">
+                  <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                  <input
+                    type="text"
+                    placeholder="Search by SKU Family ID or other..."
+                    className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full"
+                    value={searchTerm}
+                    onChange={handleSearchChange}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-3"></div>
+            </div>
+
+            <div className="max-w-full overflow-x-auto">
+              <table className="w-full table-auto">
+                <thead className="bg-gray-100 dark:bg-gray-900">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                      Image
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                      Name
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                      Sub Sku Name
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                      SIM Type
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                      Color
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                      RAM
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                      Storage
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                      Price
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                      Created At
+                    </th>
+                    {/* <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                      Status
+                    </th> */}
+                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {loading ? (
+                    <tr>
+                      <td colSpan={11} className="p-12 text-center">
+                        <div className="text-gray-500 dark:text-gray-400 text-lg">
+                          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
+                          Loading Products...
                         </div>
                       </td>
                     </tr>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-        <div className="flex items-center justify-between p-4 border-t border-gray-200 dark:border-gray-700">
-          <div className="text-sm text-gray-600 dark:text-gray-300">Page {page} of {totalPages}</div>
-          <div className="flex gap-2">
-            <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className={`px-3 py-1 rounded border text-sm ${page <= 1 ? 'opacity-50 cursor-not-allowed' : ''}`}>Previous</button>
-            <button disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))} className={`px-3 py-1 rounded border text-sm ${page >= totalPages ? 'opacity-50 cursor-not-allowed' : ''}`}>Next</button>
+                  ) : items.length === 0 ? (
+                    <tr>
+                      <td colSpan={11} className="p-12 text-center">
+                        <div className="text-gray-500 dark:text-gray-400 text-lg">
+                          No items to display
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    items.map((item: any, index: number) => {
+                      const product = item?.productData || item?.data || item
+                      const skuFamily = product?.skuFamilyId
+                      const subSkuFamily = product?.subSkuFamilyId
+                      const images: string[] = (skuFamily?.images || product?.images || []) as string[]
+                      const imageUrl = images?.[0] || placeholderImage
+                      return (
+                        <tr key={`${item.productId || item._id}-${index}`} className="hover:bg-gray-50 dark:hover:bg-gray-700/40">
+                          <td className="px-6 py-4 align-middle">
+                            <img src={imageUrl} alt="Product" className="h-10 w-10 object-cover rounded" />
+                          </td>
+                          <td className="px-6 py-4 align-middle text-sm text-gray-700 dark:text-gray-200">
+                            {skuFamily?.name || product?.name || '—'}
+                          </td>
+                          <td className="px-6 py-4 align-middle text-sm text-gray-700 dark:text-gray-200">
+                            {subSkuFamily?.name || '—'}
+                          </td>
+                          <td className="px-6 py-4 align-middle text-sm text-gray-700 dark:text-gray-200">{product?.simType || '—'}</td>
+                          <td className="px-6 py-4 align-middle text-sm text-gray-700 dark:text-gray-200">{product?.color || '—'}</td>
+                          <td className="px-6 py-4 align-middle text-sm text-gray-700 dark:text-gray-200">{product?.ram || '—'}</td>
+                          <td className="px-6 py-4 align-middle text-sm text-gray-700 dark:text-gray-200">{product?.storage || '—'}</td>
+                          <td className="px-6 py-4 align-middle text-sm text-gray-700 dark:text-gray-200">{product?.price ?? '—'}</td>
+                          <td className="px-6 py-4 align-middle text-sm text-gray-700 dark:text-gray-200">{formatExpiryTime(item?.createdAt)}</td>
+                          {/* <td className="px-6 py-4 align-middle text-center">
+                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${product?.status === 'approved' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'}`}>
+                              {product?.status || '—'}
+                            </span>
+                          </td> */}
+                          <td className="px-6 py-4 align-middle text-center">
+                            <div className="flex items-center justify-center gap-3">
+                              <button
+                                title="View"
+                                className="text-blue-600 hover:text-blue-700"
+                                onClick={() => handleView(item)}
+                              >
+                                <i className="fas fa-eye"></i>
+                              </button>
+                              <button
+                                title="Restore"
+                                className="text-amber-600 hover:text-amber-700"
+                                onClick={() => handleRestore(item)}
+                              >
+                                <i className="fas fa-rotate-left"></i>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex items-center justify-between p-4 border-t border-gray-200 dark:border-gray-700">
+              <div className="text-sm text-gray-600 dark:text-gray-300">Page {page} of {totalPages}</div>
+              <div className="flex gap-2">
+                <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className={`px-3 py-1 rounded border text-sm ${page <= 1 ? 'opacity-50 cursor-not-allowed' : ''}`}>Previous</button>
+                <button disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))} className={`px-3 py-1 rounded border text-sm ${page >= totalPages ? 'opacity-50 cursor-not-allowed' : ''}`}>Next</button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="p-6">
+            Hello
           </div>
-        </div>
+        )}
       </div>
     </div>
     {isViewOpen && selectedItem && (
