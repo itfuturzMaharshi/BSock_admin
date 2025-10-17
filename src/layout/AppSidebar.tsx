@@ -49,7 +49,7 @@ const navItems: NavItem[] = [
     path: "/orders",
   },
   {
-    icon: <i className="fas fa-box-open"></i>,
+    icon: <i className="fa-solid fa-list-check"></i>,
     name: "Activities",
     path: "/activities",
   },
