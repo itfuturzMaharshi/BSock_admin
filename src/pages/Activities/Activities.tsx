@@ -1,10 +1,10 @@
-import ActionsTable from "../../components/actions/ActionsTable";
+import ActionsTable from "../../components/activities/ActivitiesTable";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 
-const Actions = () => {
+const Activities = () => {
   return (
     <>
-      <PageBreadcrumb pageTitle="Admins" />
+      <PageBreadcrumb pageTitle="Activities" />
       <div className="space-y-6">
         <ActionsTable />
       </div>
@@ -12,4 +12,5 @@ const Actions = () => {
   );
 };
 
-export default Actions;
+export default Activities;
+

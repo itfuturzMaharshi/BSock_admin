@@ -50,8 +50,8 @@ const navItems: NavItem[] = [
   },
   {
     icon: <i className="fas fa-box-open"></i>,
-    name: "Actions",
-    path: "/actions",
+    name: "Activities",
+    path: "/activities",
   },
   {
     icon: <i className="fas fa-calculator"></i>,

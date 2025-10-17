@@ -28,7 +28,7 @@ import CustomerCart from "./pages/Customer/CustomerCart";
 import BusinessRequests from "./pages/BusinessRequests/BusinessRequests";
 import Orders from "./pages/Orders/Orders";
 import CurrencyConversion from "./pages/CurrencyConversion/CurrencyConversion";
-import Actions from "./pages/Actions/Actions";
+import Activities from "./pages/Activities/Activities";
 export default function App() {
   return (
     <>
@@ -52,7 +52,7 @@ export default function App() {
             <Route path="/sku-family" element={<SkuFamily />} />
             <Route path="/products" element={<Products />} />
             <Route path="/orders" element={<Orders />} />
-            <Route path="/actions" element={<Actions />} />
+            <Route path="/activities" element={<Activities />} />
             <Route path="/cost-module" element={<CostModule />} />
             <Route path="/wallet-amount" element={<WalletAmount />} />
             <Route path="/payments" element={<Payment />}></Route>
