@@ -55,6 +55,11 @@ const navItems: NavItem[] = [
   },
   {
     icon: <i className="fas fa-wallet"></i>,
+    name: "Payments",
+    path: "/payments",
+  },
+  {
+    icon: <i className="fas fa-wallet"></i>,
     name: "Wallet Amount",
     path: "/wallet-amount",
   },

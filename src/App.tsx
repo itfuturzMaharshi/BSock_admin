@@ -23,6 +23,7 @@ import Products from "./pages/Products/Products";
 import Admins from "./pages/Admin/Admins";
 import CostModule from "./pages/CostModule/CostModule";
 import WalletAmount from "./pages/WalletAmount/WalletAmount";
+import Payment from "./pages/Payment/Payment";
 import CustomerCart from "./pages/Customer/CustomerCart";
 import BusinessRequests from "./pages/BusinessRequests/BusinessRequests";
 import Orders from "./pages/Orders/Orders";
@@ -52,6 +53,7 @@ export default function App() {
             <Route path="/orders" element={<Orders />} />
             <Route path="/cost-module" element={<CostModule />} />
             <Route path="/wallet-amount" element={<WalletAmount />} />
+            <Route path="/payments" element={<Payment />}></Route>
             <Route path="/customer-cart" element={<CustomerCart />} />
 
             {/* Forms */}
