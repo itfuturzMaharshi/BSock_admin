@@ -584,7 +584,11 @@ const ActivitiesTable = () => {
                             ${typeof order?.totalAmount === 'number' ? order.totalAmount.toFixed(2) : (parseFloat(order?.totalAmount || '0') || 0).toFixed(2)}
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                            {order?.createdAt ? format(new Date(order.createdAt), 'yyyy-MM-dd HH:mm') : '-'}
+                            {item?.createdAt
+                              ? format(new Date(item.createdAt), 'dd MMM yyyy, HH:mm')
+                              : order?.createdAt
+                              ? format(new Date(order.createdAt), 'dd MMM yyyy, HH:mm')
+                              : '-'}
                           </td>
                           <td className="px-6 py-4 text-sm text-center">
                             {getStatusBadge(order)}
