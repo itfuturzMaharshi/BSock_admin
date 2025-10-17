@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { format } from 'date-fns'
+import Swal from 'sweetalert2'
 import VersionProductService, { ProductVersionHistoryQuery, ProductsWithCountsQuery } from '../../services/versioning/versionProduct.services'
 import placeholderImage from '../../../public/images/product/noimage.jpg'
 import toastHelper from '../../utils/toastHelper'
@@ -103,10 +104,22 @@ const ActivitiesTable = () => {
         toastHelper.showTost('Missing product or version', 'error')
         return
       }
-      const reason = window.prompt('Enter reason for restore:') || 'Admin restore'
-      await VersionProductService.restoreVersion({ productId, version, changeReason: reason })
-      // Refresh list after restore
-      setPage(1)
+      const result = await Swal.fire({
+        title: 'Restore this version?',
+        text: 'This will replace the current product with the selected version.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, restore',
+        cancelButtonText: 'No, cancel',
+      })
+
+      if (result.isConfirmed) {
+        const reason = 'Admin restore'
+        await VersionProductService.restoreVersion({ productId, version, changeReason: reason })
+        toastHelper.showTost('Version restored successfully', 'success')
+        // Refresh list after restore
+        setPage(1)
+      }
     } catch {
       // errors toasted in service
     }
