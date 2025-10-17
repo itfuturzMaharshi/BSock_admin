@@ -2,8 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { format } from 'date-fns'
 import Swal from 'sweetalert2'
 import VersionProductService, { ProductVersionHistoryQuery, ProductsWithCountsQuery } from '../../services/versioning/versionProduct.services'
+import VersionOrderService, { OrderVersionHistoryQuery, OrdersWithCountsQuery } from '../../services/versioning/versionOrder.services'
 import placeholderImage from '../../../public/images/product/noimage.jpg'
 import toastHelper from '../../utils/toastHelper'
+import { AdminOrderService, TrackingItem } from '../../services/order/adminOrder.services'
+import { LOCAL_STORAGE_KEYS } from '../../constants/localStorage'
 
 interface VersionRowItem {
 	_id?: string
@@ -24,12 +27,19 @@ const ActivitiesTable = () => {
   const [isViewOpen, setIsViewOpen] = useState<boolean>(false)
   const [selectedItem, setSelectedItem] = useState<any | null>(null)
   const [activeTab, setActiveTab] = useState<'products' | 'orders'>('products')
+  const [currentAdminId, setCurrentAdminId] = useState<string>('')
+
+  useEffect(() => {
+    const adminId = localStorage.getItem(LOCAL_STORAGE_KEYS.ADMIN_ID) || ''
+    setCurrentAdminId(adminId)
+  }, [])
+
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true)
       try {
-        // Step 1: Find a productId to query history for, honoring the search term if any
+        if (activeTab === 'products') {
         const countsBody: ProductsWithCountsQuery = { page: 1, limit: 1, search: searchTerm || undefined }
         const countsRes = await VersionProductService.fetchProductsWithCounts(countsBody)
         const countsPayload = countsRes?.data?.data || countsRes?.data
@@ -42,15 +52,35 @@ const ActivitiesTable = () => {
           return
         }
 
-        // Step 2: Fetch product version history for the discovered productId
         const historyBody: ProductVersionHistoryQuery = { productId, page, limit }
         const res = await VersionProductService.fetchHistory(historyBody)
         const payload = res?.data?.data || res?.data
         const docs = payload?.docs || []
         setItems(docs)
         setTotalDocs(payload?.totalDocs || docs.length)
+        } else {
+          // Step 1: Find an orderId to query history for, honoring the search term if any
+          const countsBody: OrdersWithCountsQuery = { page: 1, limit: 100 }
+          const countsRes = await VersionOrderService.fetchOrdersWithCounts(countsBody)
+          const countsPayload = countsRes?.data?.data || countsRes?.data
+          const firstOrder = countsPayload?.docs?.[0]
+          const orderId: string | undefined = firstOrder?._id || firstOrder?.orderId
+
+          if (!orderId) {
+            setItems([])
+            setTotalDocs(0)
+            return
+          }
+
+          // Step 2: Fetch order version history for the discovered orderId
+          const historyBody: OrderVersionHistoryQuery = { orderId, page, limit }
+          const res = await VersionOrderService.fetchHistory(historyBody)
+          const payload = res?.data?.data || res?.data
+          const docs = payload?.docs || []
+          setItems(docs)
+          setTotalDocs(payload?.totalDocs || docs.length)
+        }
       } catch (err: any) {
-        // toast already from service if any; keep minimal UI disruption
         setItems([])
         setTotalDocs(0)
       } finally {
@@ -58,7 +88,7 @@ const ActivitiesTable = () => {
       }
     }
     fetchData()
-  }, [page, limit, searchTerm])
+  }, [page, limit, searchTerm, activeTab])
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value)
@@ -124,6 +154,186 @@ const ActivitiesTable = () => {
     } catch {
       // errors toasted in service
     }
+  }
+
+  const handleOrderRestore = async (row: any) => {
+    try {
+      const orderId = row?.orderId || row?._id || row?.data?._id
+      const rawVersion = row?.version ?? row?.data?.version
+      const version = typeof rawVersion === 'string' ? parseInt(rawVersion, 10) : rawVersion
+      if (!orderId || typeof version !== 'number') {
+        toastHelper.showTost('Missing order or version', 'error')
+        return
+      }
+      const result = await Swal.fire({
+        title: 'Restore this version?',
+        text: 'This will replace the current order with the selected version.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, restore',
+        cancelButtonText: 'No, cancel',
+      })
+
+      if (result.isConfirmed) {
+        const reason = 'Admin restore'
+        await VersionOrderService.restoreVersion({ orderId, version, changeReason: reason })
+        toastHelper.showTost('Version restored successfully', 'success')
+        setPage(1)
+      }
+    } catch {
+      // errors toasted in service
+    }
+  }
+
+  const handleViewTracking = async (orderId: string) => {
+    try {
+      const response = await AdminOrderService.getOrderTracking(orderId)
+      const trackingItems: TrackingItem[] = response.data.docs
+
+      if (trackingItems.length === 0) {
+        await Swal.fire({
+          title: 'No Tracking Information',
+          text: 'No tracking details are available for this order.',
+          icon: 'info',
+          confirmButtonText: 'OK',
+        })
+        return
+      }
+
+      const trackingHtml = `
+        <div style="text-align: left;">
+          <h3 style="margin-bottom: 16px;">Tracking Details for Order ${orderId}</h3>
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr style="background-color: #f4f4f4;">
+                <th style="padding: 8px; border: 1px solid #ddd;">Status</th>
+                <th style="padding: 8px; border: 1px solid #ddd;">Changed By</th>
+                <th style="padding: 8px; border: 1px solid #ddd;">User Type</th>
+                <th style="padding: 8px; border: 1px solid #ddd;">Changed At</th>
+                <th style="padding: 8px; border: 1px solid #ddd;">Message</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${trackingItems
+                .map(
+                  (item) => `
+                    <tr>
+                      <td style="padding: 8px; border: 1px solid #ddd;">
+                        ${item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+                      </td>
+                      <td style="padding: 8px; border: 1px solid #ddd;">
+                        ${item?.changedBy?.name || '-'}
+                      </td>
+                      <td style="padding: 8px; border: 1px solid #ddd;">
+                        ${item.userType}
+                      </td>
+                      <td style="padding: 8px; border: 1px solid #ddd;">
+                        ${format(new Date(item.changedAt), 'yyyy-MM-dd HH:mm')}
+                      </td>
+                      <td style="padding: 8px; border: 1px solid #ddd;">
+                        ${item.message || '-'}
+                      </td>
+                    </tr>
+                  `
+                )
+                .join('')}
+            </tbody>
+          </table>
+        </div>
+      `
+
+      await Swal.fire({
+        title: 'Order Tracking',
+        html: trackingHtml,
+        width: 800,
+        showConfirmButton: true,
+        confirmButtonText: 'Close',
+      })
+    } catch (error) {
+      console.error('Failed to fetch tracking:', error)
+      toastHelper.showTost('Failed to fetch tracking details', 'error')
+    }
+  }
+
+  const getStatusBadge = (order: any) => {
+    const statusStyles: { [key: string]: string } = {
+      request: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-700',
+      verified: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-700',
+      approved: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-700',
+      shipped: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 border border-purple-200 dark:border-purple-700',
+      delivered: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-400 border border-teal-200 dark:border-teal-700',
+      cancelled: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border border-red-200 dark:border-red-700',
+      accepted: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-700',
+      cancel: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border border-orange-200 dark:border-orange-700',
+    }
+
+    const statusIcons: { [key: string]: string } = {
+      request: 'fa-clock',
+      verified: 'fa-check',
+      approved: 'fa-check-circle',
+      shipped: 'fa-truck',
+      delivered: 'fa-box',
+      cancelled: 'fa-times',
+      accepted: 'fa-handshake',
+      cancel: 'fa-exclamation-triangle',
+    }
+
+    let displayStatus = order?.status
+
+    if (order?.orderTrackingStatus === 'cancel') {
+      if (order?.verifiedBy && order?.approvedBy) {
+        displayStatus = 'cancel'
+      } else if (order?.verifiedBy) {
+        displayStatus = 'verified'
+      } else {
+        displayStatus = 'cancel'
+      }
+    } else {
+      if (order?.approvedBy) {
+        displayStatus = 'approved'
+      } else if (order?.verifiedBy) {
+        displayStatus = 'verified'
+      } else {
+        displayStatus = order?.status
+      }
+    }
+
+    const isVerifiedByOtherAdmin = order?.orderTrackingStatus === 'verified' && order?.verifiedBy !== currentAdminId
+    const isInCancellationFlow = order?.orderTrackingStatus === 'cancel'
+    const showOnlyIcons = isInCancellationFlow && (order?.verifiedBy || order?.approvedBy)
+
+    return (
+      <span className="inline-flex items-center gap-2">
+        <span
+          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold tracking-wider ${
+            statusStyles[displayStatus] || 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400 border border-gray-200 dark:border-gray-700'
+          }`}
+        >
+          <i className={`fas ${statusIcons[displayStatus] || 'fa-info-circle'} text-xs`}></i>
+          {!showOnlyIcons && displayStatus?.charAt(0).toUpperCase() + displayStatus?.slice(1)}
+        </span>
+        {isInCancellationFlow && (
+          <>
+            {order?.verifiedBy && (
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-600 border border-blue-200" title="Verified by admin">
+                <i className="fas fa-check text-xs"></i>
+              </span>
+            )}
+            {order?.approvedBy && (
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 border border-emerald-200" title="Approved by admin">
+                <i className="fas fa-check-circle text-xs"></i>
+              </span>
+            )}
+          </>
+        )}
+        {isVerifiedByOtherAdmin && (
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200" title="This order has been verified by another admin">
+            <i className="fas fa-info-circle text-xs"></i>
+            Verified
+          </span>
+        )}
+      </span>
+    )
   }
 
   return (
@@ -297,9 +507,121 @@ const ActivitiesTable = () => {
             </div>
           </>
         ) : (
-          <div className="p-6">
-            Hello
+          <>
+            <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+              <div className="flex items-center gap-3 flex-1">
+                <div className="relative flex-1">
+                  <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                  <input
+                    type="text"
+                    placeholder="Search by order ID or customer..."
+                    className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full"
+                    value={searchTerm}
+                    onChange={handleSearchChange}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="max-w-full overflow-x-auto">
+              <table className="w-full table-auto">
+                <thead className="bg-gray-100 dark:bg-gray-900">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
+                      Customer
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
+                      Items
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
+                      Total
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
+                      Date
+                    </th>
+                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
+                      Status
+                    </th>
+                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {loading ? (
+                    <tr>
+                      <td colSpan={6} className="p-12 text-center">
+                        <div className="text-gray-500 dark:text-gray-400 text-lg">
+                          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
+                          Loading Orders...
+                        </div>
+                      </td>
+                    </tr>
+                  ) : items.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="p-12 text-center">
+                        <div className="text-gray-500 dark:text-gray-400 text-lg">
+                          No orders found
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    items.map((item: any, index: number) => {
+                      const order = item?.orderData || item?.data || item
+                      return (
+                        <tr key={`${order?._id || item?._id}-${index}`} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                          <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                            {order?.customerId?.name || order?.customerId?.email || order?.customerId?._id}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                            {(order?.cartItems || []).map((ci: any) => (
+                              <div key={ci?.productId?._id}>
+                                {ci?.skuFamilyId?.name || ci?.productId?.name} (x{ci?.quantity})
+                              </div>
+                            ))}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                            ${typeof order?.totalAmount === 'number' ? order.totalAmount.toFixed(2) : (parseFloat(order?.totalAmount || '0') || 0).toFixed(2)}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                            {order?.createdAt ? format(new Date(order.createdAt), 'yyyy-MM-dd HH:mm') : '-'}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-center">
+                            {getStatusBadge(order)}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-center">
+                            <div className="flex items-center justify-center gap-3">
+                              <button
+                                onClick={() => handleViewTracking(order?._id || item?.orderId || item?._id)}
+                                className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                                title="View Tracking"
+                              >
+                                <i className="fas fa-eye"></i>
+                              </button>
+                              <button
+                                title="Restore"
+                                className="text-amber-600 hover:text-amber-700"
+                                onClick={() => handleOrderRestore(item)}
+                              >
+                                <i className="fas fa-rotate-left"></i>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex items-center justify-between p-4 border-t border-gray-200 dark:border-gray-700">
+              <div className="text-sm text-gray-600 dark:text-gray-300">Page {page} of {totalPages}</div>
+              <div className="flex gap-2">
+                <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className={`px-3 py-1 rounded border text-sm ${page <= 1 ? 'opacity-50 cursor-not-allowed' : ''}`}>Previous</button>
+                <button disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))} className={`px-3 py-1 rounded border text-sm ${page >= totalPages ? 'opacity-50 cursor-not-allowed' : ''}`}>Next</button>
+              </div>
           </div>
+          </>
         )}
       </div>
     </div>
