@@ -593,6 +593,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
   if (!isOpen) return null;
 
   const title = editItem ? "Edit Product" : "Create Product";
+  const lockDerivedFields = Boolean(formData.subSkuFamilyId);
 
   const skuFamilyOptions = skuFamilies.map(sku => ({ 
     value: sku._id, 
@@ -872,6 +873,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
                     value={formData.simType}
                     onChange={handleInputChange}
                     onBlur={handleBlur}
+                    disabled={lockDerivedFields}
                     className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
                       touched.simType && validationErrors.simType
                         ? "border-red-500 focus:ring-red-500"
@@ -906,6 +908,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
                     value={formData.color}
                     onChange={handleInputChange}
                     onBlur={handleBlur}
+                    disabled={lockDerivedFields}
                     className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
                       touched.color && validationErrors.color
                         ? "border-red-500 focus:ring-red-500"
@@ -940,6 +943,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
                     value={formData.country}
                     onChange={handleInputChange}
                     onBlur={handleBlur}
+                    disabled={lockDerivedFields}
                     className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
                       touched.country && validationErrors.country
                         ? "border-red-500 focus:ring-red-500"
@@ -963,6 +967,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
                     {validationErrors.country}
                   </p>
                 )}
+
               </div>
             </div>
 
