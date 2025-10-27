@@ -23,6 +23,11 @@ const navItems: NavItem[] = [
     path: "/admin",
   },
   {
+    icon: <i className="fas fa-users"></i>,
+    name: "Customers",
+    path: "/customers",
+  },
+  {
     icon: <i className="fas fa-exchange-alt"></i>,
     name: "Currency Conversion",
     path: "/currency-conversion",

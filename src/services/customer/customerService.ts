@@ -1,17 +1,28 @@
 import api from '../api/api';
 import toastHelper from '../../utils/toastHelper';
 
+export interface BusinessProfile {
+  businessName?: string | null;
+  country?: string | null;
+  address?: string | null;
+  logo?: string | null;
+  certificate?: string | null;
+  status?: string;
+  currencyCode?: string | null;
+}
+
 export interface Customer {
   _id: string;
   name: string;
   email: string;
-  phone?: string;
-  address?: string;
-  walletBalance?: number;
+  whatsappNumber?: string;
+  mobileNumber?: string;
+  isActive?: boolean;
+  isEmailVerified?: boolean;
+  isMobileVerified?: boolean;
   isApproved?: boolean;
-  isDeleted?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
+  isAllowBidding?: boolean;
+  businessProfile?: BusinessProfile;
 }
 
 export interface CustomerListResponse {
@@ -49,9 +60,27 @@ export class CustomerService {
       if (requestData.search) body.search = requestData.search;
 
       const res = await api.post(url, body);
-      const docs = res.data?.data?.docs || res.data?.data || [];
-      const totalDocsRaw = res.data?.data?.totalDocs ?? docs.length ?? 0;
-      const totalDocs = typeof totalDocsRaw === 'string' ? parseInt(totalDocsRaw, 10) : totalDocsRaw;
+      
+      // Handle different response formats
+      let docs: Customer[] = [];
+      let totalDocs = 0;
+      
+      if (res.data?.data?.docs) {
+        // Paginated response
+        docs = res.data.data.docs;
+        totalDocs = res.data.data.totalDocs || 0;
+      } else if (Array.isArray(res.data?.data)) {
+        // Array response
+        docs = res.data.data;
+        totalDocs = docs.length;
+      } else if (typeof res.data?.data === 'object') {
+        // Object with numeric keys (like { "0": {...}, "1": {...} })
+        docs = Object.values(res.data.data) as Customer[];
+        totalDocs = docs.length;
+      } else if (res.data?.docs) {
+        docs = res.data.docs;
+        totalDocs = res.data.totalDocs || docs.length;
+      }
 
       return {
         docs,
@@ -74,10 +103,28 @@ export class CustomerService {
     try {
       // Fetch a large number of customers for dropdown usage
       const response = await this.getCustomerList({ page: 1, limit: 1000 });
-      return response.docs.filter(customer => !customer.isDeleted);
+      return response.docs.filter(customer => customer.isActive !== false);
     } catch (error) {
       console.error('Failed to fetch all customers:', error);
       return [];
+    }
+  };
+
+  // Toggle bidding status
+  static toggleBiddingStatus = async (customerId: string): Promise<void> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/customer/toggle-bidding`;
+    
+    console.log('Toggle bidding URL:', url);
+
+    try {
+      await api.post(url, { customerId });
+      toastHelper.showTost('Bidding status updated successfully', 'success');
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to toggle bidding status';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
     }
   };
 }

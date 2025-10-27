@@ -29,6 +29,8 @@ import BusinessRequests from "./pages/BusinessRequests/BusinessRequests";
 import Orders from "./pages/Orders/Orders";
 import CurrencyConversion from "./pages/CurrencyConversion/CurrencyConversion";
 import Activities from "./pages/Activities/Activities";
+import Customers from "./pages/Customers/Customers";
+
 export default function App() {
   return (
     <>
@@ -47,6 +49,7 @@ export default function App() {
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/blank" element={<Blank />} />
             <Route path="/admin" element={<Admins />} />
+            <Route path="/customers" element={<Customers />} />
             <Route path="/currency-conversion" element={<CurrencyConversion />} />
             <Route path="/business-requests" element={<BusinessRequests />} />
             <Route path="/sku-family" element={<SkuFamily />} />
