@@ -10,6 +10,7 @@ export interface Customer {
   walletBalance?: number;
   isApproved?: boolean;
   isDeleted?: boolean;
+  isAllowBidding?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -78,6 +79,27 @@ export class CustomerService {
     } catch (error) {
       console.error('Failed to fetch all customers:', error);
       return [];
+    }
+  };
+
+  // Toggle allow bidding for a customer
+  static toggleAllowBidding = async (
+    customerId: string,
+    isAllowBidding: boolean
+  ): Promise<void> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/customer/toggleAllowBidding`;
+
+    try {
+      await api.post(url, {
+        customerId,
+        isAllowBidding,
+      });
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to toggle bidding permission';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
     }
   };
 }

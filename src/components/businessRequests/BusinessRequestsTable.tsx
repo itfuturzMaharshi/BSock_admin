@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Swal from "sweetalert2";
 import { BusinessRequestsService } from "../../services/businessRequests/businessRequests.services";
+import { CustomerService } from "../../services/customer/customerService";
 import { LOCAL_STORAGE_KEYS } from "../../constants/localStorage";
+import Switch from "../form/switch/Switch";
+import toastHelper from "../../utils/toastHelper";
 
 interface BusinessRequest {
   _id?: string;
@@ -10,11 +13,12 @@ interface BusinessRequest {
   businessName: string;
   country: string;
   address?: string;
-  status: "Approved" | "Pending" | "Rejected";
+  status: "Approved" | "Pending" | "Rejected";                                                                                            
   name?: string;
   email?: string;
   mobileNumber?: string;
   whatsappNumber?: string;
+  isAllowBidding?: boolean;
 }
 
 const BusinessRequestsTable: React.FC = () => {
@@ -126,6 +130,7 @@ const BusinessRequestsTable: React.FC = () => {
           email: d?.email ?? "-",
           mobileNumber: d?.mobileNumber ?? "-",
           whatsappNumber: d?.whatsappNumber ?? "-",
+          isAllowBidding: d?.isAllowBidding ?? true,
         } as BusinessRequest;
       });
 
@@ -230,6 +235,37 @@ const BusinessRequestsTable: React.FC = () => {
     setDropdownPosition(null);
   };
 
+  const handleToggleAllowBidding = async (item: BusinessRequest, newValue: boolean) => {
+    if (!item._id) return;
+
+    try {
+      await CustomerService.toggleAllowBidding(item._id, newValue);
+      
+      // Update local state
+      setBusinessRequests((prev: BusinessRequest[]) =>
+        prev.map((i: BusinessRequest) =>
+          i._id === item._id ? { ...i, isAllowBidding: newValue } : i
+        )
+      );
+      
+      setFilteredRequests((prev: BusinessRequest[]) =>
+        prev.map((i: BusinessRequest) =>
+          i._id === item._id ? { ...i, isAllowBidding: newValue } : i
+        )
+      );
+
+      toastHelper.success(
+        newValue 
+          ? 'Customer bidding permission enabled'
+          : 'Customer bidding permission disabled'
+      );
+    } catch (err) {
+      console.error("Error toggling allow bidding:", err);
+      // Revert the UI change on error
+      toastHelper.error('Failed to update bidding permission');
+    }
+  };
+
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedRequests = filteredRequests.slice(startIndex, endIndex);
@@ -324,6 +360,9 @@ const BusinessRequestsTable: React.FC = () => {
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b">
                   Status
                 </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b">
+                  Allow Bidding
+                </th>
                 <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b">
                   Actions
                 </th>
@@ -332,7 +371,7 @@ const BusinessRequestsTable: React.FC = () => {
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="p-12 text-center">
+                  <td colSpan={8} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
                       Loading Business Requests...
@@ -341,7 +380,7 @@ const BusinessRequestsTable: React.FC = () => {
                 </tr>
               ) : !paginatedRequests || paginatedRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-12 text-center">
+                  <td colSpan={8} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       No business requests found
                     </div>
@@ -402,6 +441,14 @@ const BusinessRequestsTable: React.FC = () => {
                           <i className={`fas ${getStatusIcon(item.status)} text-xs`}></i>
                           {item.status}
                         </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <Switch
+                          label=""
+                          defaultChecked={item.isAllowBidding ?? true}
+                          onChange={(checked) => handleToggleAllowBidding(item, checked)}
+                          color="blue"
+                        />
                       </td>
                       <td className="px-6 py-4 text-sm text-center relative">
                         <div className="dropdown-container relative">
