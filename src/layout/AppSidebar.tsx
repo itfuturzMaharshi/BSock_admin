@@ -73,6 +73,16 @@ const navItems: NavItem[] = [
     name: "Customer Cart",
     path: "/customer-cart",
   },
+  {
+    icon: <i className="fas fa-gavel"></i>,
+    name: "Bid Products",
+    path: "/bid-products",
+  },
+  {
+    icon: <i className="fas fa-search-location"></i>,
+    name: "Bid Tracking",
+    path: "/bid-tracking",
+  },
 ];
 
 const AppSidebar: React.FC = () => {
