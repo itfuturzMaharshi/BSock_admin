@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import Swal from "sweetalert2";
-import { format } from "date-fns";
 import toastHelper from "../../utils/toastHelper";
 import UploadExcelModal from "./UploadExcelModal";
 import PreviewModal from "./PreviewModal";
+import ViewBidProductModal from "./ViewBidProductModal";
+import BidHistoryModal from "./BidHistoryModal";
 import {
   BidProductService,
   BidProduct,
@@ -20,39 +21,14 @@ const BidProductsTable: React.FC = () => {
   const [totalDocs, setTotalDocs] = useState<number>(0);
   const [totalPages, setTotalPages] = useState<number>(1);
   const itemsPerPage = 10;
-  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
-  const [dropdownPosition, setDropdownPosition] = useState<{
-    top: number;
-    left: number;
-  } | null>(null);
+  const [isViewModalOpen, setIsViewModalOpen] = useState<boolean>(false);
+  const [selectedProduct, setSelectedProduct] = useState<BidProduct | null>(null);
+  const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
+  const [historyProductId, setHistoryProductId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchProducts();
   }, [currentPage, searchTerm]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (!event.target) return;
-      if (!(event.target as HTMLElement).closest(".dropdown-container")) {
-        setOpenDropdownId(null);
-        setDropdownPosition(null);
-      }
-    };
-
-    const handleResize = () => {
-      if (openDropdownId) {
-        setOpenDropdownId(null);
-        setDropdownPosition(null);
-      }
-    };
-
-    document.addEventListener("click", handleClickOutside);
-    window.addEventListener("resize", handleResize);
-    return () => {
-      document.removeEventListener("click", handleClickOutside);
-      window.removeEventListener("resize", handleResize);
-    };
-  }, [openDropdownId]);
 
   const fetchProducts = async () => {
     try {
@@ -93,8 +69,6 @@ const BidProductsTable: React.FC = () => {
         console.error("Failed to delete bid product:", error);
       }
     }
-    setOpenDropdownId(null);
-    setDropdownPosition(null);
   };
 
   const handleExport = async () => {
@@ -119,6 +93,17 @@ const BidProductsTable: React.FC = () => {
     setPreviewProducts(products);
     setIsPreviewModalOpen(true);
     setIsUploadModalOpen(false);
+  };
+
+  const handleView = (product: BidProduct) => {
+    setSelectedProduct(product);
+    setIsViewModalOpen(true);
+  };
+
+  const handleHistory = (product: BidProduct) => {
+    if (!product._id) return;
+    setHistoryProductId(product._id);
+    setIsHistoryOpen(true);
   };
 
   return (
@@ -175,28 +160,13 @@ const BidProductsTable: React.FC = () => {
                   Model
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Description
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Category
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Grade
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Package Type
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Capacity
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Color
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Carrier
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Price
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                  Status
                 </th>
                 <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Actions
@@ -206,7 +176,7 @@ const BidProductsTable: React.FC = () => {
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={13} className="p-12 text-center">
+                  <td colSpan={8} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
                       Loading Bid Products...
@@ -215,7 +185,7 @@ const BidProductsTable: React.FC = () => {
                 </tr>
               ) : productsData.length === 0 ? (
                 <tr>
-                  <td colSpan={13} className="p-12 text-center">
+                  <td colSpan={8} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       No bid products found
                     </div>
@@ -240,87 +210,47 @@ const BidProductsTable: React.FC = () => {
                       {item.model}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.description}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                       {item.category}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.grade}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.packageType}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.capacity}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.color}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.carrier}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                       ${typeof item.price === 'number' ? item.price.toFixed(2) : "0.00"}
                     </td>
-                    <td className="px-6 py-4 text-sm text-center relative">
-                      <div className="dropdown-container relative">
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      <span
+                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                          (item as any).status === 'active'
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                            : (item as any).status === 'pending'
+                            ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                            : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                        }`}
+                      >
+                        {(item as any).status || '-'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-center">
+                      <div className="flex items-center justify-center gap-3">
                         <button
-                          className="text-gray-600 dark:text-gray-400 hover:text-gray-800 p-1 rounded-full hover:bg-gray-100"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (openDropdownId === item._id) {
-                              setOpenDropdownId(null);
-                              setDropdownPosition(null);
-                            } else {
-                              const rect =
-                                e.currentTarget.getBoundingClientRect();
-                              const dropdownWidth = 192;
-                              const dropdownHeight = 100;
-                              let top = rect.bottom + 8;
-                              let left = rect.right - dropdownWidth;
-
-                              if (top + dropdownHeight > window.innerHeight) {
-                                top = rect.top - dropdownHeight - 8;
-                              }
-                              if (left < 8) {
-                                left = 8;
-                              }
-                              if (
-                                left + dropdownWidth >
-                                window.innerWidth - 8
-                              ) {
-                                left = window.innerWidth - dropdownWidth - 8;
-                              }
-
-                              setDropdownPosition({ top, left });
-                              setOpenDropdownId(item._id || null);
-                            }
-                          }}
+                          onClick={() => handleView(item)}
+                          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                          title="View Product Details"
                         >
-                          <i className="fas fa-ellipsis-v"></i>
+                          <i className="fas fa-eye"></i>
                         </button>
-                        {openDropdownId === item._id && dropdownPosition && (
-                          <div
-                            className="fixed w-48 bg-white border rounded-md shadow-lg"
-                            style={{
-                              top: `${dropdownPosition.top}px`,
-                              left: `${dropdownPosition.left}px`,
-                              zIndex: 9999,
-                            }}
-                          >
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDelete(item);
-                              }}
-                              className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-red-600"
-                            >
-                              <i className="fas fa-trash"></i>
-                              Delete
-                            </button>
-                          </div>
-                        )}
+                        <button
+                          onClick={() => handleHistory(item)}
+                          className="text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 transition-colors"
+                          title="View Bid History"
+                        >
+                          <i className="fas fa-history"></i>
+                        </button>
+                        <button
+                          onClick={() => handleDelete(item)}
+                          className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                          title="Delete Product"
+                        >
+                          <i className="fas fa-trash"></i>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -383,6 +313,16 @@ const BidProductsTable: React.FC = () => {
         onClose={() => setIsPreviewModalOpen(false)}
         products={previewProducts}
         onConfirm={handlePreviewConfirm}
+      />
+      <ViewBidProductModal
+        isOpen={isViewModalOpen}
+        onClose={() => setIsViewModalOpen(false)}
+        product={selectedProduct}
+      />
+      <BidHistoryModal
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        productId={historyProductId}
       />
     </div>
   );
