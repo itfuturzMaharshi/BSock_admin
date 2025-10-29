@@ -4,7 +4,7 @@ import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 const BidProducts = () => {
   return (
     <>
-      <PageBreadcrumb pageTitle="Products" />
+      <PageBreadcrumb pageTitle="Bid Products" />
       <div className="space-y-6 ">
         <BidProductsTable />
       </div>

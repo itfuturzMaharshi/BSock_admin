@@ -80,12 +80,14 @@ const BidProductsTable: React.FC = () => {
   };
 
   const handlePreviewConfirm = async (products: any[]) => {
-    try {
-      await BidProductService.createBulk(products);
-      setIsPreviewModalOpen(false);
-      fetchProducts();
-    } catch (error) {
+     try {
+       await BidProductService.createBulk(products);
+       setIsPreviewModalOpen(false);
+       fetchProducts();
+      toastHelper.showTost("Bid products saved successfully!", "success");
+     } catch (error) {
       console.error("Failed to create bulk bid products:", error);
+      toastHelper.showTost("Failed to save bid products", "error");
     }
   };
 
@@ -115,7 +117,7 @@ const BidProductsTable: React.FC = () => {
               <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
               <input
                 type="text"
-                placeholder="Search by lot number or other..."
+                placeholder="Search by lot number or Model or category..."
                 className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full"
                 value={searchTerm}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
@@ -166,7 +168,7 @@ const BidProductsTable: React.FC = () => {
                   Price
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Status
+                  Grade
                 </th>
                 <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Actions
@@ -216,17 +218,7 @@ const BidProductsTable: React.FC = () => {
                       ${typeof item.price === 'number' ? item.price.toFixed(2) : "0.00"}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      <span
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                          (item as any).status === 'active'
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                            : (item as any).status === 'pending'
-                            ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                            : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
-                        }`}
-                      >
-                        {(item as any).status || '-'}
-                      </span>
+                      {item.grade}
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
                       <div className="flex items-center justify-center gap-3">
@@ -240,9 +232,9 @@ const BidProductsTable: React.FC = () => {
                         <button
                           onClick={() => handleHistory(item)}
                           className="text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 transition-colors"
-                          title="View Bid History"
+                          title="Bid"
                         >
-                          <i className="fas fa-history"></i>
+                          <i className="fas fa-gavel"></i>
                         </button>
                         <button
                           onClick={() => handleDelete(item)}

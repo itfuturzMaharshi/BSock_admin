@@ -10,9 +10,8 @@ import {
 } from "../../services/product/product.services";
 import placeholderImage from "../../../public/images/product/noimage.jpg";
 
-// Assuming loggedInAdminId is available (e.g., from context, prop, or auth service)
 interface ProductsTableProps {
-  loggedInAdminId?: string; // Add this prop or fetch it from context
+  loggedInAdminId?: string; 
 }
 
 const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
@@ -554,16 +553,16 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                                   Approve
                                 </button>
                               )}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEdit(item);
-                              }}
-                              className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-yellow-600"
-                            >
-                              <i className="fas fa-edit"></i>
-                              Edit
-                            </button>
+                             <button
+                               onClick={(e) => {
+                                 e.stopPropagation();
+                                 handleEdit(item);
+                               }}
+                               className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-green-600"
+                             >
+                               <i className="fas fa-edit"></i>
+                               Edit
+                             </button>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();

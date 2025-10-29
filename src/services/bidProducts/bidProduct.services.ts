@@ -135,6 +135,7 @@ export class BidProductService {
       link.download = 'bidProducts.xlsx';
       link.click();
       URL.revokeObjectURL(link.href);
+      toastHelper.showTost('File exported successfully!', 'success');
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Failed to export Bid Products';
       toastHelper.showTost(errorMessage, 'error');

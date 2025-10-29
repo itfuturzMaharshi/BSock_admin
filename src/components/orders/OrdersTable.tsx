@@ -594,9 +594,6 @@ const OrdersTable: React.FC = () => {
                 <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
                   Actions
                 </th>
-                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
-                  Tracking
-                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -643,22 +640,22 @@ const OrdersTable: React.FC = () => {
                       {getStatusBadge(order)}
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
-                      <button
-                        onClick={() => handleUpdateStatus(order)}
-                        className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
-                        title="Update Status"
-                      >
-                        <i className="fas fa-edit"></i>
-                      </button>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-center">
-                      <button
-                        onClick={() => handleViewTracking(order._id)}
-                        className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
-                        title="View Tracking"
-                      >
-                        <i className="fas fa-eye"></i>
-                      </button>
+                      <div className="inline-flex items-center gap-3">
+                        <button
+                          onClick={() => handleUpdateStatus(order)}
+                          className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300"
+                          title="Update Status"
+                        >
+                          <i className="fas fa-edit"></i>
+                        </button>
+                        <button
+                          onClick={() => handleViewTracking(order._id)}
+                          className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                          title="View Tracking"
+                        >
+                          <i className="fas fa-eye"></i>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
