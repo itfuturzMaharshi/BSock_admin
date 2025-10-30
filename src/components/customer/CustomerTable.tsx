@@ -5,13 +5,15 @@ const CustomerTable: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [allowBiddingFilter, setAllowBiddingFilter] = useState<string>(""); // '', 'allowed', 'notAllowed'
+  const [statusFilter, setStatusFilter] = useState<string>(""); // '', 'active','inactive','approved','pending','emailVerified','notEmailVerified'
   const [loading, setLoading] = useState<boolean>(true);
   const [totalDocs, setTotalDocs] = useState<number>(0);
   const itemsPerPage = 10;
 
   useEffect(() => {
     fetchData();
-  }, [currentPage, searchTerm]);
+  }, [currentPage, searchTerm, allowBiddingFilter, statusFilter]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -20,6 +22,8 @@ const CustomerTable: React.FC = () => {
         page: currentPage,
         limit: itemsPerPage,
         search: searchTerm,
+        isAllowBidding: allowBiddingFilter === '' ? undefined : allowBiddingFilter === 'allowed',
+        status: statusFilter === '' ? undefined : (statusFilter as any),
       });
       
       console.log("Fetched Customer data:", response.docs);
@@ -78,6 +82,49 @@ const CustomerTable: React.FC = () => {
                 }}
               />
             </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <select
+                value={allowBiddingFilter}
+                onChange={(e) => { setAllowBiddingFilter(e.target.value); setCurrentPage(1); }}
+                className="pl-3 pr-8 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm appearance-none cursor-pointer"
+              >
+                <option value="">All Bidding</option>
+                <option value="allowed">Allowed</option>
+                <option value="notAllowed">Not Allowed</option>
+              </select>
+              <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+            </div>
+            <div className="relative">
+              <select
+                value={statusFilter}
+                onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+                className="pl-3 pr-8 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm appearance-none cursor-pointer"
+              >
+                <option value="">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="approved">Approved</option>
+                <option value="pending">Pending</option>
+                <option value="emailVerified">Email Verified</option>
+                <option value="notEmailVerified">Email Not Verified</option>
+              </select>
+              <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
+              onClick={() => CustomerService.exportCustomersExcel({
+                search: searchTerm,
+                isAllowBidding: allowBiddingFilter === '' ? undefined : allowBiddingFilter === 'allowed',
+                status: statusFilter === '' ? undefined : (statusFilter as any),
+              })}
+            >
+              <i className="fas fa-download text-xs"></i>
+              Export
+            </button>
           </div>
         </div>
 
