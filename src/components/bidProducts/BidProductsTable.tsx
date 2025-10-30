@@ -108,6 +108,15 @@ const BidProductsTable: React.FC = () => {
     setIsHistoryOpen(true);
   };
 
+  const handleExportHistory = async (product: BidProduct) => {
+    if (!product._id) return;
+    try {
+      await BidProductService.exportBidHistoryByProduct(product._id);
+    } catch (error) {
+      console.error('Failed to export bid history:', error);
+    }
+  };
+
   return (
     <div className="p-4">
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-sm">
@@ -235,6 +244,13 @@ const BidProductsTable: React.FC = () => {
                           title="Bid"
                         >
                           <i className="fas fa-gavel"></i>
+                        </button>
+                        <button
+                          onClick={() => handleExportHistory(item)}
+                          className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors"
+                          title="Export Bid History"
+                        >
+                          <i className="fas fa-file-excel"></i>
                         </button>
                         <button
                           onClick={() => handleDelete(item)}

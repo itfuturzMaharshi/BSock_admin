@@ -1,6 +1,4 @@
 import React from "react";
-import { BidProductService } from "../../services/bidProducts/bidProduct.services";
-import toastHelper from "../../utils/toastHelper";
 
 interface PreviewModalProps {
   isOpen: boolean;

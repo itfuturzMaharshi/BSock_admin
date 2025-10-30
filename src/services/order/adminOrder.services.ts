@@ -154,6 +154,22 @@ export class AdminOrderService {
       throw new Error(errorMessage);
     }
   };
+
+  static exportOrdersExcel = async (status?: string): Promise<Blob> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/order/export`;
+    try {
+      const body: any = {};
+      if (status) body.status = status;
+      const res = await api.post(url, body, { responseType: 'blob' });
+      return res.data as Blob;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to export orders';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  }
 }
 
 export default AdminOrderService;

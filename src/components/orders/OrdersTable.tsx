@@ -32,6 +32,21 @@ const OrdersTable: React.FC = () => {
     fetchOrders();
   }, [currentPage, searchTerm, statusFilter]);
 
+  const handleExport = async () => {
+    try {
+      const blob = await AdminOrderService.exportOrdersExcel(statusFilter || undefined);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `orders_${new Date().toISOString().slice(0,10)}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      toastHelper.showTost('Export started', 'success');
+    } catch (e) {}
+  };
+
   const fetchOrders = async () => {
     try {
       setLoading(true);
@@ -552,7 +567,8 @@ const OrdersTable: React.FC = () => {
               />
             </div>
           </div>
-          <div className="relative">
+          <div className="flex items-center gap-3">
+            <div className="relative">
             <select
               value={statusFilter}
               onChange={(e) => {
@@ -569,6 +585,14 @@ const OrdersTable: React.FC = () => {
               ))}
             </select>
             <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+            </div>
+            <button
+              className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
+              onClick={handleExport}
+            >
+              <i className="fas fa-download text-xs"></i>
+              Export
+            </button>
           </div>
         </div>
 

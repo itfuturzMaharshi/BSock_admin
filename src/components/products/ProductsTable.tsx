@@ -33,6 +33,21 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
     left: number;
   } | null>(null);
 
+  const handleExport = async () => {
+    try {
+      const blob = await ProductService.exportProductsExcel();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `products_${new Date().toISOString().slice(0,10)}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      toastHelper.showTost('Export started', 'success');
+    } catch (error) {}
+  };
+
   // Fetch products on component mount and when page/search/filter changes
   useEffect(() => {
     fetchProducts();
@@ -355,6 +370,13 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
               >
                 <i className="fas fa-upload text-xs"></i>
                 Upload File
+              </button>
+              <button
+                className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
+                onClick={handleExport}
+              >
+                <i className="fas fa-download text-xs"></i>
+                Export
               </button>
               <button
                 className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"

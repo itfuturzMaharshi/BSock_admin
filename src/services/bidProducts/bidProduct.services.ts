@@ -142,4 +142,26 @@ export class BidProductService {
       throw new Error(errorMessage);
     }
   };
+
+  // Export bid history for a specific product
+  static exportBidHistoryByProduct = async (productId: string): Promise<void> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/bid/export-by-product`;
+
+    try {
+      const res = await api.post(url, { productId }, { responseType: 'blob' });
+      const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `bid_history_${productId}.xlsx`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+      toastHelper.showTost('Bid history exported', 'success');
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to export bid history';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
 }
