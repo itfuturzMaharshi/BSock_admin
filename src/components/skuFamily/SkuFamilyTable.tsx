@@ -30,11 +30,8 @@ const SkuFamilyTable: React.FC = () => {
     subRow: SkuFamily;
   } | null>(null);
   const [selectedSubRow, setSelectedSubRow] = useState<SkuFamily | null>(null);
+  // Removed dropdown state since inline actions are used
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
-  const [dropdownPosition, setDropdownPosition] = useState<{
-    top: number;
-    left: number;
-  } | null>(null);
   const [selectedSkuFamily, setSelectedSkuFamily] = useState<SkuFamily | null>(
     null
   );
@@ -56,7 +53,6 @@ const SkuFamilyTable: React.FC = () => {
       if (!event.target) return;
       if (!(event.target as HTMLElement).closest(".dropdown-container")) {
         setOpenDropdownId(null);
-        setDropdownPosition(null);
       }
       if (
         !(event.target as HTMLElement).closest(".subrow-dropdown-container")
@@ -69,7 +65,6 @@ const SkuFamilyTable: React.FC = () => {
     const handleResize = () => {
       if (openDropdownId) {
         setOpenDropdownId(null);
-        setDropdownPosition(null);
       }
       if (openSubRowDropdownId) {
         setOpenSubRowDropdownId(null);
@@ -161,7 +156,6 @@ const SkuFamilyTable: React.FC = () => {
       setIsModalOpen(true);
     }, 50);
     setOpenDropdownId(null);
-    setDropdownPosition(null);
   };
 
   const handleDelete = async (id: string) => {
@@ -184,13 +178,11 @@ const SkuFamilyTable: React.FC = () => {
       }
     }
     setOpenDropdownId(null);
-    setDropdownPosition(null);
   };
 
   const handleView = (skuFamily: SkuFamily) => {
     setSelectedSkuFamily(skuFamily);
     setOpenDropdownId(null);
-    setDropdownPosition(null);
   };
 
   const handleSubRowView = (subRow: SkuFamily) => {
@@ -203,7 +195,6 @@ const SkuFamilyTable: React.FC = () => {
     setParentRowId(id);
     setIsSubRowModalOpen(true);
     setOpenDropdownId(null);
-    setDropdownPosition(null);
   };
 
   const handleSubRowSave = async (formData: FormData) => {
@@ -475,93 +466,47 @@ const SkuFamilyTable: React.FC = () => {
                         {item.country || "N/A"}
                       </td>
                       <td className="w-20 px-2 py-4 text-sm text-center relative">
-                        <div className="dropdown-container relative">
+                        <div className="inline-flex items-center justify-center gap-3">
                           <button
-                            className="text-gray-600 dark:text-gray-400 hover:text-gray-800 p-1 rounded-full hover:bg-gray-100"
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (openDropdownId === item._id) {
-                                setOpenDropdownId(null);
-                                setDropdownPosition(null);
-                              } else {
-                                const rect =
-                                  e.currentTarget.getBoundingClientRect();
-                                const dropdownWidth = 192;
-                                const dropdownHeight = 200;
-                                let top = rect.bottom + 8;
-                                let left = rect.right - dropdownWidth;
-
-                                if (top + dropdownHeight > window.innerHeight) {
-                                  top = rect.top - dropdownHeight - 8;
-                                }
-                                if (left < 8) {
-                                  left = 8;
-                                }
-                                if (
-                                  left + dropdownWidth >
-                                  window.innerWidth - 8
-                                ) {
-                                  left = window.innerWidth - dropdownWidth - 8;
-                                }
-
-                                setDropdownPosition({ top, left });
-                                setOpenDropdownId(item._id || null);
-                              }
+                              handleView(item);
                             }}
+                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                            title="View"
                           >
-                            <i className="fas fa-ellipsis-v"></i>
+                            <i className="fas fa-eye"></i>
                           </button>
-                          {openDropdownId === item._id && dropdownPosition && (
-                            <div
-                              className="fixed w-48 bg-white border rounded-md shadow-lg"
-                              style={{
-                                top: `${dropdownPosition.top}px`,
-                                left: `${dropdownPosition.left}px`,
-                                zIndex: 9999,
-                              }}
-                            >
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  item._id && handleAddSubRow(item._id);
-                                }}
-                                className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-green-600"
-                              >
-                                <i className="fas fa-plus"></i>
-                                Add
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleView(item);
-                                }}
-                                className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-blue-600"
-                              >
-                                <i className="fas fa-eye"></i>
-                                View
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  item._id && handleEdit(item._id);
-                                }}
-                                className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-yellow-600"
-                              >
-                                <i className="fas fa-edit"></i>
-                                Edit
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  item._id && handleDelete(item._id);
-                                }}
-                                className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-red-600"
-                              >
-                                <i className="fas fa-trash"></i>
-                                Delete
-                              </button>
-                            </div>
-                          )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              item._id && handleAddSubRow(item._id);
+                            }}
+                            className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors"
+                            title="Add Variant"
+                          >
+                            <i className="fas fa-plus"></i>
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              item._id && handleEdit(item._id);
+                            }}
+                            className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors"
+                            title="Edit"
+                          >
+                            <i className="fas fa-edit"></i>
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              item._id && handleDelete(item._id);
+                            }}
+                            className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                            title="Delete"
+                          >
+                            <i className="fas fa-trash"></i>
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -664,7 +609,7 @@ const SkuFamilyTable: React.FC = () => {
                                           subRow._id!
                                         );
                                       }}
-                                      className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-yellow-600"
+                                      className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-green-600"
                                     >
                                       <i className="fas fa-edit"></i>
                                       Edit

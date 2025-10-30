@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import Swal from 'sweetalert2';
 import { format } from 'date-fns';
 import toastHelper from '../../utils/toastHelper';
 import { PaymentConfigService } from '../../services/payment/paymentConfig.services';

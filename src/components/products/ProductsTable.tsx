@@ -10,9 +10,8 @@ import {
 } from "../../services/product/product.services";
 import placeholderImage from "../../../public/images/product/noimage.jpg";
 
-// Assuming loggedInAdminId is available (e.g., from context, prop, or auth service)
 interface ProductsTableProps {
-  loggedInAdminId?: string; // Add this prop or fetch it from context
+  loggedInAdminId?: string; 
 }
 
 const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
@@ -33,6 +32,21 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
     top: number;
     left: number;
   } | null>(null);
+
+  const handleExport = async () => {
+    try {
+      const blob = await ProductService.exportProductsExcel();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `products_${new Date().toISOString().slice(0,10)}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      toastHelper.showTost('Export started', 'success');
+    } catch (error) {}
+  };
 
   // Fetch products on component mount and when page/search/filter changes
   useEffect(() => {
@@ -359,6 +373,13 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
               </button>
               <button
                 className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
+                onClick={handleExport}
+              >
+                <i className="fas fa-download text-xs"></i>
+                Export
+              </button>
+              <button
+                className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
                 onClick={() => {
                   setEditProduct(null);
                   setIsModalOpen(true);
@@ -554,16 +575,16 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                                   Approve
                                 </button>
                               )}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEdit(item);
-                              }}
-                              className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-yellow-600"
-                            >
-                              <i className="fas fa-edit"></i>
-                              Edit
-                            </button>
+                             <button
+                               onClick={(e) => {
+                                 e.stopPropagation();
+                                 handleEdit(item);
+                               }}
+                               className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-green-600"
+                             >
+                               <i className="fas fa-edit"></i>
+                               Edit
+                             </button>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();

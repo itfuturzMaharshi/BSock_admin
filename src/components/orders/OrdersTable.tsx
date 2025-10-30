@@ -32,6 +32,21 @@ const OrdersTable: React.FC = () => {
     fetchOrders();
   }, [currentPage, searchTerm, statusFilter]);
 
+  const handleExport = async () => {
+    try {
+      const blob = await AdminOrderService.exportOrdersExcel(statusFilter || undefined);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `orders_${new Date().toISOString().slice(0,10)}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      toastHelper.showTost('Export started', 'success');
+    } catch (e) {}
+  };
+
   const fetchOrders = async () => {
     try {
       setLoading(true);
@@ -552,7 +567,8 @@ const OrdersTable: React.FC = () => {
               />
             </div>
           </div>
-          <div className="relative">
+          <div className="flex items-center gap-3">
+            <div className="relative">
             <select
               value={statusFilter}
               onChange={(e) => {
@@ -569,6 +585,14 @@ const OrdersTable: React.FC = () => {
               ))}
             </select>
             <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+            </div>
+            <button
+              className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
+              onClick={handleExport}
+            >
+              <i className="fas fa-download text-xs"></i>
+              Export
+            </button>
           </div>
         </div>
 
@@ -593,9 +617,6 @@ const OrdersTable: React.FC = () => {
                 </th>
                 <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
                   Actions
-                </th>
-                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
-                  Tracking
                 </th>
               </tr>
             </thead>
@@ -643,22 +664,22 @@ const OrdersTable: React.FC = () => {
                       {getStatusBadge(order)}
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
-                      <button
-                        onClick={() => handleUpdateStatus(order)}
-                        className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
-                        title="Update Status"
-                      >
-                        <i className="fas fa-edit"></i>
-                      </button>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-center">
-                      <button
-                        onClick={() => handleViewTracking(order._id)}
-                        className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
-                        title="View Tracking"
-                      >
-                        <i className="fas fa-eye"></i>
-                      </button>
+                      <div className="inline-flex items-center gap-3">
+                        <button
+                          onClick={() => handleUpdateStatus(order)}
+                          className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300"
+                          title="Update Status"
+                        >
+                          <i className="fas fa-edit"></i>
+                        </button>
+                        <button
+                          onClick={() => handleViewTracking(order._id)}
+                          className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                          title="View Tracking"
+                        >
+                          <i className="fas fa-eye"></i>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

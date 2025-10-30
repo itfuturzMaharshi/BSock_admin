@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, MessageSquare, DollarSign, Clock, CheckCircle, User, Package, Send, Bell, BellRing } from 'lucide-react';
+import { X, MessageSquare, DollarSign, Clock, CheckCircle, User, Package, Send, BellRing } from 'lucide-react';
 import NegotiationService, { Negotiation } from '../../services/negotiation/negotiation.services';
 import { useSocket } from '../../context/SocketContext';
 import toastHelper from '../../utils/toastHelper';

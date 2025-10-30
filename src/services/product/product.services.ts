@@ -294,4 +294,20 @@ export class ProductService {
       throw new Error(errorMessage);
     }
   };
+
+  // Export products to Excel
+  static exportProductsExcel = async (): Promise<Blob> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/product/export`;
+
+    try {
+      const res = await api.post(url, {}, { responseType: 'blob' });
+      return res.data as Blob;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to export products';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
 }

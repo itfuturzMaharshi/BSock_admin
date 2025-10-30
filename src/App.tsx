@@ -30,6 +30,8 @@ import Orders from "./pages/Orders/Orders";
 import CurrencyConversion from "./pages/CurrencyConversion/CurrencyConversion";
 import Activities from "./pages/Activities/Activities";
 import Customers from "./pages/Customers/Customers";
+import BidProducts from "./pages/BidProducts/BidProducts";
+import BidTracking from "./pages/BidProducts/BidTracking";
 
 export default function App() {
   return (
@@ -60,6 +62,9 @@ export default function App() {
             <Route path="/wallet-amount" element={<WalletAmount />} />
             <Route path="/payments" element={<Payment />}></Route>
             <Route path="/customer-cart" element={<CustomerCart />} />
+
+            <Route path="/bid-products" element={<BidProducts />} />
+            <Route path="/bid-tracking" element={<BidTracking />} />
 
             {/* Forms */}
             <Route path="/form-elements" element={<FormElements />} />
