@@ -266,6 +266,15 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
 
   const getProductImageSrc = (product: Product): string => {
     try {
+      // First, try to get image from subSkuFamilyId
+      const subSku = product?.subSkuFamilyId as any;
+      const subSkuFirst =
+        Array.isArray(subSku?.images) && subSku.images.length > 0
+          ? subSku.images[0]
+          : "";
+      if (subSkuFirst) return buildImageUrl(subSkuFirst);
+      
+      // If no subSkuFamilyId image, try skuFamilyId
       const sku = product?.skuFamilyId as any;
       const first =
         Array.isArray(sku?.images) && sku.images.length > 0
@@ -273,7 +282,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
           : "";
       if (first) return buildImageUrl(first);
     } catch (_) {}
-    return "https://via.placeholder.com/60x60?text=Product";
+    return placeholderImage;
   };
 
   const formatPrice = (price: number | string): string => {
