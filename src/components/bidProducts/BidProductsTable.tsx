@@ -5,6 +5,7 @@ import UploadExcelModal from "./UploadExcelModal";
 import PreviewModal from "./PreviewModal";
 import ViewBidProductModal from "./ViewBidProductModal";
 import BidHistoryModal from "./BidHistoryModal";
+import SendMessageModal from "./SendMessageModal";
 import {
   BidProductService,
   BidProduct,
@@ -13,6 +14,7 @@ import {
 const BidProductsTable: React.FC = () => {
   const [productsData, setProductsData] = useState<BidProduct[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState<boolean>(false);
@@ -25,10 +27,12 @@ const BidProductsTable: React.FC = () => {
   const [selectedProduct, setSelectedProduct] = useState<BidProduct | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
   const [historyProductId, setHistoryProductId] = useState<string | null>(null);
+  const [isSendMessageModalOpen, setIsSendMessageModalOpen] = useState<boolean>(false);
+  const [messageProduct, setMessageProduct] = useState<BidProduct | null>(null);
 
   useEffect(() => {
     fetchProducts();
-  }, [currentPage, searchTerm]);
+  }, [currentPage, searchTerm, statusFilter]);
 
   const fetchProducts = async () => {
     try {
@@ -36,7 +40,8 @@ const BidProductsTable: React.FC = () => {
       const response = await BidProductService.getBidProductList(
         currentPage,
         itemsPerPage,
-        searchTerm
+        searchTerm,
+        statusFilter
       );
       setProductsData(response.data.docs);
       setTotalDocs(response.data.totalDocs);
@@ -125,6 +130,11 @@ const BidProductsTable: React.FC = () => {
     }
   };
 
+  const handleSendMessage = (product: BidProduct) => {
+    setMessageProduct(product);
+    setIsSendMessageModalOpen(true);
+  };
+
   return (
     <div className="p-4">
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-sm">
@@ -142,6 +152,22 @@ const BidProductsTable: React.FC = () => {
                   setCurrentPage(1);
                 }}
               />
+            </div>
+            <div className="relative">
+              <select
+                value={statusFilter}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                  setStatusFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="pl-3 pr-8 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm appearance-none cursor-pointer"
+              >
+                <option value="all">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="active">Active</option>
+                <option value="closed">Closed</option>
+              </select>
+              <i className="fas fa-chevron-down absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"></i>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -194,6 +220,9 @@ const BidProductsTable: React.FC = () => {
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Grade
                 </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                  Status
+                </th>
                 <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Actions
                 </th>
@@ -202,7 +231,7 @@ const BidProductsTable: React.FC = () => {
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="p-12 text-center">
+                  <td colSpan={9} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
                       Loading Bid Products...
@@ -211,73 +240,102 @@ const BidProductsTable: React.FC = () => {
                 </tr>
               ) : productsData.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="p-12 text-center">
+                  <td colSpan={9} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       No bid products found
                     </div>
                   </td>
                 </tr>
               ) : (
-                productsData.map((item: BidProduct, index: number) => (
-                  <tr
-                    key={item._id || index}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                  >
-                    <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-gray-200">
-                      {item.lotNumber}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.qty}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.oem}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.model}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.category}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      ${typeof item.price === 'number' ? item.price.toFixed(2) : "0.00"}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.grade}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-center">
-                      <div className="flex items-center justify-center gap-3">
-                        <button
-                          onClick={() => handleView(item)}
-                          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                          title="View Product Details"
-                        >
-                          <i className="fas fa-eye"></i>
-                        </button>
-                        <button
-                          onClick={() => handleHistory(item)}
-                          className="text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 transition-colors"
-                          title="Bid"
-                        >
-                          <i className="fas fa-gavel"></i>
-                        </button>
-                        <button
-                          onClick={() => handleExportHistory(item)}
-                          className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors"
-                          title="Export Bid History"
-                        >
-                          <i className="fas fa-file-excel"></i>
-                        </button>
-                        <button
-                          onClick={() => handleDelete(item)}
-                          className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
-                          title="Delete Product"
-                        >
-                          <i className="fas fa-trash"></i>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                productsData.map((item: BidProduct, index: number) => {
+                  const getStatusBadge = (status?: string) => {
+                    const statusValue = status || 'pending';
+                    const statusConfig = {
+                      pending: { label: 'Pending', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' },
+                      active: { label: 'Active', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' },
+                      closed: { label: 'Closed', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' }
+                    };
+                    const config = statusConfig[statusValue as keyof typeof statusConfig] || statusConfig.pending;
+                    return (
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
+                        {config.label}
+                      </span>
+                    );
+                  };
+
+                  return (
+                    <tr
+                      key={item._id || index}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                    >
+                      <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-gray-200">
+                        {item.lotNumber}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                        {item.qty}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                        {item.oem}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                        {item.model}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                        {item.category}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                        ${typeof item.price === 'number' ? item.price.toFixed(2) : "0.00"}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                        {item.grade}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                        {getStatusBadge(item.status)}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-center">
+                        <div className="flex items-center justify-center gap-3">
+                          <button
+                            onClick={() => handleView(item)}
+                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                            title="View Product Details"
+                          >
+                            <i className="fas fa-eye"></i>
+                          </button>
+                          <button
+                            onClick={() => handleHistory(item)}
+                            className="text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 transition-colors"
+                            title="Bid History"
+                          >
+                            <i className="fas fa-gavel"></i>
+                          </button>
+                          <button
+                            onClick={() => handleExportHistory(item)}
+                            className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors"
+                            title="Export Bid History"
+                          >
+                            <i className="fas fa-file-excel"></i>
+                          </button>
+                          {item.status === 'closed' && (
+                            <button
+                              onClick={() => handleSendMessage(item)}
+                              className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
+                              title="Send Message to Highest Bidder"
+                            >
+                              <i className="fas fa-envelope"></i>
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleDelete(item)}
+                            className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                            title="Delete Product"
+                          >
+                            <i className="fas fa-trash"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -346,6 +404,18 @@ const BidProductsTable: React.FC = () => {
         isOpen={isHistoryOpen}
         onClose={() => setIsHistoryOpen(false)}
         productId={historyProductId}
+      />
+      <SendMessageModal
+        isOpen={isSendMessageModalOpen}
+        onClose={() => {
+          setIsSendMessageModalOpen(false);
+          setMessageProduct(null);
+        }}
+        product={messageProduct}
+        onSuccess={() => {
+          // Optionally refresh the products list
+          fetchProducts();
+        }}
       />
     </div>
   );

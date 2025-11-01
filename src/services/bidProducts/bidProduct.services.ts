@@ -15,6 +15,7 @@ export interface BidProduct {
   color: string;
   carrier: string;
   price: number;
+  status?: 'pending' | 'active' | 'closed';
   trackId?: string;
   createdBy?: string;
   isDeleted?: boolean;
@@ -46,8 +47,8 @@ export interface ImportResponse {
 }
 
 export class BidProductService {
-  // Get bid product list with pagination and search
-  static getBidProductList = async (page: number, limit: number, search?: string): Promise<ListResponse> => {
+  // Get bid product list with pagination, search, and status filter
+  static getBidProductList = async (page: number, limit: number, search?: string, status?: string): Promise<ListResponse> => {
     const baseUrl = import.meta.env.VITE_BASE_URL;
     const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
     const url = `${baseUrl}/api/${adminRoute}/bidProduct/list`;
@@ -55,6 +56,9 @@ export class BidProductService {
     const body: any = { page, limit };
     if (search) {
       body.search = search;
+    }
+    if (status && status !== 'all') {
+      body.status = status;
     }
 
     try {
@@ -186,6 +190,23 @@ export class BidProductService {
       toastHelper.showTost('Sample Excel file downloaded successfully!', 'success');
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Failed to download sample Excel file';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
+
+  // Send custom message to highest bidder
+  static sendMessageToHighestBidder = async (productId: string, message: string): Promise<any> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/bid/send-message-to-highest-bidder`;
+
+    try {
+      const res = await api.post(url, { productId, message });
+      toastHelper.showTost(res.data.message || 'Message sent successfully!', 'success');
+      return res.data;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to send message';
       toastHelper.showTost(errorMessage, 'error');
       throw new Error(errorMessage);
     }
