@@ -79,6 +79,14 @@ const BidProductsTable: React.FC = () => {
     }
   };
 
+  const handleDownloadSample = async () => {
+    try {
+      await BidProductService.downloadSampleExcel();
+    } catch (error) {
+      console.error("Failed to download sample file:", error);
+    }
+  };
+
   const handlePreviewConfirm = async (products: any[]) => {
      try {
        await BidProductService.createBulk(products);
@@ -137,6 +145,13 @@ const BidProductsTable: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              className="inline-flex items-center gap-1 rounded-lg bg-green-600 text-white px-4 py-2 text-sm font-medium hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 transition-colors"
+              onClick={handleDownloadSample}
+            >
+              <i className="fas fa-file-excel text-xs"></i>
+              Download Sample
+            </button>
             <button
               className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
               onClick={() => setIsUploadModalOpen(true)}

@@ -164,4 +164,30 @@ export class BidProductService {
       throw new Error(errorMessage);
     }
   };
+
+  // Download sample Excel template
+  static downloadSampleExcel = async (): Promise<void> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/bidProduct/sample`;
+
+    console.log('Downloading sample Excel from URL:', url);
+    console.log('Environment variables:', { baseUrl, adminRoute });
+
+    try {
+      const res = await api.post(url, {}, { responseType: 'blob' });
+      console.log('Response received:', res.status, res.headers);
+      const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'bid-product-sample.xlsx';
+      link.click();
+      URL.revokeObjectURL(link.href);
+      toastHelper.showTost('Sample Excel file downloaded successfully!', 'success');
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to download sample Excel file';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
 }

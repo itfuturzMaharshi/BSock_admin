@@ -10,6 +10,14 @@ interface UploadExcelModalProps {
 const UploadExcelModal: React.FC<UploadExcelModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const [file, setFile] = useState<File | null>(null);
 
+  const handleDownloadSample = async () => {
+    try {
+      await BidProductService.downloadSampleExcel();
+    } catch (error) {
+      console.error("Failed to download sample file:", error);
+    }
+  };
+
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
@@ -35,7 +43,17 @@ const UploadExcelModal: React.FC<UploadExcelModalProps> = ({ isOpen, onClose, on
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50" onClick={onClose}>
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">Upload Excel File</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Upload Excel File</h2>
+          <button
+            onClick={handleDownloadSample}
+            className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors text-sm font-medium"
+            title="Download Sample Excel"
+          >
+            <i className="fas fa-download text-xs"></i>
+            <span>Sample Excel</span>
+          </button>
+        </div>
         
         {/* File Input Area */}
         <div className="mb-4">
