@@ -525,9 +525,25 @@ const SkuFamilyTable: React.FC = () => {
                           <td className="w-32 px-2 py-4 text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
                             <div className="flex items-center gap-3">
                               <img
-                                src={placeholderImage}
+                                src={(function () {
+                                  const base = (import.meta as any).env?.VITE_BASE_URL || "";
+                                  const first =
+                                    Array.isArray(subRow.images) &&
+                                    subRow.images.length > 0
+                                      ? subRow.images[0]
+                                      : "";
+                                  if (!first) return placeholderImage;
+                                  const isAbsolute = /^https?:\/\//i.test(first);
+                                  return isAbsolute
+                                    ? first
+                                    : `${base}${first.startsWith("/") ? "" : "/"}${first}`;
+                                })()}
                                 alt={subRow.name || "Sub-Product"}
                                 className="w-10 h-10 object-contain rounded-md border border-gray-200 dark:border-gray-600 flex-shrink-0"
+                                onError={(e) => {
+                                  (e.currentTarget as HTMLImageElement).src =
+                                    placeholderImage;
+                                }}
                               />
                               <span className="truncate">{subRow.name || "N/A"}</span>
                             </div>
