@@ -1,9 +1,7 @@
 import EcommerceMetrics from "../../components/ecommerce/EcommerceMetrics";
 import MonthlySalesChart from "../../components/ecommerce/MonthlySalesChart";
-import StatisticsChart from "../../components/ecommerce/StatisticsChart";
-import MonthlyTarget from "../../components/ecommerce/MonthlyTarget";
+import CustomersChart from "../../components/ecommerce/CustomersChart";
 import RecentOrders from "../../components/ecommerce/RecentOrders";
-import DemographicCard from "../../components/ecommerce/DemographicCard";
 
 export default function Home() {
   return (
@@ -16,19 +14,11 @@ export default function Home() {
         </div>
 
         <div className="col-span-12 xl:col-span-5">
-          <MonthlyTarget />
-        </div>
-
-        <div className="col-span-12">
-          <StatisticsChart />
-        </div>
-
-        <div className="col-span-12 xl:col-span-5">
-          <DemographicCard />
+          <RecentOrders />
         </div>
 
         <div className="col-span-12 xl:col-span-7">
-          <RecentOrders />
+          <CustomersChart />
         </div>
       </div>
     </>

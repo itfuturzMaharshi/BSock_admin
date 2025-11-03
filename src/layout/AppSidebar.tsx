@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useSidebar } from "../context/SidebarContext";
+import Logo from "../components/common/Logo";
 
 type NavItem = {
   name: string;
@@ -303,12 +304,20 @@ const AppSidebar: React.FC = () => {
       >
         <>
           {isExpanded || isHovered || isMobileOpen ? (
-            <div className="flex items-center gap-3 text-xl font-bold text-gray-800 dark:text-white">
-              <i className="fas fa-mobile-alt text-3xl text-[#0071E0] dark:text-blue-400"></i>
-              <span>xGSM Admin</span>
-            </div>
+            <Logo showTagline={true} size="medium" variant="sidebar" />
           ) : (
-            <i className="fas fa-mobile-alt text-5xl text-blue-600 dark:text-blue-400"></i>
+            <div 
+              className="inline-flex items-center justify-center w-12 h-12 rounded-xl shadow-sm"
+              style={{ background: 'linear-gradient(to bottom right, #0071E0, #005bb5)' }}
+            >
+              <svg
+                className="w-7 h-7 text-white"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+              </svg>
+            </div>
           )}
         </>
       </div>

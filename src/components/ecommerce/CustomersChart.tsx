@@ -6,7 +6,7 @@ import { MoreDotIcon } from "../../icons";
 import { useState, useEffect } from "react";
 import { DashboardService, ChartData } from "../../services/dashboard/dashboard.services";
 
-export default function MonthlySalesChart() {
+export default function CustomersChart() {
   const [period, setPeriod] = useState<'today' | 'week' | 'month' | 'year'>('month');
   const [chartData, setChartData] = useState<ChartData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -16,10 +16,10 @@ export default function MonthlySalesChart() {
     const fetchChartData = async () => {
       try {
         setLoading(true);
-        const data = await DashboardService.getSalesChart(period);
+        const data = await DashboardService.getCustomersChart(period);
         setChartData(data);
       } catch (error) {
-        console.error("Error fetching sales chart:", error);
+        console.error("Error fetching customers chart:", error);
       } finally {
         setLoading(false);
       }
@@ -27,14 +27,6 @@ export default function MonthlySalesChart() {
 
     fetchChartData();
   }, [period]);
-  const formatCurrency = (val: number) => {
-    if (val >= 1000000) {
-      return '$' + (val / 1000000).toFixed(1) + 'M';
-    } else if (val >= 1000) {
-      return '$' + (val / 1000).toFixed(1) + 'K';
-    }
-    return '$' + val.toLocaleString();
-  };
 
   const getPeriodLabel = () => {
     switch (period) {
@@ -47,30 +39,21 @@ export default function MonthlySalesChart() {
   };
 
   const options: ApexOptions = {
-    colors: ["#465fff"],
+    colors: ["#0071E0"],
     chart: {
       fontFamily: "Outfit, sans-serif",
-      type: "bar",
+      type: "line",
       height: 180,
       toolbar: {
         show: false,
-      },
-    },
-    plotOptions: {
-      bar: {
-        horizontal: false,
-        columnWidth: period === 'today' ? "90%" : period === 'week' ? "60%" : "39%",
-        borderRadius: 5,
-        borderRadiusApplication: "end",
       },
     },
     dataLabels: {
       enabled: false,
     },
     stroke: {
-      show: true,
-      width: 4,
-      colors: ["transparent"],
+      curve: "smooth",
+      width: 3,
     },
     xaxis: {
       categories: chartData?.categories || [],
@@ -100,21 +83,27 @@ export default function MonthlySalesChart() {
       },
     },
     fill: {
-      opacity: 1,
+      type: "gradient",
+      gradient: {
+        shadeIntensity: 1,
+        opacityFrom: 0.7,
+        opacityTo: 0.3,
+        stops: [0, 90, 100],
+      },
     },
     tooltip: {
       x: {
         show: false,
       },
       y: {
-        formatter: (val: number) => formatCurrency(val),
+        formatter: (val: number) => `${val} customers`,
       },
     },
   };
 
   const series = [
     {
-      name: "Sales",
+      name: "Customers",
       data: chartData?.data || [],
     },
   ];
@@ -131,6 +120,7 @@ export default function MonthlySalesChart() {
     setPeriod(newPeriod);
     setIsOpen(false);
   };
+
   if (loading) {
     return (
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white px-5 pt-5 dark:border-gray-800 dark:bg-white/[0.03] sm:px-6 sm:pt-6 animate-pulse">
@@ -145,7 +135,7 @@ export default function MonthlySalesChart() {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
-            Delivered Sales Chart
+            Customers Chart
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">{getPeriodLabel()}</p>
         </div>
@@ -197,16 +187,17 @@ export default function MonthlySalesChart() {
       {chartData && (
         <div className="mb-2">
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            Total: {formatCurrency(chartData.total)}
+            Total: {chartData.total.toLocaleString()} customers
           </p>
         </div>
       )}
 
       <div className="max-w-full overflow-x-auto custom-scrollbar">
         <div className="-ml-5 min-w-[650px] xl:min-w-full pl-2">
-          <Chart options={options} series={series} type="bar" height={180} />
+          <Chart options={options} series={series} type="area" height={180} />
         </div>
       </div>
     </div>
   );
 }
+
