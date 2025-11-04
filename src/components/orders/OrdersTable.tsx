@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import toastHelper from "../../utils/toastHelper";
 import { AdminOrderService, Order, TrackingItem, OrderItem } from "../../services/order/adminOrder.services";
 import { LOCAL_STORAGE_KEYS } from "../../constants/localStorage";
+import OrderDetailsModal from "./OrderDetailsModal";
 
 const OrdersTable: React.FC = () => {
   const [ordersData, setOrdersData] = useState<Order[]>([]);
@@ -14,6 +15,8 @@ const OrdersTable: React.FC = () => {
   const [totalDocs, setTotalDocs] = useState<number>(0);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [currentAdminId, setCurrentAdminId] = useState<string>("");
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState<boolean>(false);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const itemsPerPage = 10;
 
   const allStatusOptions = ["request", "verified", "approved", "accepted", "shipped", "delivered", "cancel"];
@@ -354,6 +357,11 @@ const OrdersTable: React.FC = () => {
     }
   };
 
+  const handleViewOrderDetails = (order: Order) => {
+    setSelectedOrder(order);
+    setIsDetailsModalOpen(true);
+  };
+
   const handleViewTracking = async (orderId: string) => {
     try {
       const response = await AdminOrderService.getOrderTracking(orderId);
@@ -441,57 +449,88 @@ const OrdersTable: React.FC = () => {
     }
   };
 
-  const getStatusBadge = (order: Order) => {
-    const statusStyles: { [key: string]: string } = {
-      request: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-700",
-      verified: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-700",
-      approved: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-700",
-      shipped: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 border border-purple-200 dark:border-purple-700",
-      delivered: "bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-400 border border-teal-200 dark:border-teal-700",
-      cancelled: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border border-red-200 dark:border-red-700",
-      accepted: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-700",
-      cancel: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border border-orange-200 dark:border-orange-700",
-    };
+  // Combined status function that merges status and verification into one message
+  const getCombinedStatusBadge = (order: Order) => {
+    const status = order.status?.toLowerCase() || 'request';
+    const orderTrackingStatus = order.orderTrackingStatus?.toLowerCase();
+    const verifiedBy = order.verifiedBy;
+    const approvedBy = order.approvedBy;
 
-    // Determine the actual status to display
-    let displayStatus = order.status;
+    // Handle cancellation flow
+    if (orderTrackingStatus === "cancel" && status === "cancel") {
+      return {
+        message: "cancel",
+        style: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border border-red-200 dark:border-red-700",
+      };
+    }
+    if (orderTrackingStatus === "verified" && status === "cancel") {
+      return {
+        message: "Request is cancelled",
+        style: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border border-red-200 dark:border-red-700",
+      };
+    }
+
+    // Handle different status combinations
+    let statusMessage = "";
+    let statusStyle = "";
+
+    // Status flow: request → verified → approved → accepted → shipped → delivered
     
-    // Handle cancellation flow display
-    if (order.orderTrackingStatus === "cancel") {
-      displayStatus = "cancel";
-    } else {
-      // Priority: approved > verified > request
-      // If order is approved, show "approved" regardless of other statuses
-      if (order.approvedBy) {
-        displayStatus = "approved";
-      } else if (order.verifiedBy) {
-        displayStatus = "request";
-      } else {
-        displayStatus = order.status;
-      }
+    switch (status) {
+      case "request":
+        if (approvedBy) {
+          statusMessage = "Request is approved";
+          statusStyle = "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-700";
+        } else if (verifiedBy || orderTrackingStatus === "verified") {
+          statusMessage = "Request is verified";
+          statusStyle = "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-700";
+        } else {
+          statusMessage = "Request";
+          statusStyle = "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-700";
+        }
+        break;
+
+      case "verified":
+        if (approvedBy) {
+          statusMessage = "Request is approved";
+          statusStyle = "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-700";
+        } else {
+          statusMessage = "Request is verified";
+          statusStyle = "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-700";
+        }
+        break;
+
+      case "approved":
+        statusMessage = "Request is approved";
+        statusStyle = "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-700";
+        break;
+
+      case "accepted":
+        statusMessage = "accepted";
+        statusStyle = "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-700";
+        break;
+
+      case "shipped":
+        statusMessage = "shipped";
+        statusStyle = "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 border border-purple-200 dark:border-purple-700";
+        break;
+
+      case "delivered":
+        statusMessage = "delivered";
+        statusStyle = "bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-400 border border-teal-200 dark:border-teal-700";
+        break;
+
+      default:
+        // Fallback for any other status
+        const capitalizedStatus = status.charAt(0).toUpperCase() + status.slice(1);
+        statusMessage = `Request is ${capitalizedStatus}`;
+        statusStyle = "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400 border border-gray-200 dark:border-gray-700";
     }
 
-    return (
-      <span
-        className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold tracking-wider ${
-          statusStyles[displayStatus] || "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400 border border-gray-200 dark:border-gray-700"
-        }`}
-      >
-        {displayStatus.charAt(0).toUpperCase() + displayStatus.slice(1)}
-      </span>
-    );
-  };
-
-  const getVerificationBadge = (order: Order) => {
-    // Show verified if verifiedBy exists OR if orderTrackingStatus is "verified"
-    if (order?.verifiedBy || order?.orderTrackingStatus === "verified") {
-      return (
-        <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold tracking-wider bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-700">
-          Verified
-        </span>
-      );
-    }
-    return <span className="text-gray-500 dark:text-gray-400">-</span>;
+    return {
+      message: statusMessage,
+      style: statusStyle,
+    };
   };
 
   return (
@@ -566,9 +605,6 @@ const OrdersTable: React.FC = () => {
                   Status
                 </th>
                 <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
-                  Verification
-                </th>
-                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
                   Actions
                 </th>
               </tr>
@@ -576,7 +612,7 @@ const OrdersTable: React.FC = () => {
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="p-12 text-center">
+                  <td colSpan={7} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
                       Loading Orders...
@@ -585,7 +621,7 @@ const OrdersTable: React.FC = () => {
                 </tr>
               ) : ordersData.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="p-12 text-center">
+                  <td colSpan={7} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       No orders found
                     </div>
@@ -614,10 +650,16 @@ const OrdersTable: React.FC = () => {
                       {formatDate(order.createdAt)}
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
-                      {getStatusBadge(order)}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-center">
-                      {getVerificationBadge(order)}
+                      {(() => {
+                        const statusInfo = getCombinedStatusBadge(order);
+                        return (
+                          <span
+                            className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold tracking-wider ${statusInfo.style}`}
+                          >
+                            {statusInfo.message}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
                       <div className="inline-flex items-center gap-3">
@@ -629,11 +671,18 @@ const OrdersTable: React.FC = () => {
                           <i className="fas fa-edit"></i>
                         </button>
                         <button
-                          onClick={() => handleViewTracking(order._id)}
+                          onClick={() => handleViewOrderDetails(order)}
                           className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
-                          title="View Tracking"
+                          title="View Order Details"
                         >
                           <i className="fas fa-eye"></i>
+                        </button>
+                        <button
+                          onClick={() => handleViewTracking(order._id)}
+                          className="text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300"
+                          title="View Tracking"
+                        >
+                          <i className="fas fa-route"></i>
                         </button>
                       </div>
                     </td>
@@ -684,6 +733,16 @@ const OrdersTable: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Order Details Modal */}
+      <OrderDetailsModal
+        isOpen={isDetailsModalOpen}
+        onClose={() => {
+          setIsDetailsModalOpen(false);
+          setSelectedOrder(null);
+        }}
+        order={selectedOrder}
+      />
     </div>
   );
 };

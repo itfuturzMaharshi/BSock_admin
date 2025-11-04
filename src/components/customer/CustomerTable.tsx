@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CustomerService, Customer } from '../../services/customer/customerService';
+import CustomerEditModal from './CustomerEditModal';
 
 const CustomerTable: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -9,6 +10,8 @@ const CustomerTable: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>(""); // '', 'active','inactive','approved','pending','emailVerified','notEmailVerified'
   const [loading, setLoading] = useState<boolean>(true);
   const [totalDocs, setTotalDocs] = useState<number>(0);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -60,9 +63,25 @@ const CustomerTable: React.FC = () => {
     }
   };
 
+  const handleEdit = (customer: Customer) => {
+    setEditingCustomer(customer);
+    setIsModalOpen(true);
+  };
+
+  const handleSave = () => {
+    // Refresh the data after save
+    fetchData();
+    setIsModalOpen(false);
+    setEditingCustomer(null);
+  };
+
 
   return (
     <div className="p-4">
+      <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      />
       {/* Table Container */}
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-sm">
         {/* Table Header with Controls */}
@@ -136,9 +155,9 @@ const CustomerTable: React.FC = () => {
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Name
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                {/* <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Email
-                </th>
+                </th> */}
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Mobile Number
                 </th>
@@ -154,12 +173,15 @@ const CustomerTable: React.FC = () => {
                 <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Allow Bidding
                 </th>
+                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="p-12 text-center">
+                  <td colSpan={8} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
                       Loading Customers...
@@ -168,7 +190,7 @@ const CustomerTable: React.FC = () => {
                 </tr>
               ) : customers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-12 text-center">
+                  <td colSpan={8} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       No customers found
                     </div>
@@ -181,11 +203,12 @@ const CustomerTable: React.FC = () => {
                     className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                   >
                     <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-gray-200">
-                      {customer.name}
+                      <p className='capitalize'>{customer.name}</p>
+                      <p className='text-gray-500 text-sm'>{customer.email}</p>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                    {/* <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                       {customer.email}
-                    </td>
+                    </td> */}
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                       {customer.mobileNumber || customer.whatsappNumber || '-'}
                     </td>
@@ -234,6 +257,17 @@ const CustomerTable: React.FC = () => {
                           Not Allowed
                         </span>
                       )}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => handleEdit(customer)}
+                          className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors"
+                          title="Edit Customer"
+                        >
+                          <i className="fas fa-edit"></i>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -288,6 +322,16 @@ const CustomerTable: React.FC = () => {
           </div>
         )}
       </div>
+
+      <CustomerEditModal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingCustomer(null);
+        }}
+        onSave={handleSave}
+        editCustomer={editingCustomer}
+      />
     </div>
   );
 };
