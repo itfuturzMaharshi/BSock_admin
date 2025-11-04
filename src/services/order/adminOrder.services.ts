@@ -16,6 +16,17 @@ export interface Address {
   country: string;
 }
 
+export interface PaymentDetails {
+  module?: string;
+  currency?: string;
+  acceptedTerms?: boolean;
+  fields?: Record<string, any>; // Dynamic fields map
+  uploadedFiles?: string[]; // File paths
+  transactionRef?: string;
+  status?: string;
+  remarks?: string;
+}
+
 export interface Order {
   _id: string;
   customerId: { _id: string; name?: string; email?: string };
@@ -30,7 +41,9 @@ export interface Order {
   canVerify?: boolean;
   canApprove?: boolean;
   tracking?: TrackingItem[];
-  orderTrackingStatus?: string; // New field added
+  orderTrackingStatus?: string;
+  paymentDetails?: PaymentDetails;
+  appliedCharges?: any[];
 }
 
 export interface TrackingItem {
