@@ -183,7 +183,7 @@ const BidProductsTable: React.FC = () => {
               onClick={() => setIsUploadModalOpen(true)}
             >
               <i className="fas fa-upload text-xs"></i>
-              Upload File
+              Import
             </button>
             <button
               className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
