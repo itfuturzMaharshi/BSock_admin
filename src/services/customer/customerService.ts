@@ -16,13 +16,28 @@ export interface Customer {
   name: string;
   email: string;
   whatsappNumber?: string;
+  whatsappCountryCode?: string;
   mobileNumber?: string;
+  mobileCountryCode?: string;
   isActive?: boolean;
   isEmailVerified?: boolean;
   isMobileVerified?: boolean;
   isApproved?: boolean;
   isAllowBidding?: boolean;
   businessProfile?: BusinessProfile;
+}
+
+export interface UpdateCustomerRequest {
+  customerId: string;
+  name?: string;
+  email?: string;
+  mobileNumber?: string;
+  mobileCountryCode?: string;
+  whatsappNumber?: string;
+  whatsappCountryCode?: string;
+  isActive?: boolean;
+  isApproved?: boolean;
+  isAllowBidding?: boolean;
 }
 
 export interface CustomerListResponse {
@@ -123,6 +138,24 @@ export class CustomerService {
       toastHelper.showTost('Bidding status updated successfully', 'success');
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Failed to toggle bidding status';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
+
+  // Update customer
+  static updateCustomer = async (requestData: UpdateCustomerRequest): Promise<void> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/customer/update`;
+    
+    console.log('Update customer URL:', url);
+
+    try {
+      await api.post(url, requestData);
+      toastHelper.showTost('Customer updated successfully', 'success');
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to update customer';
       toastHelper.showTost(errorMessage, 'error');
       throw new Error(errorMessage);
     }

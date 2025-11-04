@@ -15,6 +15,7 @@ const AdminsTable: React.FC = () => {
   const [totalPages, setTotalPages] = useState<number>(1);
   const [totalDocs, setTotalDocs] = useState<number>(0);
   const [resettingPassword, setResettingPassword] = useState<string | null>(null);
+  const [togglingStatus, setTogglingStatus] = useState<string | null>(null);
   const itemsPerPage = 10;
 
   // Fetch admins data
@@ -153,6 +154,38 @@ const AdminsTable: React.FC = () => {
     }
   };
 
+  const handleToggleStatus = async (admin: Admin) => {
+    const newStatus = !admin.isActive;
+    const statusText = newStatus ? 'active' : 'inactive';
+    
+    setTogglingStatus(admin._id);
+    
+    try {
+      const updateData: UpdateAdminRequest = {
+        id: admin._id,
+        name: admin.name,
+        email: admin.email,
+        isActive: newStatus,
+      };
+      
+      await AdminService.updateAdmin(updateData);
+      
+      // Update local state optimistically
+      setAdminsData((prevAdmins) =>
+        prevAdmins.map((item) =>
+          item._id === admin._id ? { ...item, isActive: newStatus } : item
+        )
+      );
+      
+      toastHelper.showTost(`Admin status changed to ${statusText}`, 'success');
+    } catch (error) {
+      console.error('Error toggling admin status:', error);
+      toastHelper.showTost('Failed to update admin status', 'error');
+    } finally {
+      setTogglingStatus(null);
+    }
+  };
+
   // Function to get status styles and icons
   const getStatusStyles = (isActive: boolean) => {
     return isActive
@@ -255,8 +288,18 @@ const AdminsTable: React.FC = () => {
                       {item.email}
                     </td>
                     <td className="px-6 py-4 text-sm">
-                      <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold tracking-wider ${getStatusStyles(item.isActive)}`}>
-                        <i className={`fas ${getStatusIcon(item.isActive)} text-xs`}></i>
+                      <span 
+                        onClick={() => handleToggleStatus(item)}
+                        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold tracking-wider cursor-pointer transition-all hover:opacity-80 ${getStatusStyles(item.isActive)} ${
+                          togglingStatus === item._id ? 'opacity-50 cursor-wait' : ''
+                        }`}
+                        title={`Click to ${item.isActive ? 'deactivate' : 'activate'}`}
+                      >
+                        {togglingStatus === item._id ? (
+                          <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-current"></div>
+                        ) : (
+                          <i className={`fas ${getStatusIcon(item.isActive)} text-xs`}></i>
+                        )}
                         {item.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </td>
