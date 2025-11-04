@@ -49,6 +49,8 @@ const CustomerCart: React.FC = () => {
         selectedCustomer
       );
       const docs = (response?.data?.docs || []) as any[];
+      console.log('Fetched cart docs:', docs.length > 0 ? docs[0] : 'No docs'); // Debug: Log first doc
+      console.log('First doc costSummary:', docs.length > 0 ? docs[0]?.costSummary : 'No costSummary'); // Debug: Log costSummary
       const mapped: CustomerCart[] = docs.map((d: any) => ({
         _id: d._id,
         customer: {
@@ -151,6 +153,7 @@ const CustomerCart: React.FC = () => {
   };
 
   const handlePreview = (cartItem: CustomerCart) => {
+    console.log('Preview item costSummary:', (cartItem as any).costSummary); // Debug
     setPreviewItem(cartItem);
     setIsPreviewModalOpen(true);
   };
@@ -925,13 +928,13 @@ const CustomerCart: React.FC = () => {
                     </div>
                   </div>
                 </div>
-
+                
                 {/* Cost Summary Section */}
-                {(previewItem as any).costSummary && (previewItem as any).costSummary.appliedCharges && (previewItem as any).costSummary.appliedCharges.length > 0 && (
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200 mb-3">
-                      Applied Charges
-                    </h3>
+                <div>
+                  <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200 mb-3">
+                    Applied Charges
+                  </h3>
+                  {(previewItem as any).costSummary && (previewItem as any).costSummary.appliedCharges && (previewItem as any).costSummary.appliedCharges.length > 0 ? (
                     <div className="p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg space-y-3">
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-gray-600 dark:text-gray-400">Subtotal</span>
@@ -939,6 +942,7 @@ const CustomerCart: React.FC = () => {
                           ${((previewItem as any).costSummary.totalCartValue || 0).toFixed(2)}
                         </span>
                       </div>
+                      <div>Logistics Fee</div>
                       {(previewItem as any).costSummary.appliedCharges.map((charge: any, index: number) => (
                         <div key={index} className="flex justify-between items-center">
                           <span className="text-sm text-gray-600 dark:text-gray-400 capitalize">
@@ -957,8 +961,14 @@ const CustomerCart: React.FC = () => {
                         </span>
                       </div>
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <div className="p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        No charges applied. Cost Summary: {JSON.stringify((previewItem as any).costSummary || 'Not found')}
+                      </p>
+                    </div>
+                  )}
+                </div>
 
                 {/* Notes Section */}
                 {previewItem.notes && (
