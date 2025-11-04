@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import toastHelper from "../../utils/toastHelper";
 import ProductModal from "./ProductsModal";
 import UploadExcelModal from "./UploadExcelModal";
+import ProductHistoryModal from "./ProductHistoryModal";
 import {
   ProductService,
   Product,
@@ -21,11 +22,14 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState<boolean>(false);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [totalDocs, setTotalDocs] = useState<number>(0);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [historyProductId, setHistoryProductId] = useState<string | undefined>(undefined);
+  const [historyProductName, setHistoryProductName] = useState<string | undefined>(undefined);
   const itemsPerPage = 10;
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [dropdownPosition, setDropdownPosition] = useState<{
@@ -235,6 +239,14 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
     setDropdownPosition(null);
   };
 
+  const handleHistory = (product: Product) => {
+    setHistoryProductId(product._id);
+    setHistoryProductName(getSkuFamilyText(product.skuFamilyId));
+    setIsHistoryModalOpen(true);
+    setOpenDropdownId(null);
+    setDropdownPosition(null);
+  };
+
   const getSkuFamilyText = (skuFamilyId: any): string => {
     if (skuFamilyId == null) return "";
     if (typeof skuFamilyId === "string") return skuFamilyId;
@@ -378,7 +390,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                 onClick={() => setIsUploadModalOpen(true)}
               >
                 <i className="fas fa-upload text-xs"></i>
-                Upload File
+                Import
               </button>
               <button
                 className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
@@ -571,6 +583,16 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                               <i className="fas fa-eye"></i>
                               View
                             </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleHistory(item);
+                              }}
+                              className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-purple-600"
+                            >
+                              <i className="fas fa-history"></i>
+                              History
+                            </button>
                             {item.canApprove &&
                               item.verifiedBy !== loggedInAdminId && (
                                 <button
@@ -670,6 +692,17 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
       <UploadExcelModal
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
+      />
+
+      <ProductHistoryModal
+        isOpen={isHistoryModalOpen}
+        onClose={() => {
+          setIsHistoryModalOpen(false);
+          setHistoryProductId(undefined);
+          setHistoryProductName(undefined);
+        }}
+        productId={historyProductId}
+        productName={historyProductName}
       />
 
       {selectedProduct && (

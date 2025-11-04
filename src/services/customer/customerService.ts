@@ -54,6 +54,8 @@ export interface CustomerListRequest {
   page?: number;
   limit?: number;
   search?: string;
+  isAllowBidding?: boolean;
+  status?: 'active' | 'inactive' | 'approved' | 'pending' | 'emailVerified' | 'notEmailVerified';
 }
 
 export class CustomerService {
@@ -73,6 +75,8 @@ export class CustomerService {
         limit: requestData.limit || 10,
       };
       if (requestData.search) body.search = requestData.search;
+      if (typeof requestData.isAllowBidding === 'boolean') body.isAllowBidding = requestData.isAllowBidding;
+      if (requestData.status) body.status = requestData.status;
 
       const res = await api.post(url, body);
       
@@ -143,7 +147,32 @@ export class CustomerService {
     }
   };
 
-  // Update customer
+  // Export customers to Excel (excludes _id and updatedAt on backend)
+  static exportCustomersExcel = async (requestData: CustomerListRequest = {}): Promise<void> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/customer/export`;
+    try {
+      const body: any = {};
+      if (requestData.search) body.search = requestData.search;
+      if (typeof requestData.isAllowBidding === 'boolean') body.isAllowBidding = requestData.isAllowBidding;
+      if (requestData.status) body.status = requestData.status;
+      const res = await api.post(url, body, { responseType: 'blob' });
+      const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `customers_${new Date().toISOString().slice(0,10)}.xlsx`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+      toastHelper.showTost('Customers export started', 'success');
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to export customers';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  }
+
+    // Update customer
   static updateCustomer = async (requestData: UpdateCustomerRequest): Promise<void> => {
     const baseUrl = import.meta.env.VITE_BASE_URL;
     const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
