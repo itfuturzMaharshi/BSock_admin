@@ -81,6 +81,11 @@ const CustomerCart: React.FC = () => {
         updatedAt: d.updatedAt || "",
         status: d.isActive ? "active" : "removed",
         notes: undefined,
+        costSummary: d.costSummary || {
+          totalCartValue: 0,
+          totalAmount: 0,
+          appliedCharges: []
+        }
       }));
 
       const nTotalDocs = parseInt(String(response?.data?.totalDocs || 0)) || mapped.length;
@@ -920,6 +925,40 @@ const CustomerCart: React.FC = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* Cost Summary Section */}
+                {(previewItem as any).costSummary && (previewItem as any).costSummary.appliedCharges && (previewItem as any).costSummary.appliedCharges.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200 mb-3">
+                      Applied Charges
+                    </h3>
+                    <div className="p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600 dark:text-gray-400">Subtotal</span>
+                        <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                          ${((previewItem as any).costSummary.totalCartValue || 0).toFixed(2)}
+                        </span>
+                      </div>
+                      {(previewItem as any).costSummary.appliedCharges.map((charge: any, index: number) => (
+                        <div key={index} className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600 dark:text-gray-400 capitalize">
+                            {charge.type === 'ExtraDelivery' ? 'Extra Delivery' : charge.type}
+                            {charge.costType === 'Percentage' && ` (${charge.value}%)`}
+                          </span>
+                          <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                            ${(charge.calculatedAmount || 0).toFixed(2)}
+                          </span>
+                        </div>
+                      ))}
+                      <div className="pt-3 mt-2 border-t border-gray-300 dark:border-gray-600 flex justify-between items-center">
+                        <span className="text-base font-semibold text-gray-800 dark:text-gray-200">Total Amount</span>
+                        <span className="text-base font-bold text-green-600 dark:text-green-400">
+                          ${((previewItem as any).costSummary.totalAmount || 0).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Notes Section */}
                 {previewItem.notes && (
