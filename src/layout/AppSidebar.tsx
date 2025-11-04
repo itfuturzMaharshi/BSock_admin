@@ -62,9 +62,9 @@ const navItems: NavItem[] = [
     icon: <i className="fas fa-cog"></i>,
     name: "Configuration",
     subItems: [
-      { name: "Payment Configuration", path: "/payments" },
-      { name: "Cost Configuration", path: "/cost-module" },
-      { name: "Notification Configuration", path: "#" },
+      { name: "Payment Config", path: "/payments" },
+      { name: "Cost Config", path: "/cost-module" },
+      // { name: "Notification Config", path: "#" },
     ],
   },
   {

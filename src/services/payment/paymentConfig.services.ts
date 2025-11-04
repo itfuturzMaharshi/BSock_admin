@@ -200,6 +200,96 @@ export class PaymentConfigService {
     }
   };
 
+  static updateModuleStatus = async (
+    configId: string,
+    moduleIndex: number,
+    enabled: boolean
+  ): Promise<PaymentConfigResponse> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/payment-config/update-module-status`;
+
+    try {
+      const res = await api.post(
+        url,
+        { configId, moduleIndex, enabled },
+        {
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+
+      const responseData = res.data;
+
+      if (res.status === 200) {
+        toastHelper.showTost(
+          responseData.message || 'Module status updated successfully!',
+          'success'
+        );
+      } else {
+        toastHelper.showTost(
+          responseData.message || 'Failed to update module status',
+          'warning'
+        );
+      }
+
+      return {
+        status: res.status,
+        message: responseData.message,
+        data: responseData.data,
+      };
+    } catch (err: any) {
+      const errorMessage =
+        err.response?.data?.message || err.message || 'Failed to update module status';
+      toastHelper.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+  };
+
+  static updateModuleTermsAndConditions = async (
+    configId: string,
+    moduleIndex: number,
+    termsAndConditions: boolean
+  ): Promise<PaymentConfigResponse> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/payment-config/update-module-terms`;
+
+    try {
+      const res = await api.post(
+        url,
+        { configId, moduleIndex, termsAndConditions },
+        {
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+
+      const responseData = res.data;
+
+      if (res.status === 200) {
+        toastHelper.showTost(
+          responseData.message || 'Terms & conditions updated successfully!',
+          'success'
+        );
+      } else {
+        toastHelper.showTost(
+          responseData.message || 'Failed to update terms & conditions',
+          'warning'
+        );
+      }
+
+      return {
+        status: res.status,
+        message: responseData.message,
+        data: responseData.data,
+      };
+    } catch (err: any) {
+      const errorMessage =
+        err.response?.data?.message || err.message || 'Failed to update terms & conditions';
+      toastHelper.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+  };
+
   static deletePaymentConfig = async (id: string): Promise<DeleteResponse> => {
     const baseUrl = import.meta.env.VITE_BASE_URL;
     const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
