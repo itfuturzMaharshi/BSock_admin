@@ -155,9 +155,9 @@ const CustomerTable: React.FC = () => {
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Name
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                {/* <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Email
-                </th>
+                </th> */}
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Mobile Number
                 </th>
@@ -203,11 +203,12 @@ const CustomerTable: React.FC = () => {
                     className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                   >
                     <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-gray-200">
-                      {customer.name}
+                      <p className='capitalize'>{customer.name}</p>
+                      <p className='text-gray-500 text-sm'>{customer.email}</p>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                    {/* <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                       {customer.email}
-                    </td>
+                    </td> */}
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                       {customer.mobileNumber || customer.whatsappNumber || '-'}
                     </td>
