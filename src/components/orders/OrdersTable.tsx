@@ -453,95 +453,45 @@ const OrdersTable: React.FC = () => {
       cancel: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border border-orange-200 dark:border-orange-700",
     };
 
-    const statusIcons: { [key: string]: string } = {
-      request: "fa-clock",
-      verified: "fa-check",
-      approved: "fa-check-circle",
-      shipped: "fa-truck",
-      delivered: "fa-box",
-      cancelled: "fa-times",
-      accepted: "fa-handshake",
-      cancel: "fa-exclamation-triangle",
-    };
-
     // Determine the actual status to display
     let displayStatus = order.status;
     
     // Handle cancellation flow display
     if (order.orderTrackingStatus === "cancel") {
-      if (order.verifiedBy && order.approvedBy) {
-        displayStatus = "cancel";
-      } else if (order.verifiedBy) {
-        displayStatus = "verified";
-      } else {
-        displayStatus = "cancel";
-      }
+      displayStatus = "cancel";
     } else {
       // Priority: approved > verified > request
       // If order is approved, show "approved" regardless of other statuses
       if (order.approvedBy) {
         displayStatus = "approved";
-      }
-      // If order is verified but not approved, show "verified"
-      else if (order.verifiedBy) {
-        displayStatus = "verified";
-      }
-      // Otherwise show the current status
-      else {
+      } else if (order.verifiedBy) {
+        displayStatus = "request";
+      } else {
         displayStatus = order.status;
       }
     }
 
-    const isVerifiedByOtherAdmin = order.orderTrackingStatus === "verified" && order.verifiedBy !== currentAdminId;
-
-    // Check if we're in cancellation flow and should show only icons
-    const isInCancellationFlow = order.orderTrackingStatus === "cancel";
-    const showOnlyIcons = isInCancellationFlow && (order.verifiedBy || order.approvedBy);
-
     return (
-      <span className="inline-flex items-center gap-2">
-        <span
-          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold tracking-wider ${
-            statusStyles[displayStatus] || "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400 border border-gray-200 dark:border-gray-700"
-          }`}
-        >
-          <i className={`fas ${statusIcons[displayStatus] || "fa-info-circle"} text-xs`}></i>
-          {!showOnlyIcons && displayStatus.charAt(0).toUpperCase() + displayStatus.slice(1)}
-        </span>
-        
-        {/* Show verification and approval icons during cancellation flow - ONLY ICONS, NO TEXT */}
-        {isInCancellationFlow && (
-          <>
-            {order.verifiedBy && (
-              <span 
-                className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-600 border border-blue-200"
-                title="Verified by admin"
-              >
-                <i className="fas fa-check text-xs"></i>
-              </span>
-            )}
-            {order.approvedBy && (
-              <span 
-                className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 border border-emerald-200"
-                title="Approved by admin"
-              >
-                <i className="fas fa-check-circle text-xs"></i>
-              </span>
-            )}
-          </>
-        )}
-        
-        {isVerifiedByOtherAdmin && (
-          <span 
-            className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200"
-            title="This order has been verified by another admin"
-          >
-            <i className="fas fa-info-circle text-xs"></i>
-            Verified
-          </span>
-        )}
+      <span
+        className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold tracking-wider ${
+          statusStyles[displayStatus] || "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400 border border-gray-200 dark:border-gray-700"
+        }`}
+      >
+        {displayStatus.charAt(0).toUpperCase() + displayStatus.slice(1)}
       </span>
     );
+  };
+
+  const getVerificationBadge = (order: Order) => {
+    // Show verified if verifiedBy exists OR if orderTrackingStatus is "verified"
+    if (order?.verifiedBy || order?.orderTrackingStatus === "verified") {
+      return (
+        <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold tracking-wider bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-700">
+          Verified
+        </span>
+      );
+    }
+    return <span className="text-gray-500 dark:text-gray-400">-</span>;
   };
 
   return (
@@ -616,6 +566,9 @@ const OrdersTable: React.FC = () => {
                   Status
                 </th>
                 <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
+                  Verification
+                </th>
+                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
                   Actions
                 </th>
               </tr>
@@ -623,7 +576,7 @@ const OrdersTable: React.FC = () => {
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="p-12 text-center">
+                  <td colSpan={8} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
                       Loading Orders...
@@ -632,7 +585,7 @@ const OrdersTable: React.FC = () => {
                 </tr>
               ) : ordersData.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-12 text-center">
+                  <td colSpan={8} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       No orders found
                     </div>
@@ -662,6 +615,9 @@ const OrdersTable: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
                       {getStatusBadge(order)}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-center">
+                      {getVerificationBadge(order)}
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
                       <div className="inline-flex items-center gap-3">
