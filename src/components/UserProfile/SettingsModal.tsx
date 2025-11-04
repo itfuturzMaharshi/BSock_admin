@@ -22,7 +22,8 @@ interface SettingsModalProps {
     readyStockOrderProcess: string;
     reportTime: string;
     timezone: string;
-    percentage?: string; // ✅ new field
+    percentage?: string;
+    maxBidPercentage?: string;
   };
   onSave: () => void;
 }
@@ -39,7 +40,8 @@ export default function SettingsModal({
     readyStockAllowancePer: initialData?.readyStockAllowancePer || "",
     reportTime: initialData?.reportTime || "",
     timezone: initialData?.timezone || "Asia/Kolkata",
-    percentage: initialData?.percentage || "", // ✅ added in state
+    percentage: initialData?.percentage || "",
+    maxBidPercentage: initialData?.maxBidPercentage || "",
   });
 
   const [readyStockOrderProcess, setReadyStockOrderProcess] = useState<ProcessStep[]>([]);
@@ -53,6 +55,7 @@ export default function SettingsModal({
         reportTime: initialData.reportTime || "",
         timezone: initialData.timezone || "Asia/Kolkata",
         percentage: initialData.percentage || "",
+        maxBidPercentage: initialData.maxBidPercentage || "",
       });
 
       // Parse readyStockOrderProcess from JSON string or default to empty array
@@ -73,6 +76,7 @@ export default function SettingsModal({
         reportTime: "",
         timezone: "Asia/Kolkata",
         percentage: "",
+        maxBidPercentage: "",
       });
       setReadyStockOrderProcess([]);
     }
@@ -140,7 +144,8 @@ export default function SettingsModal({
         readyStockOrderProcess: cleanedProcess,
         reportTime: formData.reportTime,
         timezone: formData.timezone,
-        percentage: parseFloat(formData.percentage) || null, // ✅ send to backend
+        percentage: parseFloat(formData.percentage) || null,
+        maxBidPercentage: parseFloat(formData.maxBidPercentage) || null,
       };
 
       const response =
@@ -164,7 +169,7 @@ export default function SettingsModal({
 
   return (
     <div className="fixed inset-0 bg-[#77797c30] bg-opacity-50 flex items-center justify-center z-50">
-  <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg w-full max-w-[600px] max-h-[90vh] flex flex-col overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg w-full max-w-[600px] max-h-[90vh] flex flex-col overflow-hidden">
     
     {/* Header */}
     <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
@@ -180,9 +185,9 @@ export default function SettingsModal({
       </button>
     </div>
 
-    {/* Scrollable Content */}
-    <div className="flex-1 overflow-y-auto p-6">
-      <div className="grid grid-cols-1 gap-4">
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="grid grid-cols-1 gap-4">
         {/* ✅ New Wallet Percentage Field */}
         <div>
           <label className="mb-1 flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -195,6 +200,24 @@ export default function SettingsModal({
             onChange={handleChange}
             className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring focus:ring-blue-300 dark:bg-gray-700 dark:text-white/90"
           />
+        </div>
+
+        {/* Max Bid Percentage Field */}
+        <div>
+          <label className="mb-1 flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400">
+            <i className="fas fa-percent text-gray-500"></i> Max Bid Percentage (%)
+          </label>
+          <input
+            type="number"
+            name="maxBidPercentage"
+            value={formData.maxBidPercentage}
+            onChange={handleChange}
+            placeholder="Enter max bid percentage"
+            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring focus:ring-blue-300 dark:bg-gray-700 dark:text-white/90"
+          />
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            This percentage will be used to calculate max bid from starting bid price
+          </p>
         </div>
 
         {/* Existing Fields */}
@@ -309,27 +332,26 @@ export default function SettingsModal({
             <option value="America/New_York">America/New_York</option>
           </select>
         </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            className="flex items-center justify-center gap-2 rounded-full bg-[#0071E3] px-4 py-2 text-sm font-medium text-white shadow hover:bg-[#005bb5] transition-colors"
+          >
+            <i className="fa-solid fa-pen-to-square"></i>
+            {mode === "create" ? "Create" : "Update"}
+          </button>
+        </div>
       </div>
     </div>
-
-    {/* Footer */}
-    <div className="flex justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-      <button
-        onClick={onClose}
-        className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-      >
-        Cancel
-      </button>
-      <button
-        onClick={handleSubmit}
-        className="flex items-center justify-center gap-2 rounded-full bg-[#0071E3] px-4 py-2 text-sm font-medium text-white shadow hover:bg-[#005bb5] transition-colors"
-      >
-        <i className="fa-solid fa-pen-to-square"></i>
-        {mode === "create" ? "Create" : "Update"}
-      </button>
-    </div>
-
-  </div>
-</div>
   );
 }

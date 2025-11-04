@@ -60,14 +60,13 @@ const navItems: NavItem[] = [
     path: "/activities",
   },
   {
-    icon: <i className="fas fa-calculator"></i>,
-    name: "Cost Management",
-    path: "/cost-module",
-  },
-  {
-    icon: <i className="fas fa-wallet"></i>,
-    name: "Payments",
-    path: "/payments",
+    icon: <i className="fas fa-cog"></i>,
+    name: "Configuration",
+    subItems: [
+      { name: "Payment Config", path: "/payments" },
+      { name: "Cost Config", path: "/cost-module" },
+      // { name: "Notification Config", path: "#" },
+    ],
   },
   {
     icon: <i className="fas fa-wallet"></i>,
@@ -84,11 +83,11 @@ const navItems: NavItem[] = [
     name: "Bid Products",
     path: "/bid-products",
   },
-  {
-    icon: <i className="fas fa-search-location"></i>,
-    name: "Bid Tracking",
-    path: "/bid-tracking",
-  },
+  // {
+  //   icon: <i className="fas fa-search-location"></i>,
+  //   name: "Bid Tracking",
+  //   path: "/bid-tracking",
+  // },
 ];
 
 const AppSidebar: React.FC = () => {
