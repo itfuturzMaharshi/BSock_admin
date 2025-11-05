@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import Swal from "sweetalert2";
+// import Swal from "sweetalert2";
 import toastHelper from "../../utils/toastHelper";
 import { PaymentConfigService } from "../../services/payment/paymentConfig.services";
 
@@ -39,7 +39,7 @@ interface PaymentConfigProps {
   onRenderButtons?: (buttons: React.ReactNode) => void;
 }
 
-const PaymentConfig: React.FC<PaymentConfigProps> = ({ onRenderButtons }) => {
+const PaymentConfig: React.FC<PaymentConfigProps> = ({ onRenderButtons: _onRenderButtons }) => {
   const [paymentConfig, setPaymentConfig] = useState<PaymentConfig | null>(
     null
   );
@@ -156,37 +156,37 @@ const PaymentConfig: React.FC<PaymentConfigProps> = ({ onRenderButtons }) => {
     }
   };
 
-  const handleDeleteConfig = async () => {
-    if (!paymentConfig?._id) return;
+  // const handleDeleteConfig = async () => {
+  //   if (!paymentConfig?._id) return;
 
-    const confirmed = await Swal.fire({
-      title: "Delete Payment Config?",
-      text: "This will permanently delete the entire configuration!",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Yes, delete it!",
-      cancelButtonText: "No, cancel!",
-    });
+  //   const confirmed = await Swal.fire({
+  //     title: "Delete Payment Config?",
+  //     text: "This will permanently delete the entire configuration!",
+  //     icon: "warning",
+  //     showCancelButton: true,
+  //     confirmButtonText: "Yes, delete it!",
+  //     cancelButtonText: "No, cancel!",
+  //   });
 
-    if (confirmed.isConfirmed) {
-      try {
-        await PaymentConfigService.deletePaymentConfig(paymentConfig._id);
-        toastHelper.showTost("Payment config deleted successfully!", "success");
-        setPaymentConfig(null);
-      } catch (error) {
-        console.error("Failed to delete payment config:", error);
-        toastHelper.showTost("Failed to delete payment config!", "error");
-      }
-    }
-  };
+  //   if (confirmed.isConfirmed) {
+  //     try {
+  //       await PaymentConfigService.deletePaymentConfig(paymentConfig._id);
+  //       toastHelper.showTost("Payment config deleted successfully!", "success");
+  //       setPaymentConfig(null);
+  //     } catch (error) {
+  //       console.error("Failed to delete payment config:", error);
+  //       toastHelper.showTost("Failed to delete payment config!", "error");
+  //     }
+  //   }
+  // };
 
-  const openEditModal = () => {
-    if (!paymentConfig) return;
-    setIsEditMode(true);
-    setFormData(paymentConfig);
-    setEditingModuleIndex(null);
-    setIsModalOpen(true);
-  };
+  // const openEditModal = () => {
+  //   if (!paymentConfig) return;
+  //   setIsEditMode(true);
+  //   setFormData(paymentConfig);
+  //   setEditingModuleIndex(null);
+  //   setIsModalOpen(true);
+  // };
 
   const openModuleEditModal = (moduleIndex: number) => {
     if (!paymentConfig) return;
@@ -312,13 +312,13 @@ const PaymentConfig: React.FC<PaymentConfigProps> = ({ onRenderButtons }) => {
     });
   };
 
-  const removeModule = (index: number) => {
-    const updatedModules = formData.modules.filter((_, i) => i !== index);
-    setFormData({
-      ...formData,
-      modules: updatedModules,
-    });
-  };
+  // const removeModule = (index: number) => {
+  //   const updatedModules = formData.modules.filter((_, i) => i !== index);
+  //   setFormData({
+  //     ...formData,
+  //     modules: updatedModules,
+  //   });
+  // };
 
   const addSpecificField = (moduleIndex: number) => {
     const updatedModules = [...formData.modules];
@@ -776,14 +776,14 @@ const PaymentConfig: React.FC<PaymentConfigProps> = ({ onRenderButtons }) => {
           </div>
         </div>
       ) : (
-        <div className="text-center py-16">
-          <div className="w-24 h-24 mx-auto mb-6 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-            <i className="fas fa-cog text-blue-600 dark:text-blue-400 text-3xl"></i>
+        <div className="text-center py-12">
+          <div className="w-16 h-16 mx-auto mb-4 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+            <i className="fas fa-cog text-blue-600 dark:text-blue-400 text-xl"></i>
           </div>
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
             No Configuration Found
           </h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-8">
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
             Create your first payment configuration to get started
           </p>
           <button
@@ -796,9 +796,9 @@ const PaymentConfig: React.FC<PaymentConfigProps> = ({ onRenderButtons }) => {
               });
               setIsModalOpen(true);
             }}
-            className="px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 flex items-center gap-3 mx-auto"
+            className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
           >
-            <i className="fas fa-plus text-xl"></i>
+            <i className="fas fa-plus text-[12px]"></i>
             Create Payment Configuration
           </button>
         </div>
