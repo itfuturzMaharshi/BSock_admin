@@ -29,10 +29,10 @@ const CostModuleTable: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editItem, setEditItem] = useState<CostModule | undefined>(undefined);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [totalDocs, setTotalDocs] = useState<number>(0);
   const [totalPages, setTotalPages] = useState<number>(1);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [totalDocs, setTotalDocs] = useState<number>(0);
 
   // Fetch cost modules on component mount and when searchTerm or currentPage changes
   const fetchCostModules = async () => {
@@ -45,11 +45,14 @@ const CostModuleTable: React.FC = () => {
       });
       if (response.status === 200 && response.data) {
         setCostModules(response.data.docs);
-        setTotalDocs(response.data.totalDocs);
         setTotalPages(response.data.totalPages);
+        setTotalDocs(response.data.totalDocs || 0);
       }
     } catch (error) {
       console.error("Error fetching cost modules:", error);
+      setCostModules([]);
+      setTotalPages(1);
+      setTotalDocs(0);
     } finally {
       setLoading(false);
     }

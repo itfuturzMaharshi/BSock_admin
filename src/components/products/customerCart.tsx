@@ -20,13 +20,13 @@ const CustomerCart: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [selectedCustomer, setSelectedCustomer] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [totalDocs, setTotalDocs] = useState<number>(0);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [previewItem, setPreviewItem] = useState<CustomerCart | null>(null);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState<boolean>(false);
   const itemsPerPage = 10;
+  const [loading, setLoading] = useState<boolean>(false);
+  const [totalDocs, setTotalDocs] = useState<number>(0);
 
   // Fetch customer carts on filters change
   useEffect(() => {
@@ -102,6 +102,9 @@ const CustomerCart: React.FC = () => {
         (error as any)?.message || "Failed to fetch customer carts",
         "error"
       );
+      setCustomerCartsData([]);
+      setTotalPages(1);
+      setTotalDocs(0);
     } finally {
       setLoading(false);
     }

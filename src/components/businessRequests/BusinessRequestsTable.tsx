@@ -28,7 +28,6 @@ const BusinessRequestsTable: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>("Pending");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(true);
-  const [totalDocs, setTotalDocs] = useState<number>(0);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] =
@@ -40,6 +39,7 @@ const BusinessRequestsTable: React.FC = () => {
   const [statusOverrides, setStatusOverrides] = useState<
     Record<string, "Approved" | "Pending" | "Rejected">
   >({});
+  const [totalDocs, setTotalDocs] = useState<number>(0);
 
   useEffect(() => {
     try {
@@ -92,7 +92,9 @@ const BusinessRequestsTable: React.FC = () => {
     setLoading(true);
     try {
       const { docs, totalDocs } =
-        await BusinessRequestsService.getBusinessRequests(1, 1000, undefined);
+        await BusinessRequestsService.getBusinessRequests(currentPage, itemsPerPage, undefined);
+
+      setTotalDocs(totalDocs);
 
       const baseUrl = import.meta.env.VITE_BASE_URL as string | undefined;
       const makeAbsoluteUrl = (path?: string | null): string | undefined => {
@@ -153,11 +155,6 @@ const BusinessRequestsTable: React.FC = () => {
       } catch {}
 
       setBusinessRequests(withOverrides);
-      setTotalDocs(Number(totalDocs) || 0);
-    } catch (err) {
-      console.error("Error fetching business requests:", err);
-      setBusinessRequests([]);
-      setTotalDocs(0);
     } finally {
       setLoading(false);
     }
