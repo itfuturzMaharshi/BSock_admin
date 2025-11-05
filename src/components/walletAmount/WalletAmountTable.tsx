@@ -65,6 +65,11 @@ const WalletAmountTable: React.FC = () => {
     setCurrentPage(1);
   }, [itemsPerPage]);
 
+  // Scroll to top when page changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [currentPage]);
+
   // Fetch customers on mount
   useEffect(() => {
     fetchCustomers();
@@ -551,22 +556,71 @@ const WalletAmountTable: React.FC = () => {
 
             {/* Page Numbers */}
             <div className="flex space-x-1">
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                const pageNum = i + 1;
-                return (
-                  <button
-                    key={pageNum}
-                    onClick={() => setCurrentPage(pageNum)}
-                    className={`px-3 py-2 rounded-lg text-sm ${
-                      currentPage === pageNum
-                        ? "bg-[#0071E0] text-white dark:bg-blue-500 dark:text-white border border-blue-600 dark:border-blue-500"
-                        : "bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600"
-                    } transition-colors`}
-                  >
-                    {pageNum}
-                  </button>
-                );
-              })}
+              {(() => {
+                const maxVisiblePages = 3;
+                let startPage: number;
+                let endPage: number;
+
+                if (totalPages <= maxVisiblePages) {
+                  startPage = 1;
+                  endPage = totalPages;
+                } else {
+                  const halfVisible = Math.floor(maxVisiblePages / 2);
+                  startPage = Math.max(1, currentPage - halfVisible);
+                  endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+                  if (endPage - startPage < maxVisiblePages - 1) {
+                    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+                  }
+                }
+
+                const pages: (number | null)[] = [];
+
+                if (startPage > 1) {
+                  pages.push(1);
+                  if (startPage > 2) {
+                    pages.push(null);
+                  }
+                }
+
+                for (let i = startPage; i <= endPage; i++) {
+                  pages.push(i);
+                }
+
+                if (endPage < totalPages) {
+                  if (endPage < totalPages - 1) {
+                    pages.push(null);
+                  }
+                  pages.push(totalPages);
+                }
+
+                return pages.map((pageNum, idx) => {
+                  if (pageNum === null) {
+                    return (
+                      <span
+                        key={`ellipsis-${idx}`}
+                        className="px-3 py-2 text-gray-500 dark:text-gray-400"
+                      >
+                        ...
+                      </span>
+                    );
+                  }
+
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`px-3 py-2 rounded-lg text-sm min-w-[40px] ${
+                        currentPage === pageNum
+                          ? "bg-[#0071E0] text-white dark:bg-blue-500 dark:text-white border border-blue-600 dark:border-blue-500 font-semibold"
+                          : "bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600"
+                      } transition-colors`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                });
+              })()}
             </div>
 
             <button

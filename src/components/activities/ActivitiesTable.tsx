@@ -95,6 +95,11 @@ const ActivitiesTable = () => {
     setPage(1)
   }, [limit])
 
+  // Scroll to top when page changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [page])
+
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value)
     setPage(1)
@@ -519,8 +524,87 @@ const ActivitiesTable = () => {
                 </select>
               </div>
               <div className="flex gap-2">
-                <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className={`px-3 py-1 rounded border text-sm ${page <= 1 ? 'opacity-50 cursor-not-allowed' : ''}`}>Previous</button>
-                <button disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))} className={`px-3 py-1 rounded border text-sm ${page >= totalPages ? 'opacity-50 cursor-not-allowed' : ''}`}>Next</button>
+                <button 
+                  disabled={page <= 1} 
+                  onClick={() => setPage(p => Math.max(1, p - 1))} 
+                  className={`px-3 py-1 rounded border text-sm ${page <= 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  Previous
+                </button>
+                <div className="flex space-x-1">
+                  {(() => {
+                    const maxVisiblePages = 3;
+                    let startPage: number;
+                    let endPage: number;
+
+                    if (totalPages <= maxVisiblePages) {
+                      startPage = 1;
+                      endPage = totalPages;
+                    } else {
+                      const halfVisible = Math.floor(maxVisiblePages / 2);
+                      startPage = Math.max(1, page - halfVisible);
+                      endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+                      if (endPage - startPage < maxVisiblePages - 1) {
+                        startPage = Math.max(1, endPage - maxVisiblePages + 1);
+                      }
+                    }
+
+                    const pages: (number | null)[] = [];
+
+                    if (startPage > 1) {
+                      pages.push(1);
+                      if (startPage > 2) {
+                        pages.push(null);
+                      }
+                    }
+
+                    for (let i = startPage; i <= endPage; i++) {
+                      pages.push(i);
+                    }
+
+                    if (endPage < totalPages) {
+                      if (endPage < totalPages - 1) {
+                        pages.push(null);
+                      }
+                      pages.push(totalPages);
+                    }
+
+                    return pages.map((pageNum, idx) => {
+                      if (pageNum === null) {
+                        return (
+                          <span
+                            key={`ellipsis-${idx}`}
+                            className="px-3 py-2 text-gray-500 dark:text-gray-400"
+                          >
+                            ...
+                          </span>
+                        );
+                      }
+
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setPage(pageNum)}
+                          className={`px-3 py-2 rounded-lg text-sm min-w-[40px] ${
+                            page === pageNum
+                              ? "bg-[#0071E0] text-white dark:bg-blue-500 dark:text-white border border-blue-600 dark:border-blue-500 font-semibold"
+                              : "bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600"
+                          } transition-colors ${page <= 1 || page >= totalPages ? 'opacity-50' : ''}`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    });
+                  })()}
+                </div>
+                <button 
+                  disabled={page >= totalPages} 
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))} 
+                  className={`px-3 py-1 rounded border text-sm ${page >= totalPages ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  Next
+                </button>
               </div>
             </div>
           </>
@@ -652,8 +736,87 @@ const ActivitiesTable = () => {
                 </select>
               </div>
               <div className="flex gap-2">
-                <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className={`px-3 py-1 rounded border text-sm ${page <= 1 ? 'opacity-50 cursor-not-allowed' : ''}`}>Previous</button>
-                <button disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))} className={`px-3 py-1 rounded border text-sm ${page >= totalPages ? 'opacity-50 cursor-not-allowed' : ''}`}>Next</button>
+                <button 
+                  disabled={page <= 1} 
+                  onClick={() => setPage(p => Math.max(1, p - 1))} 
+                  className={`px-3 py-1 rounded border text-sm ${page <= 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  Previous
+                </button>
+                <div className="flex space-x-1">
+                  {(() => {
+                    const maxVisiblePages = 3;
+                    let startPage: number;
+                    let endPage: number;
+
+                    if (totalPages <= maxVisiblePages) {
+                      startPage = 1;
+                      endPage = totalPages;
+                    } else {
+                      const halfVisible = Math.floor(maxVisiblePages / 2);
+                      startPage = Math.max(1, page - halfVisible);
+                      endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+                      if (endPage - startPage < maxVisiblePages - 1) {
+                        startPage = Math.max(1, endPage - maxVisiblePages + 1);
+                      }
+                    }
+
+                    const pages: (number | null)[] = [];
+
+                    if (startPage > 1) {
+                      pages.push(1);
+                      if (startPage > 2) {
+                        pages.push(null);
+                      }
+                    }
+
+                    for (let i = startPage; i <= endPage; i++) {
+                      pages.push(i);
+                    }
+
+                    if (endPage < totalPages) {
+                      if (endPage < totalPages - 1) {
+                        pages.push(null);
+                      }
+                      pages.push(totalPages);
+                    }
+
+                    return pages.map((pageNum, idx) => {
+                      if (pageNum === null) {
+                        return (
+                          <span
+                            key={`ellipsis-${idx}`}
+                            className="px-3 py-2 text-gray-500 dark:text-gray-400"
+                          >
+                            ...
+                          </span>
+                        );
+                      }
+
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setPage(pageNum)}
+                          className={`px-3 py-2 rounded-lg text-sm min-w-[40px] ${
+                            page === pageNum
+                              ? "bg-[#0071E0] text-white dark:bg-blue-500 dark:text-white border border-blue-600 dark:border-blue-500 font-semibold"
+                              : "bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600"
+                          } transition-colors ${page <= 1 || page >= totalPages ? 'opacity-50' : ''}`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    });
+                  })()}
+                </div>
+                <button 
+                  disabled={page >= totalPages} 
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))} 
+                  className={`px-3 py-1 rounded border text-sm ${page >= totalPages ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  Next
+                </button>
               </div>
           </div>
           </>
