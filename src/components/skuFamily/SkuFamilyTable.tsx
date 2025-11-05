@@ -42,21 +42,11 @@ const SkuFamilyTable: React.FC = () => {
     top: number;
     left: number;
   } | null>(null);
-  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     fetchData();
-  }, [currentPage, searchTerm, itemsPerPage]);
-
-  // Reset to page 1 when limit changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [itemsPerPage]);
-
-  // Scroll to top when page changes
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [currentPage]);
+  }, [currentPage, searchTerm]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -408,13 +398,13 @@ const SkuFamilyTable: React.FC = () => {
                 {/* <th className="w-20 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Image
                 </th> */}
-                <th className="w-20 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                <th className="w-32 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Name
                 </th>
-                <th className="w-32 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                <th className="w-24 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Color Variant
                 </th>
-                <th className="w-28 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                <th className="w-20 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Country
                 </th>
                 <th className="w-20 px-2 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
@@ -490,18 +480,14 @@ const SkuFamilyTable: React.FC = () => {
                         </button>
                       </td>
 
-                      <td className="w-20 px-2 py-3 text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+                      <td className="w-32 px-2 py-4 text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
                         {item.name || "N/A"}
                       </td>
-                      <td className="w-32 px-2 py-5 text-sm text-gray-600 dark:text-gray-400 break-words">
-                        <div className="max-h-20 overflow-y-auto">
-                          {displayArrayData(item.colorVariant)}
-                        </div>
+                      <td className="w-24 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
+                        {displayArrayData(item.colorVariant)}
                       </td>
-                      <td className="w-28 px-2 py-5 text-sm text-gray-600 dark:text-gray-400 break-words">
-                        <div className="max-h-20 overflow-y-auto">
-                          {displayArrayData(item.country)}
-                        </div>
+                      <td className="w-20 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
+                        {item.country || "N/A"}
                       </td>
                       <td className="w-20 px-2 py-4 text-sm text-center relative">
                         <div className="inline-flex items-center justify-center gap-3">
@@ -560,7 +546,7 @@ const SkuFamilyTable: React.FC = () => {
                           <td className="w-12 px-2 py-4 text-center">
                             <div className="w-4 h-4 border-l-2 border-b-2 border-gray-300 dark:border-gray-500 ml-2"></div>
                           </td>
-                          <td className="w-20 px-2 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
+                          <td className="w-32 px-2 py-4 text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
                             <div className="flex items-center gap-3">
                               <img
                                 src={(function () {
@@ -586,15 +572,11 @@ const SkuFamilyTable: React.FC = () => {
                               <span className="truncate">{subRow.name || "N/A"}</span>
                             </div>
                           </td>
-                          <td className="w-32 px-2 py-5 text-sm text-gray-600 dark:text-gray-400 break-words">
-                            <div className="max-h-20 overflow-y-auto">
-                              {displayArrayData(subRow.colorVariant)}
-                            </div>
+                          <td className="w-24 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
+                            {displayArrayData(subRow.colorVariant)}
                           </td>
-                          <td className="w-28 px-2 py-5 text-sm text-gray-600 dark:text-gray-400 break-words">
-                            <div className="max-h-20 overflow-y-auto">
-                              {displayArrayData(subRow.country)}
-                            </div>
+                          <td className="w-20 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
+                            {subRow.country || "N/A"}
                           </td>
                           <td className="w-20 px-2 py-4 text-sm text-center">
                             <div className="subrow-dropdown-container relative">
@@ -716,95 +698,46 @@ const SkuFamilyTable: React.FC = () => {
             </tbody>
           </table>
         </div>
-        <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-          <div className="mb-4 sm:mb-0">
-            <select
-              value={itemsPerPage}
-              onChange={(e) => setItemsPerPage(Number(e.target.value))}
-              className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0071E0] dark:focus:ring-blue-500"
-            >
-              <option value={10}>10 per page</option>
-              <option value={20}>20 per page</option>
-              <option value={50}>50 per page</option>
-              <option value={100}>100 per page</option>
-              <option value={200}>200 per page</option>
-              <option value={500}>500 per page</option>
-            </select>
-          </div>
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed text-sm transition-colors"
-            >
-              Previous
-            </button>
-            <div className="flex space-x-1">
-              {(() => {
-                const maxVisiblePages = 3;
-                let startPage: number;
-                let endPage: number;
-
-                if (totalPages <= maxVisiblePages) {
-                  startPage = 1;
-                  endPage = totalPages;
-                } else {
-                  const halfVisible = Math.floor(maxVisiblePages / 2);
-                  startPage = Math.max(1, currentPage - halfVisible);
-                  endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-                  if (endPage - startPage < maxVisiblePages - 1) {
-                    startPage = Math.max(1, endPage - maxVisiblePages + 1);
-                  }
-                }
-
-                const pages: (number | null)[] = [];
-
-                if (startPage > 1) {
-                  pages.push(1);
-                  if (startPage > 2) {
-                    pages.push(null);
-                  }
-                }
-
-                for (let i = startPage; i <= endPage; i++) {
-                  pages.push(i);
-                }
-
-                if (endPage < totalPages) {
-                  if (endPage < totalPages - 1) {
-                    pages.push(null);
-                  }
-                  pages.push(totalPages);
-                }
-
-                return pages.map((pageNum, idx) => {
-                  if (pageNum === null) {
-                    return (
-                      <span
-                        key={`ellipsis-${idx}`}
-                        className="px-3 py-2 text-gray-500 dark:text-gray-400"
-                      >
-                        ...
-                      </span>
-                    );
-                  }
-
+        {totalDocs > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+            <div className="text-sm text-gray-600 dark:text-gray-400 mb-4 sm:mb-0">
+              Showing {skuFamilyData.length} of {totalDocs} items
+            </div>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed text-sm transition-colors"
+              >
+                Previous
+              </button>
+              <div className="flex space-x-1">
+                {Array.from({ length: totalPages }, (_, i) => {
+                  const pageNum = i + 1;
                   return (
                     <button
                       key={pageNum}
                       onClick={() => setCurrentPage(pageNum)}
-                      className={`px-3 py-2 rounded-lg text-sm min-w-[40px] ${
+                      className={`px-3 py-2 rounded-lg text-sm ${
                         currentPage === pageNum
-                          ? "bg-[#0071E0] text-white dark:bg-blue-500 dark:text-white border border-blue-600 dark:border-blue-500 font-semibold"
+                          ? "bg-[#0071E0] text-white dark:bg-blue-500 dark:text-white border border-blue-600 dark:border-blue-500"
                           : "bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600"
                       } transition-colors`}
                     >
                       {pageNum}
                     </button>
                   );
-                });
-              })()}
+                })}
+              </div>
+              <button
+                onClick={() =>
+                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                }
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed text-sm transition-colors"
+              >
+                Next
+              </button>
             </div>
           </div>
         )}
@@ -950,7 +883,7 @@ const SkuFamilyTable: React.FC = () => {
                       Country
                     </label>
                     <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
-                      {displayArrayData(selectedSkuFamily.country)}
+                      {selectedSkuFamily.country || "N/A"}
                     </p>
                   </div>
 
