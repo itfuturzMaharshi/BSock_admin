@@ -46,7 +46,7 @@ const WalletAmountTable: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [totalDocs, setTotalDocs] = useState<number>(0);
   const [totalPages, setTotalPages] = useState<number>(1);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
 
   // Fetch wallet data on mount
   useEffect(() => {
@@ -58,7 +58,12 @@ const WalletAmountTable: React.FC = () => {
     if (selectedCustomer !== "all") {
       fetchTransactions();
     }
-  }, [currentPage, selectedCustomer]);
+  }, [currentPage, selectedCustomer, itemsPerPage]);
+
+  // Reset to page 1 when limit changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [itemsPerPage]);
 
   // Fetch customers on mount
   useEffect(() => {
@@ -93,8 +98,8 @@ const WalletAmountTable: React.FC = () => {
 
     setTotalDocs(filtered.length);
     setTotalPages(Math.ceil(filtered.length / itemsPerPage));
-    setCurrentPage(1);
-  }, [walletData, searchTerm, statusFilter]);
+    // Don't reset page here, let the user control pagination
+  }, [walletData, searchTerm, statusFilter, itemsPerPage]);
 
   const fetchWalletData = async () => {
     try {
@@ -521,8 +526,19 @@ const WalletAmountTable: React.FC = () => {
 
         {/* Pagination */}
         <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-          <div className="text-sm text-gray-600 dark:text-gray-400 mb-4 sm:mb-0">
-            Showing {paginatedData.length} of {totalDocs} items
+          <div className="mb-4 sm:mb-0">
+            <select
+              value={itemsPerPage}
+              onChange={(e) => setItemsPerPage(Number(e.target.value))}
+              className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0071E0] dark:focus:ring-blue-500"
+            >
+              <option value={10}>10 per page</option>
+              <option value={20}>20 per page</option>
+              <option value={50}>50 per page</option>
+              <option value={100}>100 per page</option>
+              <option value={200}>200 per page</option>
+              <option value={500}>500 per page</option>
+            </select>
           </div>
           <div className="flex items-center space-x-3">
             <button

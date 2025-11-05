@@ -20,7 +20,7 @@ const ActivitiesTable = () => {
   const [items, setItems] = useState<VersionRowItem[]>([])
   const [loading, setLoading] = useState<boolean>(true)
   const [page, setPage] = useState<number>(1)
-  const [limit] = useState<number>(10)
+  const [limit, setLimit] = useState<number>(10)
   const [searchTerm, setSearchTerm] = useState<string>('')
   const [totalDocs, setTotalDocs] = useState<number>(0)
   const totalPages = useMemo(() => Math.max(1, Math.ceil(totalDocs / limit)), [totalDocs, limit])
@@ -89,6 +89,11 @@ const ActivitiesTable = () => {
     }
     fetchData()
   }, [page, limit, searchTerm, activeTab])
+
+  // Reset to page 1 when limit changes
+  useEffect(() => {
+    setPage(1)
+  }, [limit])
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value)
@@ -499,7 +504,20 @@ const ActivitiesTable = () => {
               </table>
             </div>
             <div className="flex items-center justify-between p-4 border-t border-gray-200 dark:border-gray-700">
-              <div className="text-sm text-gray-600 dark:text-gray-300">Page {page} of {totalPages}</div>
+              <div className="mb-4 sm:mb-0">
+                <select
+                  value={limit}
+                  onChange={(e) => setLimit(Number(e.target.value))}
+                  className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0071E0] dark:focus:ring-blue-500"
+                >
+                  <option value={10}>10 per page</option>
+                  <option value={20}>20 per page</option>
+                  <option value={50}>50 per page</option>
+                  <option value={100}>100 per page</option>
+                  <option value={200}>200 per page</option>
+                  <option value={500}>500 per page</option>
+                </select>
+              </div>
               <div className="flex gap-2">
                 <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className={`px-3 py-1 rounded border text-sm ${page <= 1 ? 'opacity-50 cursor-not-allowed' : ''}`}>Previous</button>
                 <button disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))} className={`px-3 py-1 rounded border text-sm ${page >= totalPages ? 'opacity-50 cursor-not-allowed' : ''}`}>Next</button>
@@ -619,7 +637,20 @@ const ActivitiesTable = () => {
               </table>
             </div>
             <div className="flex items-center justify-between p-4 border-t border-gray-200 dark:border-gray-700">
-              <div className="text-sm text-gray-600 dark:text-gray-300">Page {page} of {totalPages}</div>
+              <div className="mb-4 sm:mb-0">
+                <select
+                  value={limit}
+                  onChange={(e) => setLimit(Number(e.target.value))}
+                  className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0071E0] dark:focus:ring-blue-500"
+                >
+                  <option value={10}>10 per page</option>
+                  <option value={20}>20 per page</option>
+                  <option value={50}>50 per page</option>
+                  <option value={100}>100 per page</option>
+                  <option value={200}>200 per page</option>
+                  <option value={500}>500 per page</option>
+                </select>
+              </div>
               <div className="flex gap-2">
                 <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className={`px-3 py-1 rounded border text-sm ${page <= 1 ? 'opacity-50 cursor-not-allowed' : ''}`}>Previous</button>
                 <button disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))} className={`px-3 py-1 rounded border text-sm ${page >= totalPages ? 'opacity-50 cursor-not-allowed' : ''}`}>Next</button>

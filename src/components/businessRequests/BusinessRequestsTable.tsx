@@ -29,6 +29,7 @@ const BusinessRequestsTable: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(true);
   const [totalDocs, setTotalDocs] = useState<number>(0);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] =
@@ -62,7 +63,10 @@ const BusinessRequestsTable: React.FC = () => {
     } catch {}
   }, [statusOverrides]);
 
-  const itemsPerPage = 10;
+  // Reset to page 1 when limit changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [itemsPerPage]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -92,7 +96,7 @@ const BusinessRequestsTable: React.FC = () => {
     setLoading(true);
     try {
       const { docs, totalDocs } =
-        await BusinessRequestsService.getBusinessRequests(1, 1000, undefined);
+        await BusinessRequestsService.getBusinessRequests(currentPage, itemsPerPage, undefined);
 
       const baseUrl = import.meta.env.VITE_BASE_URL as string | undefined;
       const makeAbsoluteUrl = (path?: string | null): string | undefined => {
@@ -161,7 +165,7 @@ const BusinessRequestsTable: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [statusOverrides]);
+  }, [statusOverrides, currentPage, itemsPerPage]);
 
   useEffect(() => {
     let filtered = businessRequests;
@@ -177,7 +181,7 @@ const BusinessRequestsTable: React.FC = () => {
     }
 
     setFilteredRequests(filtered);
-    setCurrentPage(1);
+    // Don't reset page here, let the user control pagination
   }, [businessRequests, searchTerm, statusFilter]);
 
   useEffect(() => {
@@ -505,15 +509,19 @@ const BusinessRequestsTable: React.FC = () => {
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t bg-gray-50">
-          <div className="text-sm">
-            Showing {paginatedRequests.length} of {filteredRequests.length}{" "}
-            items
-            {filteredRequests.length !== totalDocs && (
-              <span className="text-gray-500">
-                {" "}
-                (filtered from {totalDocs} total)
-              </span>
-            )}
+          <div className="mb-4 sm:mb-0">
+            <select
+              value={itemsPerPage}
+              onChange={(e) => setItemsPerPage(Number(e.target.value))}
+              className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-500"
+            >
+              <option value={10}>10 per page</option>
+              <option value={20}>20 per page</option>
+              <option value={50}>50 per page</option>
+              <option value={100}>100 per page</option>
+              <option value={200}>200 per page</option>
+              <option value={500}>500 per page</option>
+            </select>
           </div>
           <div className="flex items-center space-x-3">
             <button

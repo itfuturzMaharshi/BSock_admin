@@ -26,12 +26,17 @@ const CustomerCart: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [previewItem, setPreviewItem] = useState<CustomerCart | null>(null);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState<boolean>(false);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
 
   // Fetch customer carts on filters change
   useEffect(() => {
     fetchCustomerCarts();
-  }, [currentPage, searchTerm, selectedCustomer]);
+  }, [currentPage, searchTerm, selectedCustomer, itemsPerPage]);
+
+  // Reset to page 1 when limit changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [itemsPerPage]);
 
   // Fetch all customers once on mount
   useEffect(() => {
@@ -457,8 +462,19 @@ const CustomerCart: React.FC = () => {
 
         {/* Pagination */}
         <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-          <div className="text-sm text-gray-600 dark:text-gray-400 mb-4 sm:mb-0">
-            Showing {customerCartsData.length} of {totalDocs} items
+          <div className="mb-4 sm:mb-0">
+            <select
+              value={itemsPerPage}
+              onChange={(e) => setItemsPerPage(Number(e.target.value))}
+              className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0071E0] dark:focus:ring-blue-500"
+            >
+              <option value={10}>10 per page</option>
+              <option value={20}>20 per page</option>
+              <option value={50}>50 per page</option>
+              <option value={100}>100 per page</option>
+              <option value={200}>200 per page</option>
+              <option value={500}>500 per page</option>
+            </select>
           </div>
           <div className="flex items-center space-x-3">
             <button
