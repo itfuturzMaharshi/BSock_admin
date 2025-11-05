@@ -85,14 +85,51 @@ export class ProductService {
     const url = `${baseUrl}/api/${adminRoute}/product/update`;
 
     try {
-      // Ensure subSkuFamilyId is included in the request data
-      const data = { 
-        id, 
-        ...productData,
-        subSkuFamilyId: productData.subSkuFamilyId || null
+      // Transform data to match backend expectations
+      const transformedData: any = {
+        id,
+        // Extract _id if skuFamilyId/subSkuFamilyId are objects
+        skuFamilyId: typeof productData.skuFamilyId === 'object' && productData.skuFamilyId !== null
+          ? (productData.skuFamilyId as any)._id || productData.skuFamilyId
+          : productData.skuFamilyId,
+        subSkuFamilyId: productData.subSkuFamilyId
+          ? (typeof productData.subSkuFamilyId === 'object' && productData.subSkuFamilyId !== null
+              ? (productData.subSkuFamilyId as any)._id || productData.subSkuFamilyId
+              : productData.subSkuFamilyId)
+          : null,
+        specification: productData.specification || null,
+        simType: productData.simType || null,
+        // Handle color: if it's a comma-separated string, take the first value
+        color: productData.color 
+          ? (productData.color.includes(',') ? productData.color.split(',')[0].trim() : productData.color)
+          : null,
+        ram: productData.ram || null,
+        storage: productData.storage || null,
+        condition: productData.condition || null,
+        price: typeof productData.price === 'string' ? parseFloat(productData.price) : productData.price,
+        stock: typeof productData.stock === 'string' ? parseInt(productData.stock, 10) : productData.stock,
+        country: productData.country || null,
+        moq: typeof productData.moq === 'string' ? parseInt(productData.moq, 10) : productData.moq,
+        purchaseType: productData.purchaseType || 'partial',
+        isNegotiable: typeof productData.isNegotiable === 'boolean' ? productData.isNegotiable : false,
+        // Convert isFlashDeal from string "true"/"false" to boolean
+        isFlashDeal: typeof productData.isFlashDeal === 'string' 
+          ? productData.isFlashDeal === 'true' 
+          : Boolean(productData.isFlashDeal),
+        expiryTime: productData.expiryTime || null,
       };
+
+      // Remove null/undefined values to avoid sending unnecessary data
+      Object.keys(transformedData).forEach(key => {
+        if (transformedData[key] === null || transformedData[key] === undefined || transformedData[key] === '') {
+          // Keep id, but remove other null/undefined/empty string values
+          if (key !== 'id') {
+            delete transformedData[key];
+          }
+        }
+      });
       
-      const res = await api.post(url, data);
+      const res = await api.post(url, transformedData);
       toastHelper.showTost(res.data.message || 'Product updated successfully!', 'success');
       return res.data;
     } catch (err: any) {
