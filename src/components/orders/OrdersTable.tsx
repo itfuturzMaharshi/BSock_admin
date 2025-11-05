@@ -11,13 +11,12 @@ const OrdersTable: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [totalDocs, setTotalDocs] = useState<number>(0);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [currentAdminId, setCurrentAdminId] = useState<string>("");
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState<boolean>(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [itemsPerPage, setItemsPerPage] = useState<number>(10);
+  const [loading, setLoading] = useState<boolean>(false);
 
   const allStatusOptions = ["request", "verified", "approved", "accepted", "shipped", "delivered", "cancel"];
   
@@ -70,7 +69,6 @@ const OrdersTable: React.FC = () => {
         statusFilter || undefined
       );
       setOrdersData(response.data.docs);
-      setTotalDocs(response.data.totalDocs);
       setTotalPages(response.data.totalPages);
     } catch (error) {
       console.error("Failed to fetch orders:", error);

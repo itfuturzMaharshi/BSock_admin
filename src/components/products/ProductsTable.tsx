@@ -24,10 +24,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState<boolean>(false);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [totalDocs, setTotalDocs] = useState<number>(0);
   const [totalPages, setTotalPages] = useState<number>(1);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [historyProductId, setHistoryProductId] = useState<string | undefined>(undefined);
   const [historyProductName, setHistoryProductName] = useState<string | undefined>(undefined);
   const [itemsPerPage, setItemsPerPage] = useState<number>(10);
@@ -36,6 +33,8 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
     top: number;
     left: number;
   } | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   const handleExport = async () => {
     try {
@@ -124,7 +123,6 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
         // When filtering client-side, we can't use server pagination properly
         // For now, use the filtered count but this is not ideal
         // TODO: Move status filtering to server-side
-        setTotalDocs(filteredData.length);
         setTotalPages(Math.ceil(filteredData.length / itemsPerPage));
       } else {
         // Use server pagination when no filter is applied
@@ -133,18 +131,15 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
         
         // If API provides totalPages, use it; otherwise calculate from totalDocs
         if (totalPagesFromAPI !== undefined && totalPagesFromAPI !== null) {
-          setTotalDocs(totalDocsFromAPI);
           setTotalPages(totalPagesFromAPI);
         } else {
           // Fallback: calculate from totalDocs if available
-          setTotalDocs(totalDocsFromAPI);
           setTotalPages(Math.ceil(totalDocsFromAPI / itemsPerPage));
         }
       }
     } catch (error) {
       console.error("Failed to fetch products:", error);
       setProductsData([]);
-      setTotalDocs(0);
       setTotalPages(1);
     } finally {
       setLoading(false);

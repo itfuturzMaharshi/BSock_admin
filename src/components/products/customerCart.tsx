@@ -20,8 +20,6 @@ const CustomerCart: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [selectedCustomer, setSelectedCustomer] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [totalDocs, setTotalDocs] = useState<number>(0);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [previewItem, setPreviewItem] = useState<CustomerCart | null>(null);

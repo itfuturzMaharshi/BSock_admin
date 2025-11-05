@@ -42,11 +42,10 @@ const WalletAmountTable: React.FC = () => {
     useState<CustomerWalletData | null>(null);
   const [viewingCustomer, setViewingCustomer] =
     useState<CustomerWalletData | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [totalDocs, setTotalDocs] = useState<number>(0);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(10);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [customers, setCustomers] = useState<Customer[]>([]);
 
   // Fetch wallet data on mount
   useEffect(() => {
@@ -101,7 +100,6 @@ const WalletAmountTable: React.FC = () => {
       );
     }
 
-    setTotalDocs(filtered.length);
     setTotalPages(Math.ceil(filtered.length / itemsPerPage));
     // Don't reset page here, let the user control pagination
   }, [walletData, searchTerm, statusFilter, itemsPerPage]);
