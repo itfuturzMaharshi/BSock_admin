@@ -20,7 +20,7 @@ const ActivitiesTable = () => {
   const [items, setItems] = useState<VersionRowItem[]>([])
   const [loading, setLoading] = useState<boolean>(true)
   const [page, setPage] = useState<number>(1)
-  const [limit] = useState<number>(10)
+  const [limit, setLimit] = useState<number>(10)
   const [searchTerm, setSearchTerm] = useState<string>('')
   const [totalDocs, setTotalDocs] = useState<number>(0)
   const totalPages = useMemo(() => Math.max(1, Math.ceil(totalDocs / limit)), [totalDocs, limit])
@@ -89,6 +89,16 @@ const ActivitiesTable = () => {
     }
     fetchData()
   }, [page, limit, searchTerm, activeTab])
+
+  // Reset to page 1 when limit changes
+  useEffect(() => {
+    setPage(1)
+  }, [limit])
+
+  // Scroll to top when page changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [page])
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value)
@@ -499,10 +509,102 @@ const ActivitiesTable = () => {
               </table>
             </div>
             <div className="flex items-center justify-between p-4 border-t border-gray-200 dark:border-gray-700">
-              <div className="text-sm text-gray-600 dark:text-gray-300">Page {page} of {totalPages}</div>
+              <div className="mb-4 sm:mb-0">
+                <select
+                  value={limit}
+                  onChange={(e) => setLimit(Number(e.target.value))}
+                  className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0071E0] dark:focus:ring-blue-500"
+                >
+                  <option value={10}>10 per page</option>
+                  <option value={20}>20 per page</option>
+                  <option value={50}>50 per page</option>
+                  <option value={100}>100 per page</option>
+                  <option value={200}>200 per page</option>
+                  <option value={500}>500 per page</option>
+                </select>
+              </div>
               <div className="flex gap-2">
-                <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className={`px-3 py-1 rounded border text-sm ${page <= 1 ? 'opacity-50 cursor-not-allowed' : ''}`}>Previous</button>
-                <button disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))} className={`px-3 py-1 rounded border text-sm ${page >= totalPages ? 'opacity-50 cursor-not-allowed' : ''}`}>Next</button>
+                <button 
+                  disabled={page <= 1} 
+                  onClick={() => setPage(p => Math.max(1, p - 1))} 
+                  className={`px-3 py-1 rounded border text-sm ${page <= 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  Previous
+                </button>
+                <div className="flex space-x-1">
+                  {(() => {
+                    const maxVisiblePages = 3;
+                    let startPage: number;
+                    let endPage: number;
+
+                    if (totalPages <= maxVisiblePages) {
+                      startPage = 1;
+                      endPage = totalPages;
+                    } else {
+                      const halfVisible = Math.floor(maxVisiblePages / 2);
+                      startPage = Math.max(1, page - halfVisible);
+                      endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+                      if (endPage - startPage < maxVisiblePages - 1) {
+                        startPage = Math.max(1, endPage - maxVisiblePages + 1);
+                      }
+                    }
+
+                    const pages: (number | null)[] = [];
+
+                    if (startPage > 1) {
+                      pages.push(1);
+                      if (startPage > 2) {
+                        pages.push(null);
+                      }
+                    }
+
+                    for (let i = startPage; i <= endPage; i++) {
+                      pages.push(i);
+                    }
+
+                    if (endPage < totalPages) {
+                      if (endPage < totalPages - 1) {
+                        pages.push(null);
+                      }
+                      pages.push(totalPages);
+                    }
+
+                    return pages.map((pageNum, idx) => {
+                      if (pageNum === null) {
+                        return (
+                          <span
+                            key={`ellipsis-${idx}`}
+                            className="px-3 py-2 text-gray-500 dark:text-gray-400"
+                          >
+                            ...
+                          </span>
+                        );
+                      }
+
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setPage(pageNum)}
+                          className={`px-3 py-2 rounded-lg text-sm min-w-[40px] ${
+                            page === pageNum
+                              ? "bg-[#0071E0] text-white dark:bg-blue-500 dark:text-white border border-blue-600 dark:border-blue-500 font-semibold"
+                              : "bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600"
+                          } transition-colors ${page <= 1 || page >= totalPages ? 'opacity-50' : ''}`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    });
+                  })()}
+                </div>
+                <button 
+                  disabled={page >= totalPages} 
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))} 
+                  className={`px-3 py-1 rounded border text-sm ${page >= totalPages ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  Next
+                </button>
               </div>
             </div>
           </>
@@ -619,10 +721,102 @@ const ActivitiesTable = () => {
               </table>
             </div>
             <div className="flex items-center justify-between p-4 border-t border-gray-200 dark:border-gray-700">
-              <div className="text-sm text-gray-600 dark:text-gray-300">Page {page} of {totalPages}</div>
+              <div className="mb-4 sm:mb-0">
+                <select
+                  value={limit}
+                  onChange={(e) => setLimit(Number(e.target.value))}
+                  className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0071E0] dark:focus:ring-blue-500"
+                >
+                  <option value={10}>10 per page</option>
+                  <option value={20}>20 per page</option>
+                  <option value={50}>50 per page</option>
+                  <option value={100}>100 per page</option>
+                  <option value={200}>200 per page</option>
+                  <option value={500}>500 per page</option>
+                </select>
+              </div>
               <div className="flex gap-2">
-                <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className={`px-3 py-1 rounded border text-sm ${page <= 1 ? 'opacity-50 cursor-not-allowed' : ''}`}>Previous</button>
-                <button disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))} className={`px-3 py-1 rounded border text-sm ${page >= totalPages ? 'opacity-50 cursor-not-allowed' : ''}`}>Next</button>
+                <button 
+                  disabled={page <= 1} 
+                  onClick={() => setPage(p => Math.max(1, p - 1))} 
+                  className={`px-3 py-1 rounded border text-sm ${page <= 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  Previous
+                </button>
+                <div className="flex space-x-1">
+                  {(() => {
+                    const maxVisiblePages = 3;
+                    let startPage: number;
+                    let endPage: number;
+
+                    if (totalPages <= maxVisiblePages) {
+                      startPage = 1;
+                      endPage = totalPages;
+                    } else {
+                      const halfVisible = Math.floor(maxVisiblePages / 2);
+                      startPage = Math.max(1, page - halfVisible);
+                      endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+                      if (endPage - startPage < maxVisiblePages - 1) {
+                        startPage = Math.max(1, endPage - maxVisiblePages + 1);
+                      }
+                    }
+
+                    const pages: (number | null)[] = [];
+
+                    if (startPage > 1) {
+                      pages.push(1);
+                      if (startPage > 2) {
+                        pages.push(null);
+                      }
+                    }
+
+                    for (let i = startPage; i <= endPage; i++) {
+                      pages.push(i);
+                    }
+
+                    if (endPage < totalPages) {
+                      if (endPage < totalPages - 1) {
+                        pages.push(null);
+                      }
+                      pages.push(totalPages);
+                    }
+
+                    return pages.map((pageNum, idx) => {
+                      if (pageNum === null) {
+                        return (
+                          <span
+                            key={`ellipsis-${idx}`}
+                            className="px-3 py-2 text-gray-500 dark:text-gray-400"
+                          >
+                            ...
+                          </span>
+                        );
+                      }
+
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setPage(pageNum)}
+                          className={`px-3 py-2 rounded-lg text-sm min-w-[40px] ${
+                            page === pageNum
+                              ? "bg-[#0071E0] text-white dark:bg-blue-500 dark:text-white border border-blue-600 dark:border-blue-500 font-semibold"
+                              : "bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600"
+                          } transition-colors ${page <= 1 || page >= totalPages ? 'opacity-50' : ''}`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    });
+                  })()}
+                </div>
+                <button 
+                  disabled={page >= totalPages} 
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))} 
+                  className={`px-3 py-1 rounded border text-sm ${page >= totalPages ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  Next
+                </button>
               </div>
           </div>
           </>

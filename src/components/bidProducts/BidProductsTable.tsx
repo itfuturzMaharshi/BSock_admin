@@ -22,7 +22,7 @@ const BidProductsTable: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [totalDocs, setTotalDocs] = useState<number>(0);
   const [totalPages, setTotalPages] = useState<number>(1);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
   const [isViewModalOpen, setIsViewModalOpen] = useState<boolean>(false);
   const [selectedProduct, setSelectedProduct] = useState<BidProduct | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
@@ -32,7 +32,17 @@ const BidProductsTable: React.FC = () => {
 
   useEffect(() => {
     fetchProducts();
-  }, [currentPage, searchTerm, statusFilter]);
+  }, [currentPage, searchTerm, statusFilter, itemsPerPage]);
+
+  // Reset to page 1 when limit changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [itemsPerPage]);
+
+  // Scroll to top when page changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [currentPage]);
 
   const fetchProducts = async () => {
     try {
@@ -342,40 +352,111 @@ const BidProductsTable: React.FC = () => {
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-          <div className="text-sm text-gray-600 dark:text-gray-400 mb-4 sm:mb-0">
-            Showing {productsData.length} of {totalDocs} items
+          <div className="mb-4 sm:mb-0">
+            <select
+              value={itemsPerPage}
+              onChange={(e) => setItemsPerPage(Number(e.target.value))}
+              className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0071E0] dark:focus:ring-blue-500"
+            >
+              <option value={10}>10 per page</option>
+              <option value={20}>20 per page</option>
+              <option value={50}>50 per page</option>
+              <option value={100}>100 per page</option>
+              <option value={200}>200 per page</option>
+              <option value={500}>500 per page</option>
+            </select>
           </div>
           <div className="flex items-center space-x-3">
             <button
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
+              onClick={() => {
+                setCurrentPage((prev) => Math.max(prev - 1, 1));
+              }}
+              disabled={currentPage === 1 || loading}
               className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed text-sm transition-colors"
             >
               Previous
             </button>
             <div className="flex space-x-1">
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                const pageNum = i + 1;
-                return (
-                  <button
-                    key={pageNum}
-                    onClick={() => setCurrentPage(pageNum)}
-                    className={`px-3 py-2 rounded-lg text-sm ${
-                      currentPage === pageNum
-                        ? "bg-[#0071E0] text-white dark:bg-blue-500 dark:text-white border border-blue-600 dark:border-blue-500"
-                        : "bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600"
-                    } transition-colors`}
-                  >
-                    {pageNum}
-                  </button>
-                );
-              })}
+              {(() => {
+                const maxVisiblePages = 3;
+                let startPage: number;
+                let endPage: number;
+
+                if (totalPages <= maxVisiblePages) {
+                  // Show all pages if total pages is less than max visible
+                  startPage = 1;
+                  endPage = totalPages;
+                } else {
+                  // Show pages around current page
+                  const halfVisible = Math.floor(maxVisiblePages / 2);
+                  startPage = Math.max(1, currentPage - halfVisible);
+                  endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+                  // Adjust if we're near the end
+                  if (endPage - startPage < maxVisiblePages - 1) {
+                    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+                  }
+                }
+
+                const pages: (number | null)[] = [];
+
+                // Add first page and ellipsis if needed
+                if (startPage > 1) {
+                  pages.push(1);
+                  if (startPage > 2) {
+                    pages.push(null); // Ellipsis
+                  }
+                }
+
+                // Add page numbers
+                for (let i = startPage; i <= endPage; i++) {
+                  pages.push(i);
+                }
+
+                // Add last page and ellipsis if needed
+                if (endPage < totalPages) {
+                  if (endPage < totalPages - 1) {
+                    pages.push(null); // Ellipsis
+                  }
+                  pages.push(totalPages);
+                }
+
+                return pages.map((pageNum, idx) => {
+                  if (pageNum === null) {
+                    return (
+                      <span
+                        key={`ellipsis-${idx}`}
+                        className="px-3 py-2 text-gray-500 dark:text-gray-400"
+                      >
+                        ...
+                      </span>
+                    );
+                  }
+
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => {
+                        setCurrentPage(pageNum);
+                      }}
+                      disabled={loading}
+                      className={`px-3 py-2 rounded-lg text-sm min-w-[40px] ${
+                        currentPage === pageNum
+                          ? "bg-[#0071E0] text-white dark:bg-blue-500 dark:text-white border border-blue-600 dark:border-blue-500 font-semibold"
+                          : "bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600"
+                      } transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                });
+              })()}
             </div>
             <button
-              onClick={() =>
-                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-              }
-              disabled={currentPage === totalPages}
+              onClick={() => {
+                setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+              }}
+              disabled={currentPage === totalPages || loading}
               className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed text-sm transition-colors"
             >
               Next
