@@ -415,7 +415,7 @@ const SkuFamilyTable: React.FC = () => {
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="p-12 text-center">
+                  <td colSpan={5} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
                       Loading SKU Families...
@@ -424,9 +424,33 @@ const SkuFamilyTable: React.FC = () => {
                 </tr>
               ) : !skuFamilyData || skuFamilyData.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-12 text-center">
-                    <div className="text-gray-500 dark:text-gray-400 text-lg">
-                      No products found
+                  <td colSpan={5} className="p-16 text-center">
+                    <div className="flex flex-col items-center justify-center space-y-4">
+                      <div className="w-24 h-24 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
+                        <i className="fas fa-box-open text-4xl text-gray-400 dark:text-gray-500"></i>
+                      </div>
+                      <div className="space-y-2">
+                        <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">
+                          No SKU Families Found
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md">
+                          {searchTerm.trim() 
+                            ? `No SKU families match your search "${searchTerm}". Try adjusting your search terms.`
+                            : "There are no SKU families available at the moment. Click the 'Add SKU Family' button to create your first SKU family."}
+                        </p>
+                      </div>
+                      {!searchTerm.trim() && (
+                        <button
+                          onClick={() => {
+                            setEditId(null);
+                            setIsModalOpen(true);
+                          }}
+                          className="inline-flex items-center gap-2 rounded-lg bg-[#0071E0] text-white px-6 py-2.5 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors mt-4"
+                        >
+                          <i className="fas fa-plus text-xs"></i>
+                          Add SKU Family
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -658,13 +682,14 @@ const SkuFamilyTable: React.FC = () => {
                           <td className="w-12 px-2 py-4 text-center">
                             <div className="w-4 h-4 border-l-2 border-b-2 border-gray-300 dark:border-gray-500 ml-2"></div>
                           </td>
-                          <td className="px-2 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400" colSpan={3}>
-                            <div className="flex items-center">
-                              <i className="fas fa-info-circle mr-2"></i>
-                              No variants available. Click edit to add variants.
+                          <td className="px-2 py-4 text-sm text-gray-500 dark:text-gray-400" colSpan={4}>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <i className="fas fa-box-open text-gray-400 dark:text-gray-500"></i>
+                                <span>No variants available for this SKU Family.</span>
+                              </div>
                             </div>
                           </td>
-                          <td className="w-20 px-2 py-4"></td>
                         </tr>
                       )}
                   </React.Fragment>
@@ -673,47 +698,49 @@ const SkuFamilyTable: React.FC = () => {
             </tbody>
           </table>
         </div>
-        <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-          <div className="text-sm text-gray-600 dark:text-gray-400 mb-4 sm:mb-0">
-            Showing {skuFamilyData.length} of {totalDocs} items
-          </div>
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed text-sm transition-colors"
-            >
-              Previous
-            </button>
-            <div className="flex space-x-1">
-              {Array.from({ length: totalPages }, (_, i) => {
-                const pageNum = i + 1;
-                return (
-                  <button
-                    key={pageNum}
-                    onClick={() => setCurrentPage(pageNum)}
-                    className={`px-3 py-2 rounded-lg text-sm ${
-                      currentPage === pageNum
-                        ? "bg-[#0071E0] text-white dark:bg-blue-500 dark:text-white border border-blue-600 dark:border-blue-500"
-                        : "bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600"
-                    } transition-colors`}
-                  >
-                    {pageNum}
-                  </button>
-                );
-              })}
+        {totalDocs > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+            <div className="text-sm text-gray-600 dark:text-gray-400 mb-4 sm:mb-0">
+              Showing {skuFamilyData.length} of {totalDocs} items
             </div>
-            <button
-              onClick={() =>
-                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-              }
-              disabled={currentPage === totalPages}
-              className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed text-sm transition-colors"
-            >
-              Next
-            </button>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed text-sm transition-colors"
+              >
+                Previous
+              </button>
+              <div className="flex space-x-1">
+                {Array.from({ length: totalPages }, (_, i) => {
+                  const pageNum = i + 1;
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`px-3 py-2 rounded-lg text-sm ${
+                        currentPage === pageNum
+                          ? "bg-[#0071E0] text-white dark:bg-blue-500 dark:text-white border border-blue-600 dark:border-blue-500"
+                          : "bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600"
+                      } transition-colors`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                onClick={() =>
+                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                }
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed text-sm transition-colors"
+              >
+                Next
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
       <SkuFamilyModal
         isOpen={isModalOpen}
