@@ -327,6 +327,43 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
     return placeholderImage;
   };
 
+  const renderProductBadges = (product: Product) => {
+    const badges = [];
+    
+    if (product.simType) {
+      badges.push({ label: product.simType, tooltip: `SIM Type: ${product.simType}` });
+    }
+    if (product.color) {
+      badges.push({ label: product.color, tooltip: `Color: ${product.color}` });
+    }
+    if (product.ram) {
+      badges.push({ label: product.ram, tooltip: `RAM: ${product.ram}` });
+    }
+    if (product.storage) {
+      badges.push({ label: product.storage, tooltip: `Storage: ${product.storage}` });
+    }
+
+    if (badges.length === 0) return null;
+
+    return (
+      <div className="flex flex-wrap items-center gap-1 mt-2">
+        {badges.map((badge, index) => (
+          <React.Fragment key={index}>
+            {index > 0 && (
+              <span className="text-gray-400 dark:text-gray-500 mx-0.5">•</span>
+            )}
+            <span
+              className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-700 cursor-help transition-colors hover:bg-blue-200 dark:hover:bg-blue-900/50"
+              title={badge.tooltip}
+            >
+              {badge.label}
+            </span>
+          </React.Fragment>
+        ))}
+      </div>
+    );
+  };
+
   const formatPrice = (price: number | string): string => {
     if (typeof price === "string") {
       const num = parseFloat(price);
@@ -457,18 +494,6 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                   Sub Sku Name
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  SIM Type
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Color
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  RAM
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Storage
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Price
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
@@ -485,7 +510,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={11} className="p-12 text-center">
+                  <td colSpan={7} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
                       Loading Products...
@@ -494,7 +519,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                 </tr>
               ) : productsData.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="p-12 text-center">
+                  <td colSpan={7} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       No products found
                     </div>
@@ -517,23 +542,14 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                         }}
                       />
                     </td>
-                    <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-gray-200">
-                      {getSkuFamilyText(item.skuFamilyId)}
+                    <td className="px-6 py-4">
+                      <div className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                        {getSkuFamilyText(item.skuFamilyId)}
+                      </div>
+                      {renderProductBadges(item)}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                       {getSubSkuFamilyText(item.subSkuFamilyId)}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.simType}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.color}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.ram}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.storage}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                       ${formatPrice(item.price)}
