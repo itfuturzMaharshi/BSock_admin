@@ -24,7 +24,7 @@ const CustomerCart: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [previewItem, setPreviewItem] = useState<CustomerCart | null>(null);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState<boolean>(false);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
   const [loading, setLoading] = useState<boolean>(false);
   const [totalDocs, setTotalDocs] = useState<number>(0);
 
@@ -90,11 +90,9 @@ const CustomerCart: React.FC = () => {
         }
       }));
 
-      const nTotalDocs = parseInt(String(response?.data?.totalDocs || 0)) || mapped.length;
       const nTotalPages = parseInt(String(response?.data?.totalPages || 1)) || 1;
 
       setCustomerCartsData(mapped);
-      setTotalDocs(nTotalDocs);
       setTotalPages(nTotalPages);
     } catch (error) {
       console.error("Failed to fetch customer carts:", error);

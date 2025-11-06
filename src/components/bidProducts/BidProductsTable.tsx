@@ -20,7 +20,6 @@ const BidProductsTable: React.FC = () => {
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState<boolean>(false);
   const [previewProducts, setPreviewProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [totalDocs, setTotalDocs] = useState<number>(0);
   const [totalPages, setTotalPages] = useState<number>(1);
   const itemsPerPage = 10;
   const [isViewModalOpen, setIsViewModalOpen] = useState<boolean>(false);
@@ -44,7 +43,6 @@ const BidProductsTable: React.FC = () => {
         statusFilter
       );
       setProductsData(response.data.docs);
-      setTotalDocs(response.data.totalDocs);
       setTotalPages(response.data.totalPages);
     } catch (error) {
       console.error("Failed to fetch bid products:", error);
