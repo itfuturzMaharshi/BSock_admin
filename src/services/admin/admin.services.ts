@@ -89,7 +89,36 @@ export class AdminService {
         data: responseData.data,
       };
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to create admin';
+      let errorMessage = 'Failed to create admin';
+      
+      if (err.response) {
+        // Server responded with error status
+        const responseData = err.response.data;
+        
+        // Handle validator errors (array format)
+        if (responseData?.errors && Array.isArray(responseData.errors)) {
+          errorMessage = responseData.errors.map((e: any) => e.message).join(', ');
+        } 
+        // Handle single message format
+        else if (responseData?.message) {
+          errorMessage = responseData.message;
+        } 
+        // Handle error field
+        else if (responseData?.error) {
+          errorMessage = responseData.error;
+        } 
+        // Fallback to status text
+        else {
+          errorMessage = err.response.statusText || errorMessage;
+        }
+      } else if (err.request) {
+        // Request was made but no response received
+        errorMessage = 'Network error. Please check your connection and try again.';
+      } else {
+        // Something else happened
+        errorMessage = err.message || errorMessage;
+      }
+      
       toastHelper.error(errorMessage);
       throw new Error(errorMessage);
     }

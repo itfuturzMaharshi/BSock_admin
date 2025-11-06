@@ -10,6 +10,7 @@ import {
   Product,
 } from "../../services/product/product.services";
 import placeholderImage from "../../../public/images/product/noimage.jpg";
+import { useDebounce } from "../../hooks/useDebounce";
 
 interface ProductsTableProps {
   loggedInAdminId?: string; 
@@ -18,6 +19,7 @@ interface ProductsTableProps {
 const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
   const [productsData, setProductsData] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 1000);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -55,7 +57,14 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
   // Fetch products on component mount and when page/search/filter changes
   useEffect(() => {
     fetchProducts();
-  }, [currentPage, searchTerm, statusFilter]);
+  }, [currentPage, debouncedSearchTerm, statusFilter]);
+
+  // Reset to first page when search term changes
+  useEffect(() => {
+    if (debouncedSearchTerm !== searchTerm) {
+      setCurrentPage(1);
+    }
+  }, [debouncedSearchTerm]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -87,7 +96,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
       const response = await ProductService.getProductList(
         currentPage,
         itemsPerPage,
-        searchTerm
+        debouncedSearchTerm
       );
 
       let filteredData = response.data.docs;

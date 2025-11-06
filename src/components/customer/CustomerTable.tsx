@@ -1,22 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { CustomerService, Customer } from '../../services/customer/customerService';
 import CustomerEditModal from './CustomerEditModal';
+import ViewCustomerModal from './ViewCustomerModal';
+import { useDebounce } from '../../hooks/useDebounce';
 
 const CustomerTable: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 1000);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [allowBiddingFilter, setAllowBiddingFilter] = useState<string>(""); // '', 'allowed', 'notAllowed'
   const [statusFilter, setStatusFilter] = useState<string>(""); // '', 'active','inactive','approved','pending','emailVerified','notEmailVerified'
   const [loading, setLoading] = useState<boolean>(true);
   const [totalDocs, setTotalDocs] = useState<number>(0);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState<boolean>(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [viewingCustomer, setViewingCustomer] = useState<Customer | null>(null);
   const itemsPerPage = 10;
 
   useEffect(() => {
     fetchData();
-  }, [currentPage, searchTerm, allowBiddingFilter, statusFilter]);
+  }, [currentPage, debouncedSearchTerm, allowBiddingFilter, statusFilter]);
+
+  // Reset to first page when search term changes
+  useEffect(() => {
+    if (debouncedSearchTerm !== searchTerm) {
+      setCurrentPage(1);
+    }
+  }, [debouncedSearchTerm]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -24,7 +36,7 @@ const CustomerTable: React.FC = () => {
       const response = await CustomerService.getCustomerList({
         page: currentPage,
         limit: itemsPerPage,
-        search: searchTerm,
+        search: debouncedSearchTerm,
         isAllowBidding: allowBiddingFilter === '' ? undefined : allowBiddingFilter === 'allowed',
         status: statusFilter === '' ? undefined : (statusFilter as any),
       });
@@ -63,9 +75,30 @@ const CustomerTable: React.FC = () => {
     }
   };
 
+  const handleToggleActiveStatus = async (customerId: string, currentStatus: boolean | undefined) => {
+    try {
+      await CustomerService.toggleActiveStatus(customerId);
+      // Update the local state
+      setCustomers(prevCustomers =>
+        prevCustomers.map(customer =>
+          customer._id === customerId
+            ? { ...customer, isActive: !currentStatus }
+            : customer
+        )
+      );
+    } catch (err) {
+      console.error("Error toggling active status:", err);
+    }
+  };
+
   const handleEdit = (customer: Customer) => {
     setEditingCustomer(customer);
     setIsModalOpen(true);
+  };
+
+  const handleView = (customer: Customer) => {
+    setViewingCustomer(customer);
+    setIsViewModalOpen(true);
   };
 
   const handleSave = () => {
@@ -214,11 +247,17 @@ const CustomerTable: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-sm">
                       {customer.isActive ? (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                        <span 
+                          onClick={() => handleToggleActiveStatus(customer._id, customer.isActive)}
+                          className="cursor-pointer inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 hover:bg-green-200 dark:hover:bg-green-800 transition-colors"
+                        >
                           Active
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                        <span 
+                          onClick={() => handleToggleActiveStatus(customer._id, customer.isActive)}
+                          className="cursor-pointer inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 hover:bg-red-200 dark:hover:bg-red-800 transition-colors"
+                        >
                           Inactive
                         </span>
                       )}
@@ -259,7 +298,14 @@ const CustomerTable: React.FC = () => {
                       )}
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
-                      <div className="flex items-center justify-center gap-2">
+                      <div className="flex items-center justify-center gap-3">
+                        <button
+                          onClick={() => handleView(customer)}
+                          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                          title="View Customer Details"
+                        >
+                          <i className="fas fa-eye"></i>
+                        </button>
                         <button
                           onClick={() => handleEdit(customer)}
                           className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors"
@@ -331,6 +377,15 @@ const CustomerTable: React.FC = () => {
         }}
         onSave={handleSave}
         editCustomer={editingCustomer}
+      />
+
+      <ViewCustomerModal
+        isOpen={isViewModalOpen}
+        onClose={() => {
+          setIsViewModalOpen(false);
+          setViewingCustomer(null);
+        }}
+        customer={viewingCustomer}
       />
     </div>
   );

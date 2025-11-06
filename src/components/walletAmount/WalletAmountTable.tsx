@@ -11,6 +11,7 @@ import {
   CustomerService,
   Customer,
 } from "../../services/customer/customerService";
+import { useDebounce } from "../../hooks/useDebounce";
 
 // Define the interface for Transaction data
 interface Transaction {
@@ -32,6 +33,7 @@ const WalletAmountTable: React.FC = () => {
   const [walletData, setWalletData] = useState<CustomerWalletData[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 1000);
   const [selectedCustomer, setSelectedCustomer] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -65,20 +67,20 @@ const WalletAmountTable: React.FC = () => {
     fetchCustomers();
   }, []);
 
-  // Update pagination totals when walletData, searchTerm, or statusFilter changes
+  // Update pagination totals when walletData, debouncedSearchTerm, or statusFilter changes
   useEffect(() => {
     let filtered = walletData;
 
-    if (searchTerm.trim()) {
+    if (debouncedSearchTerm.trim()) {
       filtered = filtered.filter((item) => {
         const matchesSearch =
-          item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
           (item.businessProfile.businessName &&
             item.businessProfile.businessName
               .toLowerCase()
-              .includes(searchTerm.toLowerCase())) ||
+              .includes(debouncedSearchTerm.toLowerCase())) ||
           (item.mobileNumber &&
-            item.mobileNumber.toLowerCase().includes(searchTerm.toLowerCase()));
+            item.mobileNumber.toLowerCase().includes(debouncedSearchTerm.toLowerCase()));
         return matchesSearch;
       });
     }
@@ -94,7 +96,7 @@ const WalletAmountTable: React.FC = () => {
     setTotalPages(Math.ceil(filtered.length / itemsPerPage));
     setTotalDocs(filtered.length);
     setCurrentPage(1);
-  }, [walletData, searchTerm, statusFilter]);
+  }, [walletData, debouncedSearchTerm, statusFilter]);
 
   const fetchWalletData = async () => {
     try {
@@ -247,13 +249,13 @@ const WalletAmountTable: React.FC = () => {
   // Filter and paginate wallet data (client-side)
   const filteredWalletData = walletData.filter((item) => {
     const matchesSearch =
-      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
       (item.businessProfile.businessName &&
         item.businessProfile.businessName
           .toLowerCase()
-          .includes(searchTerm.toLowerCase())) ||
+          .includes(debouncedSearchTerm.toLowerCase())) ||
       (item.mobileNumber &&
-        item.mobileNumber.toLowerCase().includes(searchTerm.toLowerCase()));
+        item.mobileNumber.toLowerCase().includes(debouncedSearchTerm.toLowerCase()));
     const matchesStatus =
       statusFilter === "All" ||
       item.businessProfile.status.toLowerCase() === statusFilter.toLowerCase();

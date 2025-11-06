@@ -4,10 +4,12 @@ import toastHelper from "../../utils/toastHelper";
 import AdminsModal from "./AdminsModal";
 import { AdminService, Admin, UpdateAdminRequest } from "../../services/admin/admin.services";
 import { LOCAL_STORAGE_KEYS } from "../../constants/localStorage";
+import { useDebounce } from "../../hooks/useDebounce";
 
 const AdminsTable: React.FC = () => {
   const [adminsData, setAdminsData] = useState<Admin[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 1000);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingAdmin, setEditingAdmin] = useState<Admin | null>(null);
@@ -25,7 +27,7 @@ const AdminsTable: React.FC = () => {
       const response = await AdminService.listAdmins({
         page: currentPage,
         limit: itemsPerPage,
-        search: searchTerm,
+        search: debouncedSearchTerm,
       });
       
       if (response.status === 200 && response.data) {
@@ -47,20 +49,14 @@ const AdminsTable: React.FC = () => {
 
   useEffect(() => {
     fetchAdmins();
-  }, [currentPage, searchTerm]);
+  }, [currentPage, debouncedSearchTerm]);
 
-  // Debounce search
+  // Reset to first page when search term changes
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (currentPage !== 1) {
-        setCurrentPage(1);
-      } else {
-        fetchAdmins();
-      }
-    }, 500);
-
-    return () => clearTimeout(timeoutId);
-  }, [searchTerm]);
+    if (debouncedSearchTerm !== searchTerm) {
+      setCurrentPage(1);
+    }
+  }, [debouncedSearchTerm]);
 
   const handleSave = () => {
     // Refresh the data after save

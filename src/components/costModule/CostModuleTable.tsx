@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import Swal from "sweetalert2";
 import CostModuleModal from "./CostModuleModal";
 import { CostModuleService } from "../../services/costModule/costModule.services";
+import { useDebounce } from "../../hooks/useDebounce";
 
 // Define the interface for CostModule data (output from list, with populated products)
 interface CostModule {
@@ -26,6 +27,7 @@ interface Product {
 const CostModuleTable: React.FC = () => {
   const [costModules, setCostModules] = useState<CostModule[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 1000);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editItem, setEditItem] = useState<CostModule | undefined>(undefined);
@@ -41,7 +43,7 @@ const CostModuleTable: React.FC = () => {
       const response = await CostModuleService.listCostModules({
         page: currentPage,
         limit: itemsPerPage,
-        search: searchTerm,
+        search: debouncedSearchTerm,
       });
       if (response.status === 200 && response.data) {
         setCostModules(response.data.docs);
@@ -60,7 +62,14 @@ const CostModuleTable: React.FC = () => {
 
   useEffect(() => {
     fetchCostModules();
-  }, [currentPage, searchTerm]);
+  }, [currentPage, debouncedSearchTerm]);
+
+  // Reset to first page when search term changes
+  useEffect(() => {
+    if (debouncedSearchTerm !== searchTerm) {
+      setCurrentPage(1);
+    }
+  }, [debouncedSearchTerm]);
 
   const handleSave = async (newItem: CostModule) => {
     try {

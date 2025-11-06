@@ -8,10 +8,12 @@ import SkuFamilyModal from "./SkuFamilyModal";
 import SubRowModal from "./SubRowModal";
 import placeholderImage from "../../../public/images/product/noimage.jpg";
 import { SkuFamily } from "./types";
+import { useDebounce } from "../../hooks/useDebounce";
 
 const SkuFamilyTable: React.FC = () => {
   const [skuFamilyData, setSkuFamilyData] = useState<SkuFamily[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 1000);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -46,7 +48,14 @@ const SkuFamilyTable: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, [currentPage, searchTerm]);
+  }, [currentPage, debouncedSearchTerm]);
+
+  // Reset to first page when search term changes
+  useEffect(() => {
+    if (debouncedSearchTerm !== searchTerm) {
+      setCurrentPage(1);
+    }
+  }, [debouncedSearchTerm]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -86,7 +95,7 @@ const SkuFamilyTable: React.FC = () => {
       const response = await SkuFamilyService.getSkuFamilyList(
         currentPage,
         itemsPerPage,
-        searchTerm.trim()
+        debouncedSearchTerm.trim()
       );
       if (response.data?.docs) {
         console.log("Fetched SKU Family data:", response.data.docs); // Debug log
