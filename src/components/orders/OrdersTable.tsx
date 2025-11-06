@@ -16,7 +16,7 @@ const OrdersTable: React.FC = () => {
   const [totalDocs, setTotalDocs] = useState<number>(0);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState<boolean>(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
+  const [itemsPerPage] = useState<number>(10);
   const [loading, setLoading] = useState<boolean>(false);
 
   const allStatusOptions = ["request", "verified", "approved", "accepted", "shipped", "delivered", "cancel"];
