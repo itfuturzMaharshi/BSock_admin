@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { CustomerService, Customer } from '../../services/customer/customerService';
 import CustomerEditModal from './CustomerEditModal';
+import { useDebounce } from '../../hooks/useDebounce';
 
 const CustomerTable: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 1000);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [allowBiddingFilter, setAllowBiddingFilter] = useState<string>(""); // '', 'allowed', 'notAllowed'
   const [statusFilter, setStatusFilter] = useState<string>(""); // '', 'active','inactive','approved','pending','emailVerified','notEmailVerified'
@@ -16,7 +18,14 @@ const CustomerTable: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, [currentPage, searchTerm, allowBiddingFilter, statusFilter]);
+  }, [currentPage, debouncedSearchTerm, allowBiddingFilter, statusFilter]);
+
+  // Reset to first page when search term changes
+  useEffect(() => {
+    if (debouncedSearchTerm !== searchTerm) {
+      setCurrentPage(1);
+    }
+  }, [debouncedSearchTerm]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -24,7 +33,7 @@ const CustomerTable: React.FC = () => {
       const response = await CustomerService.getCustomerList({
         page: currentPage,
         limit: itemsPerPage,
-        search: searchTerm,
+        search: debouncedSearchTerm,
         isAllowBidding: allowBiddingFilter === '' ? undefined : allowBiddingFilter === 'allowed',
         status: statusFilter === '' ? undefined : (statusFilter as any),
       });

@@ -3,6 +3,7 @@ import Swal from "sweetalert2";
 import { format } from "date-fns";
 import toastHelper from "../../utils/toastHelper";
 import CustomerCartService, { CustomerCartItem, CartProduct } from "../../services/order/customerCart.services";
+import { useDebounce } from "../../hooks/useDebounce";
 
 // Interface for Customer Cart data
 interface Customer {
@@ -18,6 +19,7 @@ type CustomerCart = CustomerCartItem & { updatedAt?: string };
 const CustomerCart: React.FC = () => {
   const [customerCartsData, setCustomerCartsData] = useState<CustomerCart[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 1000);
   const [selectedCustomer, setSelectedCustomer] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
@@ -31,7 +33,14 @@ const CustomerCart: React.FC = () => {
   // Fetch customer carts on filters change
   useEffect(() => {
     fetchCustomerCarts();
-  }, [currentPage, searchTerm, selectedCustomer]);
+  }, [currentPage, debouncedSearchTerm, selectedCustomer]);
+
+  // Reset to first page when search term changes
+  useEffect(() => {
+    if (debouncedSearchTerm !== searchTerm) {
+      setCurrentPage(1);
+    }
+  }, [debouncedSearchTerm]);
 
   // Fetch all customers once on mount
   useEffect(() => {
@@ -45,7 +54,7 @@ const CustomerCart: React.FC = () => {
       const response = await CustomerCartService.getCustomerCartList(
         currentPage,
         itemsPerPage,
-        searchTerm,
+        debouncedSearchTerm,
         selectedCustomer
       );
       const docs = (response?.data?.docs || []) as any[];

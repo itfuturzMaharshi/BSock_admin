@@ -7,6 +7,7 @@ import placeholderImage from '../../../public/images/product/noimage.jpg'
 import toastHelper from '../../utils/toastHelper'
 import { AdminOrderService, TrackingItem } from '../../services/order/adminOrder.services'
 import { LOCAL_STORAGE_KEYS } from '../../constants/localStorage'
+import { useDebounce } from '../../hooks/useDebounce'
 
 interface VersionRowItem {
 	_id?: string
@@ -22,6 +23,7 @@ const ActivitiesTable = () => {
   const [page, setPage] = useState<number>(1)
   const [limit] = useState<number>(10)
   const [searchTerm, setSearchTerm] = useState<string>('')
+  const debouncedSearchTerm = useDebounce(searchTerm, 1000)
   const [totalDocs, setTotalDocs] = useState<number>(0)
   const totalPages = useMemo(() => Math.max(1, Math.ceil(totalDocs / limit)), [totalDocs, limit])
   const [isViewOpen, setIsViewOpen] = useState<boolean>(false)
@@ -40,7 +42,7 @@ const ActivitiesTable = () => {
       setLoading(true)
       try {
         if (activeTab === 'products') {
-        const countsBody: ProductsWithCountsQuery = { page: 1, limit: 1, search: searchTerm || undefined }
+        const countsBody: ProductsWithCountsQuery = { page: 1, limit: 1, search: debouncedSearchTerm || undefined }
         const countsRes = await VersionProductService.fetchProductsWithCounts(countsBody)
         const countsPayload = countsRes?.data?.data || countsRes?.data
         const firstProduct = countsPayload?.docs?.[0]
@@ -88,7 +90,14 @@ const ActivitiesTable = () => {
       }
     }
     fetchData()
-  }, [page, limit, searchTerm, activeTab])
+  }, [page, limit, debouncedSearchTerm, activeTab])
+
+  // Reset to first page when search term changes
+  useEffect(() => {
+    if (debouncedSearchTerm !== searchTerm) {
+      setPage(1);
+    }
+  }, [debouncedSearchTerm])
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value)

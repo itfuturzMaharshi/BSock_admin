@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import toastHelper from '../../utils/toastHelper';
 import { PaymentConfigService } from '../../services/payment/paymentConfig.services';
+import { useDebounce } from '../../hooks/useDebounce';
 
 // Interface for Customer Payment Detail data
 interface Customer {
@@ -38,6 +39,7 @@ interface CustomerPaymentDetail {
 const CustomerPaymentConfig: React.FC = () => {
   const [paymentDetails, setPaymentDetails] = useState<CustomerPaymentDetail[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 1000);
   const [selectedModule, setSelectedModule] = useState<string>('');
   const [selectedStatus, setSelectedStatus] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -59,7 +61,14 @@ const CustomerPaymentConfig: React.FC = () => {
   // Fetch payment details
   useEffect(() => {
     fetchPaymentDetails();
-  }, [currentPage, searchTerm, selectedModule, selectedStatus]);
+  }, [currentPage, debouncedSearchTerm, selectedModule, selectedStatus]);
+
+  // Reset to first page when search term changes
+  useEffect(() => {
+    if (debouncedSearchTerm !== searchTerm) {
+      setCurrentPage(1);
+    }
+  }, [debouncedSearchTerm]);
 
   const fetchPaymentDetails = async () => {
     try {
@@ -67,7 +76,7 @@ const CustomerPaymentConfig: React.FC = () => {
       const response = await PaymentConfigService.listPaymentDetails(
         currentPage,
         itemsPerPage,
-        searchTerm,
+        debouncedSearchTerm,
         selectedModule,
         selectedStatus
       );

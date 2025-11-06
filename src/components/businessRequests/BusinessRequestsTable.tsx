@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import Swal from "sweetalert2";
 import { BusinessRequestsService } from "../../services/businessRequests/businessRequests.services";
 import { LOCAL_STORAGE_KEYS } from "../../constants/localStorage";
+import { useDebounce } from "../../hooks/useDebounce";
 
 interface BusinessRequest {
   _id?: string;
@@ -25,6 +26,7 @@ const BusinessRequestsTable: React.FC = () => {
     []
   );
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 1000);
   const [statusFilter, setStatusFilter] = useState<string>("Pending");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(true);
@@ -163,9 +165,9 @@ const BusinessRequestsTable: React.FC = () => {
   useEffect(() => {
     let filtered = businessRequests;
 
-    if (searchTerm.trim()) {
+    if (debouncedSearchTerm.trim()) {
       filtered = filtered.filter((item) =>
-        item.businessName.toLowerCase().includes(searchTerm.toLowerCase())
+        item.businessName.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
       );
     }
 
@@ -175,7 +177,7 @@ const BusinessRequestsTable: React.FC = () => {
 
     setFilteredRequests(filtered);
     setCurrentPage(1);
-  }, [businessRequests, searchTerm, statusFilter]);
+  }, [businessRequests, debouncedSearchTerm, statusFilter]);
 
   useEffect(() => {
     fetchData();

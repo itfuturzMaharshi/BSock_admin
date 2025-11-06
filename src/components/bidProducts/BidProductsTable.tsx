@@ -10,10 +10,12 @@ import {
   BidProductService,
   BidProduct,
 } from "../../services/bidProducts/bidProduct.services";
+import { useDebounce } from "../../hooks/useDebounce";
 
 const BidProductsTable: React.FC = () => {
   const [productsData, setProductsData] = useState<BidProduct[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 1000);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
@@ -31,7 +33,14 @@ const BidProductsTable: React.FC = () => {
 
   useEffect(() => {
     fetchProducts();
-  }, [currentPage, searchTerm, statusFilter]);
+  }, [currentPage, debouncedSearchTerm, statusFilter]);
+
+  // Reset to first page when search term changes
+  useEffect(() => {
+    if (debouncedSearchTerm !== searchTerm) {
+      setCurrentPage(1);
+    }
+  }, [debouncedSearchTerm]);
 
   const fetchProducts = async () => {
     try {
@@ -39,7 +48,7 @@ const BidProductsTable: React.FC = () => {
       const response = await BidProductService.getBidProductList(
         currentPage,
         itemsPerPage,
-        searchTerm,
+        debouncedSearchTerm,
         statusFilter
       );
       setProductsData(response.data.docs);

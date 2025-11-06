@@ -3,10 +3,12 @@ import Swal from 'sweetalert2';
 import { CurrencyConversionService, CurrencyConversion } from '../../services/currencyConversion/currencyConversion.services';
 import toastHelper from '../../utils/toastHelper';
 import CurrencyConversionModal from './CurrencyConversionModal.tsx';
+import { useDebounce } from '../../hooks/useDebounce';
 
 const CurrencyConversionTable: React.FC = () => {
   const [currencyConversions, setCurrencyConversions] = useState<CurrencyConversion[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 1000);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -16,7 +18,14 @@ const CurrencyConversionTable: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, [currentPage, searchTerm]);
+  }, [currentPage, debouncedSearchTerm]);
+
+  // Reset to first page when search term changes
+  useEffect(() => {
+    if (debouncedSearchTerm !== searchTerm) {
+      setCurrentPage(1);
+    }
+  }, [debouncedSearchTerm]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -24,7 +33,7 @@ const CurrencyConversionTable: React.FC = () => {
       const response = await CurrencyConversionService.listCurrencyConversions({
         page: currentPage,
         limit: itemsPerPage,
-        ...(searchTerm && { search: searchTerm }),
+        ...(debouncedSearchTerm && { search: debouncedSearchTerm }),
       });
       
       if (response.data?.docs) {

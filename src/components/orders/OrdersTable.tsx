@@ -5,10 +5,12 @@ import toastHelper from "../../utils/toastHelper";
 import { AdminOrderService, Order, TrackingItem, OrderItem } from "../../services/order/adminOrder.services";
 import { LOCAL_STORAGE_KEYS } from "../../constants/localStorage";
 import OrderDetailsModal from "./OrderDetailsModal";
+import { useDebounce } from "../../hooks/useDebounce";
 
 const OrdersTable: React.FC = () => {
   const [ordersData, setOrdersData] = useState<Order[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 1000);
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
@@ -33,7 +35,14 @@ const OrdersTable: React.FC = () => {
     const adminId = localStorage.getItem(LOCAL_STORAGE_KEYS.ADMIN_ID) || "";
     setCurrentAdminId(adminId);
     fetchOrders();
-  }, [currentPage, searchTerm, statusFilter]);
+  }, [currentPage, debouncedSearchTerm, statusFilter]);
+
+  // Reset to first page when search term changes
+  useEffect(() => {
+    if (debouncedSearchTerm !== searchTerm) {
+      setCurrentPage(1);
+    }
+  }, [debouncedSearchTerm]);
 
   const handleExport = async () => {
     try {
@@ -56,7 +65,7 @@ const OrdersTable: React.FC = () => {
       const response = await AdminOrderService.getOrderList(
         currentPage,
         itemsPerPage,
-        searchTerm || undefined,
+        debouncedSearchTerm || undefined,
         statusFilter || undefined
       );
       setOrdersData(response.data.docs);
