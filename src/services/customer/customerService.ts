@@ -147,6 +147,24 @@ export class CustomerService {
     }
   };
 
+  // Toggle active status
+  static toggleActiveStatus = async (customerId: string): Promise<void> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/customer/toggle-active`;
+    
+    console.log('Toggle active status URL:', url);
+
+    try {
+      await api.post(url, { customerId });
+      toastHelper.showTost('Active status updated successfully', 'success');
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to toggle active status';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
+
   // Export customers to Excel (excludes _id and updatedAt on backend)
   static exportCustomersExcel = async (requestData: CustomerListRequest = {}): Promise<void> => {
     const baseUrl = import.meta.env.VITE_BASE_URL;
