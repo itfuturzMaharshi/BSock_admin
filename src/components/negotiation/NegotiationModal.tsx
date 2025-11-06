@@ -277,7 +277,8 @@ const NegotiationModal = ({ isOpen, onClose }: NegotiationModalProps) => {
 
   const getProductImage = (productId: any) => {
     if (typeof productId === 'string') return '/images/placeholder.jpg';
-    return productId?.skuFamilyId?.images[0] ? `${imageBaseUrl}/${productId?.skuFamilyId?.images[0]}` : '';
+    const imagePath = productId?.skuFamilyId?.images?.[0];
+    return imagePath ? `${imageBaseUrl}/${imagePath}` : '';
   };
 
   const getProductName = (productId: any) => {
