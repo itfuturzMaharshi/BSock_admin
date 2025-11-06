@@ -82,7 +82,7 @@ export class UserProfileService {
 
       const responseData = res.data;
 
-      if (res.status === 200) {
+      if (responseData.data !== 0) {
         toastHelper.showTost(responseData.message || 'Password changed successfully!', 'success');
       } else {
         toastHelper.showTost(responseData.message || 'Failed to change password', 'warning');

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import Swal from "sweetalert2";
 import { BidProductService } from "../../services/bidProducts/bidProduct.services";
 import { BidProduct } from "../../services/bidProducts/bidProduct.services";
+import toastHelper from "../../utils/toastHelper";
 
 interface SendMessageModalProps {
   isOpen: boolean;
@@ -27,33 +28,19 @@ const SendMessageModal: React.FC<SendMessageModalProps> = ({
 
   const handleSubmit = async () => {
     if (!product?._id) {
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "Product information is missing",
-      });
+      toastHelper.error("Product information is missing");
       return;
     }
 
     if (!message.trim()) {
-      Swal.fire({
-        icon: "warning",
-        title: "Warning",
-        text: "Please enter a message",
-      });
+      toastHelper.warning("Please enter a message");
       return;
     }
 
     setIsSubmitting(true);
     try {
       await BidProductService.sendMessageToHighestBidder(product._id, message.trim());
-      Swal.fire({
-        icon: "success",
-        title: "Success",
-        text: "Message sent successfully to highest bidder!",
-        timer: 2000,
-        showConfirmButton: false,
-      });
+      toastHelper.success("Message sent successfully to highest bidder!");
       setMessage("");
       onClose();
       if (onSuccess) {
@@ -61,6 +48,7 @@ const SendMessageModal: React.FC<SendMessageModalProps> = ({
       }
     } catch (error) {
       console.error("Failed to send message:", error);
+      toastHelper.error("Failed to send message. Please try again.");
     } finally {
       setIsSubmitting(false);
     }

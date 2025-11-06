@@ -42,6 +42,7 @@ export default function UserInfoCard({
     confirm: false,
   });
   const [settingsList, setSettingsList] = useState<any[]>([]);
+  const [passwordMismatchError, setPasswordMismatchError] = useState(false);
   
   const [accordionOpen, setAccordionOpen] = useState(false);
   const [systemOpen, setSystemOpen] = useState(false);
@@ -54,9 +55,18 @@ export default function UserInfoCard({
     setShowPassword((prev) => ({ ...prev, [field]: !prev[field] }));
   };
 
+  // Check password match on change
+  useEffect(() => {
+    if (formData.confirmPassword && formData.newPassword) {
+      setPasswordMismatchError(formData.newPassword !== formData.confirmPassword);
+    } else {
+      setPasswordMismatchError(false);
+    }
+  }, [formData.newPassword, formData.confirmPassword]);
+
   const handleChangePassword = async () => {
     if (formData.newPassword !== formData.confirmPassword) {
-      toastHelper.error("New password and confirm password do not match");
+      toastHelper.error("new password and confirm password does not matched!");
       return;
     }
 
@@ -281,7 +291,11 @@ export default function UserInfoCard({
           name="confirmPassword"
           value={formData.confirmPassword}
           onChange={handleChange}
-          className="w-full px-3 py-2 pr-10 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring focus:ring-[#0071E3] dark:bg-gray-700 dark:text-white/90"
+          className={`w-full px-3 py-2 pr-10 text-sm border rounded-lg focus:ring focus:ring-[#0071E3] dark:bg-gray-700 dark:text-white/90 ${
+            passwordMismatchError
+              ? "border-red-500 dark:border-red-500"
+              : "border-gray-300 dark:border-gray-600"
+          }`}
         />
         <button
           type="button"
@@ -295,6 +309,12 @@ export default function UserInfoCard({
           ></i>
         </button>
       </div>
+      {passwordMismatchError && (
+        <p className="mt-1 text-xs text-red-500 dark:text-red-400 flex items-center gap-1">
+          <i className="fas fa-exclamation-triangle text-xs"></i>
+          Passwords does not matched!
+        </p>
+      )}
     </div>
 
     {/* Change Password Button */}

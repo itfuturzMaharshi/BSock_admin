@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import Swal from "sweetalert2";
+import toastHelper from "../../utils/toastHelper";
 import { SkuFamily } from "./types";
 
 interface ValidationErrors {
@@ -446,11 +447,7 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
       const errorMessage =
         (error as Error).message || "Failed to save sub-row";
       setApiError(errorMessage);
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: errorMessage,
-      });
+      toastHelper.error(errorMessage);
     } finally {
       setIsLoading(false);
     }

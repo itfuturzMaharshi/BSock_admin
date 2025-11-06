@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { Dropdown } from "../ui/dropdown/Dropdown";
-import { Link } from "react-router";
+import { useNavigate } from "react-router-dom";
+import Swal from "sweetalert2";
 import { UserProfileService } from "../../services/adminProfile/adminProfile.services";
 import { SocketService } from "../../services/socket/socket";
 import { LOCAL_STORAGE_KEYS } from "../../constants/localStorage";
@@ -9,6 +10,7 @@ import { LOCAL_STORAGE_KEYS } from "../../constants/localStorage";
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const [profile, setProfile] = useState<any>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -29,6 +31,33 @@ export default function UserDropdown() {
   function closeDropdown() {
     setIsOpen(false);
   }
+
+  const handleLogout = async () => {
+    closeDropdown();
+    
+    const confirmed = await Swal.fire({
+      title: "Are you sure?",
+      text: "Do you want to sign out?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Yes, sign out!",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#6b7280",
+      focusCancel: true,
+    });
+
+    if (confirmed.isConfirmed) {
+      try {
+        SocketService.disconnect();
+      } catch (error) {
+        console.error("Error disconnecting socket:", error);
+      }
+      localStorage.removeItem(LOCAL_STORAGE_KEYS.TOKEN);
+      localStorage.removeItem(LOCAL_STORAGE_KEYS.USER);
+      navigate("/signin");
+    }
+  };
   return (
     <div className="relative">
       <button
@@ -83,17 +112,13 @@ export default function UserDropdown() {
             </DropdownItem>
           </li>
         </ul>
-        <Link
-          to="/signin"
-          className="flex items-center gap-3 px-3 py-2 mt-3 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
-          onClick={() => {
-            try { SocketService.disconnect(); } catch {}
-            localStorage.removeItem(LOCAL_STORAGE_KEYS.TOKEN);
-          }}
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-3 px-3 py-2 mt-3 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300 w-full text-left"
         >
           <i className="fas fa-sign-out-alt text-gray-500 group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-300 text-lg"></i>
           Sign out
-        </Link>
+        </button>
       </Dropdown>
     </div>
   );

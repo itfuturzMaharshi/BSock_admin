@@ -6,10 +6,10 @@ import * as yup from "yup";
 import { EyeCloseIcon, EyeIcon } from "../../icons";
 import Label from "../form/Label";
 import Input from "../form/input/InputField";
-import Checkbox from "../form/input/Checkbox";
 import { LoginAdminService } from "../../services/loginAdmin/loginAdmin.services";
 import { SocketService } from "../../services/socket/socket";
 import { LOCAL_STORAGE_KEYS } from "../../constants/localStorage";
+import toastHelper from "../../utils/toastHelper";
 
 // Validation schema
 const signInSchema = yup.object({
@@ -36,8 +36,10 @@ export default function SignInForm() {
     formState: { errors },
     watch,
     setValue,
+    trigger,
   } = useForm<SignInFormData>({
     resolver: yupResolver(signInSchema),
+    mode: "onChange", // Validate on change to show errors as user types
     defaultValues: {
       email: "",
       password: "",
@@ -61,15 +63,17 @@ export default function SignInForm() {
         try { SocketService.connect(); } catch {}
         navigate("/home");
       } else {
-        // Handle login failure - you might want to add toast notification here
-        console.error(response.message || "Login failed. Please check your credentials.");
+        // Show error in top-right toast only
+        const errorMessage = response.message || "Login failed. Please check your credentials.";
+        toastHelper.showTost(errorMessage, "error");
       }
     } catch (error: any) {
       const errorMessage =
         error?.response?.data?.message ||
         error?.message ||
         "An error occurred. Please try again.";
-      console.error(errorMessage);
+      // Show error in top-right toast only
+      toastHelper.showTost(errorMessage, "error");
     } finally {
       setSubmitting(false);
     }
@@ -99,10 +103,18 @@ export default function SignInForm() {
                     placeholder="info@gmail.com"
                     type="email"
                     value={watch("email")}
-                    onChange={(e) => setValue("email", e.target.value)}
+                    onChange={(e) => {
+                      setValue("email", e.target.value);
+                      trigger("email"); // Trigger validation on change
+                    }}
+                    onBlur={() => trigger("email")} // Also validate on blur
+                    error={!!errors.email}
                   />
                   {errors.email && (
-                    <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+                    <p className="mt-1 text-xs text-red-500 dark:text-red-400 flex items-center gap-1">
+                      <i className="fas fa-exclamation-triangle text-xs"></i>
+                      {errors.email.message}
+                    </p>
                   )}
                 </div>
                 <div>
@@ -114,7 +126,12 @@ export default function SignInForm() {
                       type={showPassword ? "text" : "password"}
                       placeholder="Enter your password"
                       value={watch("password")}
-                      onChange={(e) => setValue("password", e.target.value)}
+                      onChange={(e) => {
+                        setValue("password", e.target.value);
+                        trigger("password"); // Trigger validation on change
+                      }}
+                      onBlur={() => trigger("password")} // Also validate on blur
+                      error={!!errors.password}
                     />
                     <span
                       onClick={() => setShowPassword(!showPassword)}
@@ -128,26 +145,26 @@ export default function SignInForm() {
                     </span>
                   </div>
                   {errors.password && (
-                    <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
+                    <p className="mt-1 text-xs text-red-500 dark:text-red-400 flex items-center gap-1">
+                      <i className="fas fa-exclamation-triangle text-xs"></i>
+                      {errors.password.message}
+                    </p>
                   )}
                 </div>
-                <div className="flex items-center justify-between">
+                {/* <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Checkbox 
                       checked={watch("rememberMe") || false} 
                       onChange={(checked) => setValue("rememberMe", checked)}
                     />
-                    <span className="block font-normal text-gray-700 text-theme-sm dark:text-gray-400">
-                      Keep me logged in
-                    </span>
-                  </div>
+                  </div> */}
                   {/* <Link
                     to="/reset-password"
                     className="text-sm text-brand-500 hover:text-brand-600 dark:text-brand-400"
                   >
                     Forgot password?
                   </Link> */}
-                </div>
+                {/* </div> */}
                 <div>
                   <button
                     type="submit"

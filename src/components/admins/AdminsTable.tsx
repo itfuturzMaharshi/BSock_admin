@@ -121,12 +121,7 @@ const AdminsTable: React.FC = () => {
         fetchAdmins(); // Refresh the data
       } catch (error) {
         console.error('Error resetting password:', error);
-        Swal.fire({
-          title: "Error!",
-          text: "Failed to reset password. Please try again.",
-          icon: "error",
-          confirmButtonColor: "#dc2626",
-        });
+        toastHelper.error("Failed to reset password. Please try again.");
       } finally {
         setResettingPassword(null);
       }

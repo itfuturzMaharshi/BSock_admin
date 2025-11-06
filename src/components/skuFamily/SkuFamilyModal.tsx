@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Swal from "sweetalert2";
+import toastHelper from "../../utils/toastHelper";
 import { SkuFamily } from "./types";
 
 interface ValidationErrors {
@@ -401,11 +402,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
       const errorMessage =
         (error as Error).message || "Failed to save SKU family";
       setApiError(errorMessage);
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: errorMessage,
-      });
+      toastHelper.error(errorMessage);
     } finally {
       setIsLoading(false);
     }

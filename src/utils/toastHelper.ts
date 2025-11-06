@@ -18,6 +18,8 @@ const toastHelper: ToastHelper = {
       text: message,
       timer: 3000,
       showConfirmButton: false,
+      toast: true,
+      position: 'top-end'
     });
   },
 
@@ -28,6 +30,8 @@ const toastHelper: ToastHelper = {
       text: message,
       timer: 3000,
       showConfirmButton: false,
+      toast: true,
+      position: 'top-end'
     });
   },
 
@@ -38,6 +42,8 @@ const toastHelper: ToastHelper = {
       text: message,
       timer: 3000,
       showConfirmButton: false,
+      toast: true,
+      position: 'top-end'
     });
   },
 
@@ -48,6 +54,8 @@ const toastHelper: ToastHelper = {
       text: message,
       timer: 3000,
       showConfirmButton: false,
+      toast: true,
+      position: 'top-end'
     });
   },
 
