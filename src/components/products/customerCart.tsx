@@ -257,7 +257,7 @@ const CustomerCart: React.FC = () => {
       {/* Table Container */}
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-sm">
         {/* Table Header with Controls */}
-        <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+        <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
           <div className="flex items-center gap-3 flex-1">
             {/* Search */}
             <div className="relative flex-1">
@@ -457,7 +457,7 @@ const CustomerCart: React.FC = () => {
         </div>
 
         {/* Pagination */}
-        <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+        <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
           <div className="text-sm text-gray-600 dark:text-gray-400 mb-4 sm:mb-0">
             Showing {customerCartsData.length} of {totalDocs} items
           </div>
@@ -546,7 +546,7 @@ const CustomerCart: React.FC = () => {
                       Product Information
                     </h3>
 
-                    <div className="p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg space-y-4">
+                    <div className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg space-y-4">
                       <div className="flex items-start gap-4">
                         <img
                           src={getProductImageSrc(previewItem.product)}
@@ -865,7 +865,7 @@ const CustomerCart: React.FC = () => {
                   </h3>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                    <div className="text-center p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
                       <div className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-1">
                         {previewItem.quantity}
                       </div>
@@ -899,7 +899,7 @@ const CustomerCart: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                    <div className="text-center p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
                       <div className="text-lg font-semibold text-green-600 dark:text-green-400 mb-1">
                         $
                         {(
@@ -911,7 +911,7 @@ const CustomerCart: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                    <div className="text-center p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
                       <div className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">
                         {formatDate(previewItem.addedAt)}
                       </div>
@@ -919,7 +919,7 @@ const CustomerCart: React.FC = () => {
                         Added Date
                       </div>
                     </div>
-                    <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                    <div className="text-center p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
                       <div className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">
                         {formatDate(previewItem.updatedAt || previewItem.addedAt)}
                       </div>
