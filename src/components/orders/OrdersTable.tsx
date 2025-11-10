@@ -471,8 +471,6 @@ const OrdersTable: React.FC = () => {
   const getCombinedStatusBadge = (order: Order) => {
     const status = order.status?.toLowerCase() || 'request';
     const orderTrackingStatus = order.orderTrackingStatus?.toLowerCase();
-    const verifiedBy = order.verifiedBy;
-    const approvedBy = order.approvedBy;
 
     // Handle cancellation flow
     if (orderTrackingStatus === "cancel" && status === "cancel") {
