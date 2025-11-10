@@ -31,8 +31,8 @@ export interface Order {
   _id: string;
   customerId: { _id: string; name?: string; email?: string };
   cartItems: OrderItem[];
-  billingAddress: Address;
-  shippingAddress: Address;
+  billingAddress?: Address;
+  shippingAddress?: Address;
   status: string;
   totalAmount: number;
   createdAt: string;
@@ -44,6 +44,7 @@ export interface Order {
   orderTrackingStatus?: string;
   paymentDetails?: PaymentDetails;
   appliedCharges?: any[];
+  adminSelectedPaymentMethod?: string;
 }
 
 export interface TrackingItem {
@@ -117,7 +118,8 @@ export class AdminOrderService {
     orderId: string,
     status: string,
     cartItems?: OrderItem[],
-    message?: string
+    message?: string,
+    paymentMethod?: string
   ): Promise<any> => {
     const baseUrl = import.meta.env.VITE_BASE_URL;
     const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
@@ -135,6 +137,9 @@ export class AdminOrderService {
     }
     if (message) {
       body.message = message;
+    }
+    if (paymentMethod) {
+      body.paymentMethod = paymentMethod;
     }
 
     try {

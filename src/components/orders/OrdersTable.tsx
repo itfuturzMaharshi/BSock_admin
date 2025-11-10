@@ -21,7 +21,7 @@ const OrdersTable: React.FC = () => {
   const [itemsPerPage] = useState<number>(10);
   const [loading, setLoading] = useState<boolean>(false);
 
-  const allStatusOptions = ["request", "verified", "approved", "accepted", "shipped", "delivered", "cancel"];
+  const allStatusOptions = ["requested", "approved", "accepted", "ready_to_pickup", "out_for_delivery", "delivered", "cancelled"];
   
   // Get available status options for filter dropdown based on admin
   const getAvailableFilterStatuses = (): string[] => {
@@ -86,8 +86,8 @@ const OrdersTable: React.FC = () => {
     const currentStatus = order.status;
     const orderTrackingStatus = order.orderTrackingStatus;
     
-    // Define status flow: request → verified → approved → accepted → shipped → delivered
-    const statusFlow = ["request", "verified", "approved", "accepted", "shipped", "delivered"];
+    // Define status flow: requested → approved → accepted → ready_to_pickup → out_for_delivery → delivered
+    const statusFlow = ["requested", "approved", "accepted", "ready_to_pickup", "out_for_delivery", "delivered"];
     
     // Get the next status in the flow
     const getNextStatus = (current: string): string | null => {
@@ -103,24 +103,9 @@ const OrdersTable: React.FC = () => {
       return currentIndex > 0 ? statusFlow[currentIndex - 1] : null;
     };
     
-    // Handle cancellation flow: cancel → verified → approved → cancel
-    if (orderTrackingStatus === "cancel") {
-      // If order is in cancel state, show verification and approval options
-      if (!order.verifiedBy && !order.approvedBy) {
-        // No one has verified or approved yet - show "verified" for first admin
-        return ["cancel", "verified"];
-      } else if (order.verifiedBy && !order.approvedBy) {
-        // Verified but not approved - show "approved" for second admin
-        return ["cancel", "verified", "approved"];
-      } else if (order.verifiedBy && order.approvedBy) {
-        // Both verified and approved - order becomes cancel, no more options
-        return ["cancel"];
-      }
-    }
-    
     // If order is already cancelled, no status options
-    if (currentStatus === "cancel" || orderTrackingStatus === "cancel") {
-      return ["cancel"];
+    if (currentStatus === "cancelled" || orderTrackingStatus === "cancelled") {
+      return ["cancelled"];
     }
     
     const availableStatuses: string[] = [];
@@ -141,22 +126,11 @@ const OrdersTable: React.FC = () => {
     }
     
     // Add cancel option for all statuses except already cancelled
-    availableStatuses.push("cancel");
+    availableStatuses.push("cancelled");
     
-    // Special handling for admin-specific statuses
-    if (currentStatus === "request" && !order.verifiedBy && !order.approvedBy) {
-      // For new orders, only show "verified"
-      return ["request", "verified", "cancel"];
-    }
-    
-    // If order is verified but status is still "request", show only "verified" and "approved"
-    if (order.verifiedBy && currentStatus === "request") {
-      return ["verified", "approved", "cancel"];
-    }
-    
-    // If order is approved but status is still "verified", show only "approved" and next status
-    if (order.approvedBy && currentStatus === "verified") {
-      return ["approved", "accepted", "cancel"];
+    // Special handling for requested status - can approve or cancel
+    if (currentStatus === "requested") {
+      return ["requested", "approved", "cancelled"];
     }
     
     // Remove duplicates and return
@@ -191,6 +165,7 @@ const OrdersTable: React.FC = () => {
       let selectedStatus = currentStatus;
       let editedCartItems: OrderItem[] = [...order.cartItems];
       let message = "";
+      let selectedPaymentMethod = "";
 
       // Create a simpler modal HTML structure
       const modalHtml = `
@@ -203,9 +178,18 @@ const OrdersTable: React.FC = () => {
                   (status) =>
                     `<option value="${status}" ${
                       status === currentStatus ? "selected" : ""
-                    }>${status.charAt(0).toUpperCase() + status.slice(1)}</option>`
+                    }>${status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ')}</option>`
                 )
                 .join("")}
+            </select>
+          </div>
+          <div id="paymentMethodContainer" style="margin-bottom: 20px; display: none;">
+            <label for="paymentMethodSelect" style="display: block; font-size: 14px; font-weight: 600; color: #1F2937; margin-bottom: 8px;">Select Payment Method <span style="color: red;">*</span></label>
+            <select id="paymentMethodSelect" style="width: 100%; padding: 10px; font-size: 14px; margin:0px; border: 1px solid #D1D5DB; border-radius: 6px; background-color: #F9FAFB; color: #1F2937; outline: none; transition: border-color 0.2s;">
+              <option value="">Select Payment Method</option>
+              <option value="TT">TT</option>
+              <option value="ThirdParty">ThirdParty</option>
+              <option value="Cash">Cash</option>
             </select>
           </div>
           <div id="cartItemsContainer" style="margin-bottom: 20px; display: none;">
@@ -255,6 +239,7 @@ const OrdersTable: React.FC = () => {
         preConfirm: () => {
           try {
             const statusSelect = document.getElementById("statusSelect") as HTMLSelectElement;
+            const paymentMethodSelect = document.getElementById("paymentMethodSelect") as HTMLSelectElement;
             const quantityInputs = document.querySelectorAll(".quantity-input") as NodeListOf<HTMLInputElement>;
             const messageInput = document.getElementById("messageInput") as HTMLTextAreaElement;
 
@@ -265,12 +250,20 @@ const OrdersTable: React.FC = () => {
 
             selectedStatus = statusSelect.value;
             message = messageInput?.value || "";
+            selectedPaymentMethod = paymentMethodSelect?.value || "";
+
+            // Validate payment method if approving
+            if (selectedStatus === "approved" && !selectedPaymentMethod) {
+              Swal.showValidationMessage('Payment method is required when approving order');
+              return false;
+            }
 
             console.log('Selected Status:', selectedStatus);
             console.log('Current Status:', currentStatus);
+            console.log('Payment Method:', selectedPaymentMethod);
             console.log('Message:', message);
 
-            if (["verified", "approved"].includes(selectedStatus) && ["request", "accepted"].includes(currentStatus)) {
+            if (selectedStatus === "approved" && currentStatus === "requested") {
               editedCartItems = order.cartItems.map((item, index) => ({
                 ...item,
                 quantity: parseInt(quantityInputs[index]?.value) || item.quantity,
@@ -292,16 +285,27 @@ const OrdersTable: React.FC = () => {
             const cartItemsContainer = document.getElementById("cartItemsContainer") as HTMLElement;
 
             if (statusSelect && cartItemsContainer) {
+              const paymentMethodContainer = document.getElementById("paymentMethodContainer") as HTMLElement;
+              
               statusSelect.addEventListener("change", () => {
                 const newStatus = statusSelect.value;
-                // Hide cart items for cancel status
+                // Show payment method selection when approving
+                if (paymentMethodContainer) {
+                  paymentMethodContainer.style.display = newStatus === "approved" ? "block" : "none";
+                }
+                // Hide cart items for cancelled status
                 cartItemsContainer.style.display =
-                  newStatus !== "cancel" && 
-                  ["verified", "approved"].includes(newStatus) && 
-                  ["request", "accepted"].includes(currentStatus)
+                  newStatus !== "cancelled" && 
+                  newStatus === "approved" && 
+                  currentStatus === "requested"
                     ? "block"
                     : "none";
               });
+              
+              // Trigger initial check
+              if (paymentMethodContainer) {
+                paymentMethodContainer.style.display = statusSelect.value === "approved" ? "block" : "none";
+              }
 
               // Add focus styles for inputs
               const inputs = document.querySelectorAll("input, select, textarea");
@@ -330,17 +334,18 @@ const OrdersTable: React.FC = () => {
         }
 
         try {
-          // Don't send cart items for cancel status
+          // Don't send cart items for cancelled status
           const cartItemsToSend =
-            selectedStatus !== "cancel" && 
-            ["request", "accepted"].includes(currentStatus) && 
-            ["verified", "approved"].includes(selectedStatus)
+            selectedStatus !== "cancelled" && 
+            currentStatus === "requested" && 
+            selectedStatus === "approved"
               ? editedCartItems
               : undefined;
 
           console.log('Updating order status:', {
             orderId: order._id,
             selectedStatus,
+            paymentMethod: selectedPaymentMethod,
             cartItemsToSend,
             message
           });
@@ -349,7 +354,8 @@ const OrdersTable: React.FC = () => {
             order._id,
             selectedStatus,
             cartItemsToSend,
-            message || undefined
+            message || undefined,
+            selectedPaymentMethod || undefined
           );
 
           console.log('Update response:', response);
@@ -486,50 +492,42 @@ const OrdersTable: React.FC = () => {
     let statusMessage = "";
     let statusStyle = "";
 
-    // Status flow: request → verified → approved → accepted → shipped → delivered
+    // Status flow: requested → approved → accepted → ready_to_pickup → out_for_delivery → delivered
     
     switch (status) {
-      case "request":
-        if (approvedBy) {
-          statusMessage = "Request is approved";
-          statusStyle = "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-700";
-        } else if (verifiedBy || orderTrackingStatus === "verified") {
-          statusMessage = "Request is verified";
-          statusStyle = "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-700";
-        } else {
-          statusMessage = "Request";
-          statusStyle = "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-700";
-        }
-        break;
-
-      case "verified":
-        if (approvedBy) {
-          statusMessage = "Request is approved";
-          statusStyle = "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-700";
-        } else {
-          statusMessage = "Request is verified";
-          statusStyle = "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-700";
-        }
+      case "requested":
+        statusMessage = "Requested";
+        statusStyle = "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-700";
         break;
 
       case "approved":
-        statusMessage = "Request is approved";
-        statusStyle = "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-700";
+        statusMessage = "Approved";
+        statusStyle = "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-700";
         break;
 
       case "accepted":
-        statusMessage = "accepted";
+        statusMessage = "Accepted";
         statusStyle = "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-700";
         break;
 
-      case "shipped":
-        statusMessage = "shipped";
+      case "ready_to_pickup":
+        statusMessage = "Ready to Pickup";
         statusStyle = "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 border border-purple-200 dark:border-purple-700";
         break;
 
+      case "out_for_delivery":
+        statusMessage = "Out for Delivery";
+        statusStyle = "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border border-orange-200 dark:border-orange-700";
+        break;
+
       case "delivered":
-        statusMessage = "delivered";
+        statusMessage = "Delivered";
         statusStyle = "bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-400 border border-teal-200 dark:border-teal-700";
+        break;
+
+      case "cancelled":
+        statusMessage = "Cancelled";
+        statusStyle = "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border border-red-200 dark:border-red-700";
         break;
 
       default:

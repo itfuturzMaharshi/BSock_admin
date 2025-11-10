@@ -34,21 +34,20 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
 
   const getStatusBadge = (status: string) => {
     const statusStyles: { [key: string]: string } = {
-      request: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-700",
-      verified: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-700",
-      approved: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-700",
+      requested: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-700",
+      approved: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-700",
       accepted: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-700",
-      shipped: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 border border-purple-200 dark:border-purple-700",
+      ready_to_pickup: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 border border-purple-200 dark:border-purple-700",
+      out_for_delivery: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border border-orange-200 dark:border-orange-700",
       delivered: "bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-400 border border-teal-200 dark:border-teal-700",
       cancelled: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border border-red-200 dark:border-red-700",
-      cancel: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border border-red-200 dark:border-red-700",
     };
 
     const style = statusStyles[status] || "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400 border border-gray-200 dark:border-gray-700";
     
     return (
       <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold tracking-wider ${style}`}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+        {status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ')}
       </span>
     );
   };
@@ -188,87 +187,105 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
             </div>
           </div>
 
-          {/* Billing Address */}
-          <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-              Billing Address
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Address
-                </label>
-                <p className="text-sm text-gray-900 dark:text-gray-100">
-                  {order.billingAddress?.address || "-"}
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  City
-                </label>
-                <p className="text-sm text-gray-900 dark:text-gray-100">
-                  {order.billingAddress?.city || "-"}
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Postal Code
-                </label>
-                <p className="text-sm text-gray-900 dark:text-gray-100">
-                  {order.billingAddress?.postalCode || "-"}
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Country
-                </label>
-                <p className="text-sm text-gray-900 dark:text-gray-100">
-                  {order.billingAddress?.country || "-"}
+          {/* Admin Selected Payment Method */}
+          {order.adminSelectedPaymentMethod && (
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                Payment Method (Selected by Admin)
+              </h3>
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                <p className="text-lg font-semibold text-blue-800 dark:text-blue-300">
+                  {order.adminSelectedPaymentMethod}
                 </p>
               </div>
             </div>
-          </div>
+          )}
+
+          {/* Billing Address */}
+          {order.billingAddress && order.billingAddress.address && (
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                Billing Address
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Address
+                  </label>
+                  <p className="text-sm text-gray-900 dark:text-gray-100">
+                    {order.billingAddress?.address || "-"}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    City
+                  </label>
+                  <p className="text-sm text-gray-900 dark:text-gray-100">
+                    {order.billingAddress?.city || "-"}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Postal Code
+                  </label>
+                  <p className="text-sm text-gray-900 dark:text-gray-100">
+                    {order.billingAddress?.postalCode || "-"}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Country
+                  </label>
+                  <p className="text-sm text-gray-900 dark:text-gray-100">
+                    {order.billingAddress?.country || "-"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Shipping Address */}
-          <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-              Shipping Address
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Address
-                </label>
-                <p className="text-sm text-gray-900 dark:text-gray-100">
-                  {order.shippingAddress?.address || "-"}
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  City
-                </label>
-                <p className="text-sm text-gray-900 dark:text-gray-100">
-                  {order.shippingAddress?.city || "-"}
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Postal Code
-                </label>
-                <p className="text-sm text-gray-900 dark:text-gray-100">
-                  {order.shippingAddress?.postalCode || "-"}
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Country
-                </label>
-                <p className="text-sm text-gray-900 dark:text-gray-100">
-                  {order.shippingAddress?.country || "-"}
-                </p>
+          {order.shippingAddress && order.shippingAddress.address && (
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                Shipping Address
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Address
+                  </label>
+                  <p className="text-sm text-gray-900 dark:text-gray-100">
+                    {order.shippingAddress?.address || "-"}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    City
+                  </label>
+                  <p className="text-sm text-gray-900 dark:text-gray-100">
+                    {order.shippingAddress?.city || "-"}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Postal Code
+                  </label>
+                  <p className="text-sm text-gray-900 dark:text-gray-100">
+                    {order.shippingAddress?.postalCode || "-"}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Country
+                  </label>
+                  <p className="text-sm text-gray-900 dark:text-gray-100">
+                    {order.shippingAddress?.country || "-"}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Payment Details */}
           {order.paymentDetails && (
