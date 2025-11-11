@@ -139,6 +139,9 @@ const ProductCategoryTable: React.FC = () => {
                   Description
                 </th>
                 <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                  Order
+                </th>
+                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Actions
                 </th>
               </tr>
@@ -146,7 +149,7 @@ const ProductCategoryTable: React.FC = () => {
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={3} className="p-12 text-center">
+                  <td colSpan={4} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
                       Loading Product Categories...
@@ -155,7 +158,7 @@ const ProductCategoryTable: React.FC = () => {
                 </tr>
               ) : categoriesData.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="p-12 text-center">
+                  <td colSpan={4} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       No product categories found
                     </div>
@@ -174,6 +177,9 @@ const ProductCategoryTable: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                       {item.description || "-"}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-center text-gray-600 dark:text-gray-400">
+                      {item.order ?? 0}
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
                       <div className="inline-flex items-center gap-3">
