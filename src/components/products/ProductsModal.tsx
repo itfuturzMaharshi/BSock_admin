@@ -3,6 +3,9 @@ import {
   ProductService,
   Product,
 } from "../../services/product/product.services";
+import { ProductCategoryService } from "../../services/productCategory/productCategory.services";
+import { BrandService } from "../../services/brand/brand.services";
+import { GradeService } from "../../services/grade/grade.services";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import Select from 'react-select';
@@ -10,6 +13,9 @@ import Select from 'react-select';
 interface FormData {
   skuFamilyId: string;
   subSkuFamilyId: string;
+  productcategoriesId: string;
+  brandId: string;
+  gradeId: string;
   simType: string;
   color: string;
   ram: string;
@@ -77,6 +83,9 @@ const ProductModal: React.FC<ProductModalProps> = ({
   const [formData, setFormData] = useState<FormData>({
     skuFamilyId: "",
     subSkuFamilyId: "",
+    productcategoriesId: "",
+    brandId: "",
+    gradeId: "",
     simType: "",
     color: "",
     ram: "",
@@ -97,8 +106,20 @@ const ProductModal: React.FC<ProductModalProps> = ({
   const [subSkuFamilies, setSubSkuFamilies] = useState<
     { _id: string; name: string }[]
   >([]);
+  const [productCategories, setProductCategories] = useState<
+    { _id: string; title: string }[]
+  >([]);
+  const [brands, setBrands] = useState<
+    { _id: string; title: string }[]
+  >([]);
+  const [grades, setGrades] = useState<
+    { _id: string; title: string; brand: string | { _id: string; title: string } }[]
+  >([]);
   const [skuLoading, setSkuLoading] = useState<boolean>(false);
   const [subSkuLoading, setSubSkuLoading] = useState<boolean>(false);
+  const [productCategoryLoading, setProductCategoryLoading] = useState<boolean>(false);
+  const [brandLoading, setBrandLoading] = useState<boolean>(false);
+  const [gradeLoading, setGradeLoading] = useState<boolean>(false);
   const [skuError, setSkuError] = useState<string | null>(null);
   const [subSkuError, setSubSkuError] = useState<string | null>(null);
   const [dateError, setDateError] = useState<string | null>(null);
@@ -247,7 +268,46 @@ const ProductModal: React.FC<ProductModalProps> = ({
         }
       };
 
+      const fetchProductCategories = async () => {
+        try {
+          setProductCategoryLoading(true);
+          const response = await ProductCategoryService.getProductCategoryList(1, 1000);
+          setProductCategories(response.data.docs || []);
+        } catch (error: any) {
+          console.error("Failed to load Product Categories:", error);
+        } finally {
+          setProductCategoryLoading(false);
+        }
+      };
+
+      const fetchBrands = async () => {
+        try {
+          setBrandLoading(true);
+          const response = await BrandService.getBrandList(1, 1000);
+          setBrands(response.data.docs || []);
+        } catch (error: any) {
+          console.error("Failed to load Brands:", error);
+        } finally {
+          setBrandLoading(false);
+        }
+      };
+
+      const fetchGrades = async () => {
+        try {
+          setGradeLoading(true);
+          const response = await GradeService.getGradeList(1, 1000);
+          setGrades(response.data.docs || []);
+        } catch (error: any) {
+          console.error("Failed to load Grades:", error);
+        } finally {
+          setGradeLoading(false);
+        }
+      };
+
       fetchSkuFamilies();
+      fetchProductCategories();
+      fetchBrands();
+      fetchGrades();
     }
   }, [isOpen]);
 
@@ -262,9 +322,24 @@ const ProductModal: React.FC<ProductModalProps> = ({
           typeof editItem.subSkuFamilyId === "object"
             ? editItem.subSkuFamilyId._id || ""
             : editItem.subSkuFamilyId || "";
+        const productCategoryId =
+          typeof (editItem as any).productcategoriesId === "object"
+            ? (editItem as any).productcategoriesId?._id || ""
+            : (editItem as any).productcategoriesId || "";
+        const brandId =
+          typeof (editItem as any).brandId === "object"
+            ? (editItem as any).brandId?._id || ""
+            : (editItem as any).brandId || "";
+        const gradeId =
+          typeof (editItem as any).gradeId === "object"
+            ? (editItem as any).gradeId?._id || ""
+            : (editItem as any).gradeId || "";
         setFormData({
           skuFamilyId: skuId,
           subSkuFamilyId: subSkuId,
+          productcategoriesId: productCategoryId,
+          brandId: brandId,
+          gradeId: gradeId,
           simType: editItem.simType,
           color: editItem.color,
           ram: editItem.ram,
@@ -288,6 +363,9 @@ const ProductModal: React.FC<ProductModalProps> = ({
         setFormData({
           skuFamilyId: "",
           subSkuFamilyId: "",
+          productcategoriesId: "",
+          brandId: "",
+          gradeId: "",
           simType: "",
           color: "",
           ram: "",
@@ -790,40 +868,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
                   </p>
                 )}
               </div>
-              {/* <div>
-                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                  Country
-                </label>
-                <div className="relative">
-                  <select
-                    name="country"
-                    value={formData.country}
-                    onChange={handleInputChange}
-                    onBlur={handleBlur}
-                    className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
-                      touched.country && validationErrors.country
-                        ? "border-red-500 focus:ring-red-500"
-                        : "border-gray-200 dark:border-gray-700"
-                    }`}
-                    required
-                  >
-                    <option value="" disabled>
-                      Select Country
-                    </option>
-                    {countryOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                  <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
-                </div>
-                {touched.country && validationErrors.country && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {validationErrors.country}
-                  </p>
-                )}
-              </div> */}
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                   RAM
@@ -860,7 +904,93 @@ const ProductModal: React.FC<ProductModalProps> = ({
               </div>
             </div>
 
-            {/* Rest of your form remains exactly the same... */}
+            {/* Product Category, Brand, and Grade Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                  Product Category
+                </label>
+                <Select
+                  options={productCategories.map(cat => ({ value: cat._id, label: cat.title }))}
+                  value={productCategories.find(cat => cat._id === formData.productcategoriesId) ? { value: formData.productcategoriesId, label: productCategories.find(cat => cat._id === formData.productcategoriesId)?.title || '' } : null}
+                  onChange={(selectedOption: any) => {
+                    const value = selectedOption?.value || '';
+                    setFormData(prev => ({ ...prev, productcategoriesId: value }));
+                  }}
+                  onBlur={() => {
+                    setTouched((prev) => ({ ...prev, productcategoriesId: true }));
+                  }}
+                  isDisabled={productCategoryLoading}
+                  placeholder={productCategoryLoading ? "Loading..." : "Select Product Category"}
+                  isSearchable={true}
+                  isLoading={productCategoryLoading}
+                  styles={customSelectStyles}
+                  className="basic-select"
+                  classNamePrefix="select"
+                  isClearable
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                  Brand
+                </label>
+                <Select
+                  options={brands.map(brand => ({ value: brand._id, label: brand.title }))}
+                  value={brands.find(brand => brand._id === formData.brandId) ? { value: formData.brandId, label: brands.find(brand => brand._id === formData.brandId)?.title || '' } : null}
+                  onChange={(selectedOption: any) => {
+                    const value = selectedOption?.value || '';
+                    setFormData(prev => ({ ...prev, brandId: value }));
+                  }}
+                  onBlur={() => {
+                    setTouched((prev) => ({ ...prev, brandId: true }));
+                  }}
+                  isDisabled={brandLoading}
+                  placeholder={brandLoading ? "Loading..." : "Select Brand"}
+                  isSearchable={true}
+                  isLoading={brandLoading}
+                  styles={customSelectStyles}
+                  className="basic-select"
+                  classNamePrefix="select"
+                  isClearable
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                  Grade
+                </label>
+                <Select
+                  options={grades.map(grade => ({ 
+                    value: grade._id, 
+                    label: grade.title + (typeof grade.brand === 'object' ? ` (${grade.brand.title})` : '')
+                  }))}
+                  value={grades.find(grade => grade._id === formData.gradeId) ? { 
+                    value: formData.gradeId, 
+                    label: (() => {
+                      const grade = grades.find(g => g._id === formData.gradeId);
+                      return grade ? grade.title + (typeof grade.brand === 'object' ? ` (${grade.brand.title})` : '') : '';
+                    })()
+                  } : null}
+                  onChange={(selectedOption: any) => {
+                    const value = selectedOption?.value || '';
+                    setFormData(prev => ({ ...prev, gradeId: value }));
+                  }}
+                  onBlur={() => {
+                    setTouched((prev) => ({ ...prev, gradeId: true }));
+                  }}
+                  isDisabled={gradeLoading}
+                  placeholder={gradeLoading ? "Loading..." : "Select Grade"}
+                  isSearchable={true}
+                  isLoading={gradeLoading}
+                  styles={customSelectStyles}
+                  className="basic-select"
+                  classNamePrefix="select"
+                  isClearable
+                />
+              </div>
+            </div>
+
             {/* SIM Type, Color, and Country Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
