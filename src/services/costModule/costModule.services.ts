@@ -3,12 +3,13 @@ import api from '../api/api';
 
 interface CostModule {
   _id?: string;
-  type: 'Product' | 'Categories' | 'Country' | 'ExtraDelivery';
+  type: string;
   products: string[];
   categories: string[];
   countries: string[];
   remark: string;
   costType: 'Percentage' | 'Fixed';
+  costField: string;
   value: number;
   minValue?: number;
   maxValue?: number;
@@ -21,7 +22,7 @@ interface ListQueryParams {
   page?: number;
   limit?: number;
   search?: string;
-  type?: 'Product' | 'Categories' | 'Country' | 'ExtraDelivery';
+  type?: string;
   costType?: 'Percentage' | 'Fixed';
 }
 

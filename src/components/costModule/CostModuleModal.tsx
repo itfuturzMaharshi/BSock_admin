@@ -7,12 +7,13 @@ import CreatableSelect from "react-select/creatable";
 // Define the interface for CostModule data
 interface CostModule {
   _id?: string;
-  type: "Product" | "Categories" | "Country" | "ExtraDelivery";
+  type: string;
   products: Product[];
   categories: string[];
   countries: string[];
   remark: string;
   costType: "Percentage" | "Fixed";
+  costField: string;
   value: number;
   minValue?: number;
   maxValue?: number;
@@ -21,12 +22,13 @@ interface CostModule {
 
 // Define the interface for form data
 interface FormData {
-  type: "Product" | "Categories" | "Country" | "ExtraDelivery";
+  type: string;
   products: string[];
   categories: string[];
   countries: string[];
   remark: string;
   costType: "Percentage" | "Fixed";
+  costField: string;
   value: string;
   minValue: string;
   maxValue: string;
@@ -45,6 +47,7 @@ interface ValidationErrors {
   countries?: string;
   remark?: string;
   costType?: string;
+  costField?: string;
   value?: string;
   minValue?: string;
   maxValue?: string;
@@ -58,6 +61,7 @@ interface TouchedFields {
   countries: boolean;
   remark: boolean;
   costType: boolean;
+  costField: boolean;
   value: boolean;
   minValue: boolean;
   maxValue: boolean;
@@ -84,6 +88,7 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
     countries: [],
     remark: "",
     costType: "Percentage",
+    costField: "price",
     value: "",
     minValue: "",
     maxValue: "",
@@ -102,11 +107,16 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
     countries: false,
     remark: false,
     costType: false,
+    costField: false,
     value: false,
     minValue: false,
     maxValue: false,
     isDeleted: false,
   });
+
+  // Default options for type and costField
+  const [typeOptions, setTypeOptions] = useState<string[]>(["Product", "Country", "ExtraDelivery"]);
+  const [costFieldOptions, setCostFieldOptions] = useState<string[]>(["price", "quantity", "logistic"]);
 
   // Static countries list
   const countriesList = ["Hongkong", "Dubai", "Singapore"];
@@ -143,6 +153,7 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
           countries: editItem.countries || [],
           remark: editItem.remark,
           costType: editItem.costType,
+          costField: editItem.costField || "price",
           value: editItem.value.toString(),
           minValue: editItem.minValue?.toString() || "",
           maxValue: editItem.maxValue?.toString() || "",
@@ -156,6 +167,7 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
           countries: [],
           remark: "",
           costType: "Percentage",
+          costField: "price",
           value: "",
           minValue: "",
           maxValue: "",
@@ -164,6 +176,26 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
       }
     }
   }, [isOpen, editItem]);
+
+  // Add custom type and costField to options when editItem changes
+  useEffect(() => {
+    if (editItem) {
+      setTypeOptions((prev) => {
+        if (!prev.includes(editItem.type)) {
+          return [...prev, editItem.type];
+        }
+        return prev;
+      });
+      if (editItem.costField) {
+        setCostFieldOptions((prev) => {
+          if (!prev.includes(editItem.costField)) {
+            return [...prev, editItem.costField];
+          }
+          return prev;
+        });
+      }
+    }
+  }, [editItem]);
 
   // Handle input changes for regular inputs and select elements
   const handleInputChange = (
@@ -194,15 +226,6 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
     }));
   };
 
-  const handleCategoryChange = (selectedOption: any) => {
-    setFormData((prev) => ({
-      ...prev,
-      categories: selectedOption
-        ? selectedOption.map((option: any) => option.value)
-        : [],
-    }));
-  };
-
   const handleCountryChange = (selectedOption: any) => {
     setFormData((prev) => ({
       ...prev,
@@ -224,11 +247,8 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
           (!value || (Array.isArray(value) && value.length === 0))
           ? "At least one product is required"
           : undefined;
-      case "categories":
-        return formData.type === "Categories" &&
-          (!value || (Array.isArray(value) && value.length === 0))
-          ? "At least one category is required"
-          : undefined;
+      case "costField":
+        return !value ? "Cost Field is required" : undefined;
       case "countries":
         return formData.type === "Country" &&
           (!value || (Array.isArray(value) && value.length === 0))
@@ -287,17 +307,18 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
       }
     });
 
+    // Validate costField
+    const costFieldError = validateField("costField", formData.costField);
+    if (costFieldError) {
+      errors.costField = costFieldError;
+      isValid = false;
+    }
+
     // Conditional validation based on type
     if (formData.type === "Product") {
       const error = validateField("products", formData.products);
       if (error) {
         errors.products = error;
-        isValid = false;
-      }
-    } else if (formData.type === "Categories") {
-      const error = validateField("categories", formData.categories);
-      if (error) {
-        errors.categories = error;
         isValid = false;
       }
     } else if (formData.type === "Country") {
@@ -370,6 +391,7 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
       countries: true,
       remark: true,
       costType: true,
+      costField: true,
       value: true,
       minValue: true,
       maxValue: true,
@@ -392,7 +414,8 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
       categories: formData.categories,
       countries: formData.countries,
       remark: formData.remark,
-      costType: formData.costType as "Percentage" | "Fixed",
+      costType: formData.costType,
+      costField: formData.costField,
       value: parseFloat(formData.value) || 0,
       minValue: formData.minValue ? parseFloat(formData.minValue) : undefined,
       maxValue: formData.maxValue ? parseFloat(formData.maxValue) : undefined,
@@ -430,11 +453,6 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
     formData.products.includes(option.value)
   );
 
-  const selectedCategories = formData.categories.map((cat) => ({
-    value: cat,
-    label: cat,
-  }));
-
   const selectedCountries = countryOptions.filter((option) =>
     formData.countries.includes(option.value)
   );
@@ -444,11 +462,15 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
       ...defaultStyles,
       display: "flex",
       alignItems: "center",
-      minHeight: "48px",
-      padding: "6px 12px",
+      height: "42px",
+      minHeight: "42px",
+      maxHeight: "42px",
+      padding: "0px 12px",
       backgroundColor: state.isDisabled
         ? "#f9fafb"
-        : "var(--tw-colors-gray-50)", // light mode background
+        : state.isFocused
+        ? "#ffffff"
+        : "#f9fafb", // gray-50 background (matches bg-gray-50)
       border: state.isFocused
         ? "2px solid #3b82f6" // blue-500 on focus
         : "1px solid #e5e7eb", // gray-200 default
@@ -456,6 +478,9 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
       boxShadow: state.isFocused ? "0 0 0 1px #3b82f6" : "none",
       transition: "all 0.2s ease",
       cursor: "pointer",
+      "&:hover": {
+        borderColor: state.isFocused ? "#3b82f6" : "#d1d5db",
+      },
     }),
     placeholder: (defaultStyles: any) => ({
       ...defaultStyles,
@@ -466,11 +491,28 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
       ...defaultStyles,
       textAlign: "left",
       color: "#1f2937", // gray-800 text
+      margin: "0px",
+      lineHeight: "1.5",
     }),
     input: (defaultStyles: any) => ({
       ...defaultStyles,
       textAlign: "left",
       color: "#1f2937", // gray-800
+      margin: "0px",
+      padding: "0px",
+    }),
+    valueContainer: (defaultStyles: any) => ({
+      ...defaultStyles,
+      padding: "0px",
+      height: "100%",
+      display: "flex",
+      alignItems: "center",
+    }),
+    indicatorsContainer: (defaultStyles: any) => ({
+      ...defaultStyles,
+      height: "100%",
+      display: "flex",
+      alignItems: "center",
     }),
     menu: (defaultStyles: any) => ({
       ...defaultStyles,
@@ -539,36 +581,84 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
             onSubmit={handleSubmit}
             className="space-y-8"
           >
-            {/* Type and Cost Type Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Type, Cost Field, and Cost Type Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                   Type
                 </label>
-                <div className="relative">
-                  <select
-                    name="type"
-                    value={formData.type}
-                    onChange={handleInputChange}
-                    onBlur={handleBlur}
-                    className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
-                      touched.type && validationErrors.type
-                        ? "border-red-500 focus:ring-red-500"
-                        : "border-gray-200 dark:border-gray-700"
-                    }`}
-                    required
-                    disabled={isSubmitting}
-                  >
-                    <option value="Product">Product</option>
-                    <option value="Categories">Categories</option>
-                    <option value="Country">Country</option>
-                    <option value="ExtraDelivery">Extra Delivery</option>
-                  </select>
-                  <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
-                </div>
+                <CreatableSelect
+                  value={{ value: formData.type, label: formData.type }}
+                  onChange={(newValue: any) => {
+                    const value = newValue?.value || "";
+                    setFormData((prev) => ({ ...prev, type: value }));
+                    if (value && !typeOptions.includes(value)) {
+                      setTypeOptions([...typeOptions, value]);
+                    }
+                    if (touched.type) {
+                      const error = validateField("type", value);
+                      setValidationErrors((prev) => ({ ...prev, type: error }));
+                    }
+                  }}
+                  onBlur={() => {
+                    setTouched((prev) => ({ ...prev, type: true }));
+                    const error = validateField("type", formData.type);
+                    setValidationErrors((prev) => ({ ...prev, type: error }));
+                  }}
+                  options={typeOptions.map((opt) => ({ value: opt, label: opt }))}
+                  placeholder="Select or create type"
+                  isDisabled={isSubmitting}
+                  styles={customStyles}
+                  isClearable
+                  isSearchable
+                  classNamePrefix="react-select"
+                  formatCreateLabel={(inputValue) => `Add "${inputValue}"`}
+                />
                 {touched.type && validationErrors.type && (
                   <p className="mt-1 text-xs text-red-600 dark:text-red-400">
                     {validationErrors.type}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                  Cost Field <span className="text-red-500">*</span>
+                </label>
+                <CreatableSelect
+                  value={{ value: formData.costField, label: formData.costField }}
+                  onChange={(newValue: any) => {
+                    const value = newValue?.value || "";
+                    setFormData((prev) => ({ ...prev, costField: value }));
+                    if (value && !costFieldOptions.includes(value)) {
+                      setCostFieldOptions([...costFieldOptions, value]);
+                    }
+                    if (touched.costField) {
+                      const error = validateField("costField", value);
+                      setValidationErrors((prev) => ({ ...prev, costField: error }));
+                    }
+                  }}
+                  onBlur={() => {
+                    setTouched((prev) => ({ ...prev, costField: true }));
+                    const error = validateField("costField", formData.costField);
+                    setValidationErrors((prev) => ({ ...prev, costField: error }));
+                  }}
+                  options={costFieldOptions.map((opt) => ({ value: opt, label: opt }))}
+                  placeholder="Select or create cost field"
+                  isDisabled={isSubmitting}
+                  styles={customStyles}
+                  isClearable
+                  isSearchable
+                  classNamePrefix="react-select"
+                  formatCreateLabel={(inputValue) => (
+                    <div className="flex items-center gap-2">
+                      <i className="fas fa-plus text-blue-500"></i>
+                      <span>Add "{inputValue}"</span>
+                    </div>
+                  )}
+                />
+                {touched.costField && validationErrors.costField && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {validationErrors.costField}
                   </p>
                 )}
               </div>
@@ -622,26 +712,6 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
                     }
                     isLoading={loadingProducts}
                     isDisabled={isSubmitting || loadingProducts}
-                    styles={customStyles}
-                    isClearable
-                    isSearchable
-                    classNamePrefix="react-select"
-                  />
-                </div>
-              </div>
-            )}
-            {formData.type === "Categories" && (
-              <div>
-                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                  Categories
-                </label>
-                <div className="w-full">
-                  <CreatableSelect
-                    isMulti
-                    value={selectedCategories}
-                    onChange={handleCategoryChange}
-                    placeholder="Add categories"
-                    isDisabled={isSubmitting}
                     styles={customStyles}
                     isClearable
                     isSearchable

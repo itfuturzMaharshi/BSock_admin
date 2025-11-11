@@ -7,12 +7,13 @@ import { useDebounce } from "../../hooks/useDebounce";
 // Define the interface for CostModule data (output from list, with populated products)
 interface CostModule {
   _id?: string;
-  type: "Product" | "Categories" | "Country" | "ExtraDelivery";
+  type: string;
   products: Product[];
   categories: string[];
   countries: string[];
   remark: string;
   costType: "Percentage" | "Fixed";
+  costField: string;
   value: number;
   minValue?: number;
   maxValue?: number;
@@ -82,6 +83,7 @@ const CostModuleTable: React.FC = () => {
           countries: newItem.countries,
           remark: newItem.remark,
           costType: newItem.costType,
+          costField: newItem.costField,
           value: newItem.value,
           minValue: newItem.minValue,
           maxValue: newItem.maxValue,
@@ -96,6 +98,7 @@ const CostModuleTable: React.FC = () => {
           countries: newItem.countries,
           remark: newItem.remark,
           costType: newItem.costType,
+          costField: newItem.costField,
           value: newItem.value,
           minValue: newItem.minValue,
           maxValue: newItem.maxValue,
@@ -201,6 +204,9 @@ const CostModuleTable: React.FC = () => {
                   Cost Type
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                  Cost Field
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Value
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
@@ -217,7 +223,7 @@ const CostModuleTable: React.FC = () => {
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={10} className="p-12 text-center">
+                  <td colSpan={11} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
                       Loading Cost Modules...
@@ -226,7 +232,7 @@ const CostModuleTable: React.FC = () => {
                 </tr>
               ) : paginatedData.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="p-12 text-center">
+                  <td colSpan={11} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       No cost modules found
                     </div>
@@ -268,6 +274,9 @@ const CostModuleTable: React.FC = () => {
                       >
                         {item.costType}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      <span className="capitalize">{item.costField || "-"}</span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                       {item.value}
