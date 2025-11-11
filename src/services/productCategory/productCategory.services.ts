@@ -5,6 +5,7 @@ export interface ProductCategory {
   _id?: string;
   title: string;
   description?: string;
+  order?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -104,6 +105,22 @@ export class ProductCategoryService {
       return res.data;
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Failed to fetch Product Categories';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
+
+  static updateProductCategoryOrder = async (orders: Array<{ id: string; order: number }>): Promise<any> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/product-category/update-order`;
+
+    try {
+      const res = await api.post(url, { orders });
+      toastHelper.showTost(res.data.message || 'Product Categories order updated successfully!', 'success');
+      return res.data;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to update Product Categories order';
       toastHelper.showTost(errorMessage, 'error');
       throw new Error(errorMessage);
     }

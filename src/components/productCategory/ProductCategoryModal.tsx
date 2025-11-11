@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { ProductCategoryService, ProductCategory } from "../../services/productCategory/productCategory.services";
+import { ProductCategory } from "../../services/productCategory/productCategory.services";                                                                                                                  
 
 interface FormData {
   title: string;
   description: string;
+  order: number;
 }
 
-interface ProductCategoryModalProps {
+interface ProductCategoryModalProps {                                   
   isOpen: boolean;
   onClose: () => void;
   onSave: (newItem: FormData) => void;
@@ -22,28 +23,34 @@ const ProductCategoryModal: React.FC<ProductCategoryModalProps> = ({
   const [formData, setFormData] = useState<FormData>({
     title: "",
     description: "",
+    order: 0,
   });
-  const [errors, setErrors] = useState<Partial<FormData>>({});
+  const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
 
   useEffect(() => {
     if (editItem) {
       setFormData({
         title: editItem.title || "",
         description: editItem.description || "",
+        order: editItem.order ?? 0,
       });
     } else {
       setFormData({
         title: "",
         description: "",
+        order: 0,
       });
     }
     setErrors({});
   }, [editItem, isOpen]);
 
   const validate = (): boolean => {
-    const newErrors: Partial<FormData> = {};
+    const newErrors: Partial<Record<keyof FormData, string>> = {};
     if (!formData.title.trim()) {
       newErrors.title = "Title is required";
+    }
+    if (formData.order === undefined || formData.order === null || isNaN(formData.order) || formData.order < 0) {
+      newErrors.order = "Order is required and must be 0 or higher";
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -113,6 +120,39 @@ const ProductCategoryModal: React.FC<ProductCategoryModalProps> = ({
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
               placeholder="Enter product category description"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Order <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={formData.order === 0 ? "" : formData.order.toString()}
+              onChange={(e) => {
+                const value = e.target.value;
+                // Only allow digits
+                if (value === "" || /^\d+$/.test(value)) {
+                  setFormData({ ...formData, order: value === "" ? 0 : parseInt(value, 10) });
+                }
+              }}
+              onBlur={(e) => {
+                // Ensure the value is set to 0 if empty
+                if (e.target.value === "") {
+                  setFormData({ ...formData, order: 0 });
+                }
+              }}
+              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white dark:border-gray-600 ${
+                errors.order ? "border-red-500" : "border-gray-300"
+              }`}
+              placeholder="Enter order number (0 or higher)"
+            />
+            {errors.order && (
+              <p className="mt-1 text-sm text-red-500">{errors.order}</p>
+            )}
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Lower numbers appear first in the customer panel
+            </p>
           </div>
 
           <div className="flex justify-end gap-3 pt-4">

@@ -16,6 +16,8 @@ const ProductCategoryTable: React.FC = () => {
   const itemsPerPage = 10;
   const [totalDocs, setTotalDocs] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(false);
+  const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
+  const [editingOrderValue, setEditingOrderValue] = useState<string>("");
 
   useEffect(() => {
     fetchCategories();
@@ -94,6 +96,64 @@ const ProductCategoryTable: React.FC = () => {
     }
   };
 
+  const handleOrderClick = (item: ProductCategory) => {
+    if (!item._id) return;
+    setEditingOrderId(item._id);
+    setEditingOrderValue((item.order ?? 0).toString());
+  };
+
+  const handleOrderCancel = () => {
+    setEditingOrderId(null);
+    setEditingOrderValue("");
+  };
+
+  const handleOrderSave = async (item: ProductCategory) => {
+    if (!item._id) return;
+    
+    const newOrder = parseInt(editingOrderValue, 10);
+    if (isNaN(newOrder) || newOrder < 0) {
+      toastHelper.error("Please enter a valid order number (0 or higher)");
+      return;
+    }
+
+    const currentOrder = item.order ?? 0;
+    
+    // If the new order is the same as current, just cancel editing
+    if (newOrder === currentOrder) {
+      handleOrderCancel();
+      return;
+    }
+
+    try {
+      // Find the category that currently has the target order
+      const targetCategory = categoriesData.find(
+        (cat) => cat._id !== item._id && (cat.order ?? 0) === newOrder
+      );
+
+      if (targetCategory && targetCategory._id) {
+        // Swap orders: current item gets newOrder, target item gets currentOrder
+        const orders = [
+          { id: item._id, order: newOrder },
+          { id: targetCategory._id, order: currentOrder },
+        ];
+        await ProductCategoryService.updateProductCategoryOrder(orders);
+        toastHelper.showTost("Order updated successfully!", "success");
+      } else {
+        // No category has this order, just update the current one
+        await ProductCategoryService.updateProductCategory(item._id, { order: newOrder });
+        toastHelper.showTost("Order updated successfully!", "success");
+      }
+
+      setEditingOrderId(null);
+      setEditingOrderValue("");
+      await fetchCategories();
+    } catch (error) {
+      console.error("Failed to update order:", error);
+      toastHelper.error("Failed to update order");
+    }
+  };
+
+
 
   return (
     <div className="p-4">
@@ -139,6 +199,9 @@ const ProductCategoryTable: React.FC = () => {
                   Description
                 </th>
                 <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                  Order
+                </th>
+                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Actions
                 </th>
               </tr>
@@ -146,7 +209,7 @@ const ProductCategoryTable: React.FC = () => {
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={3} className="p-12 text-center">
+                  <td colSpan={4} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
                       Loading Product Categories...
@@ -155,7 +218,7 @@ const ProductCategoryTable: React.FC = () => {
                 </tr>
               ) : categoriesData.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="p-12 text-center">
+                  <td colSpan={4} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       No product categories found
                     </div>
@@ -174,6 +237,55 @@ const ProductCategoryTable: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                       {item.description || "-"}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-center">
+                      {editingOrderId === item._id ? (
+                        <div className="flex items-center justify-center gap-2">
+                          <input
+                            type="text"
+                            value={editingOrderValue}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              // Only allow digits
+                              if (value === "" || /^\d+$/.test(value)) {
+                                setEditingOrderValue(value);
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                handleOrderSave(item);
+                              } else if (e.key === "Escape") {
+                                handleOrderCancel();
+                              }
+                            }}
+                            className="w-16 px-2 py-1 text-center border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-sm"
+                            autoFocus
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <button
+                            onClick={() => handleOrderSave(item)}
+                            className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300"
+                            title="Save Order"
+                          >
+                            <i className="fas fa-check"></i>
+                          </button>
+                          <button
+                            onClick={handleOrderCancel}
+                            className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
+                            title="Cancel"
+                          >
+                            <i className="fas fa-times"></i>
+                          </button>
+                        </div>
+                      ) : (
+                        <div
+                          onClick={() => handleOrderClick(item)}
+                          className="text-gray-600 dark:text-gray-400 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 hover:underline"
+                          title="Click to edit order"
+                        >
+                          {item.order ?? 0}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
                       <div className="inline-flex items-center gap-3">
