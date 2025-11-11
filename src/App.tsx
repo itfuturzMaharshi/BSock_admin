@@ -32,6 +32,9 @@ import Activities from "./pages/Activities/Activities";
 import Customers from "./pages/Customers/Customers";
 import BidProducts from "./pages/BidProducts/BidProducts";
 import BidTracking from "./pages/BidProducts/BidTracking";
+import Brand from "./pages/Brand/Brand";
+import Grade from "./pages/Grade/Grade";
+import ProductCategory from "./pages/ProductCategory/ProductCategory";
 
 export default function App() {
   return (
@@ -65,6 +68,11 @@ export default function App() {
 
             <Route path="/bid-products" element={<BidProducts />} />
             <Route path="/bid-tracking" element={<BidTracking />} />
+
+            {/* Masters */}
+            <Route path="/masters/brand" element={<Brand />} />
+            <Route path="/masters/grade" element={<Grade />} />
+            <Route path="/masters/product-category" element={<ProductCategory />} />
 
             {/* Forms */}
             <Route path="/form-elements" element={<FormElements />} />

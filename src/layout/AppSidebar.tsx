@@ -50,6 +50,15 @@ const navItems: NavItem[] = [
     path: "/products",
   },
   {
+    icon: <i className="fas fa-layer-group"></i>,
+    name: "Masters",
+    subItems: [
+      { name: "Grade", path: "/masters/grade" },
+      { name: "Brand", path: "/masters/brand" },
+      { name: "Product Category", path: "/masters/product-category" },
+    ],
+  },
+  {
     icon: <i className="fas fa-box-open"></i>,
     name: "Orders",
     path: "/orders",
