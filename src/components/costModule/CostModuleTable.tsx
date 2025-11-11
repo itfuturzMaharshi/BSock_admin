@@ -32,7 +32,7 @@ const CostModuleTable: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editItem, setEditItem] = useState<CostModule | undefined>(undefined);
   const [totalPages, setTotalPages] = useState<number>(1);
-  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
+  const [itemsPerPage] = useState<number>(10);
   const [loading, setLoading] = useState<boolean>(false);
   const [totalDocs, setTotalDocs] = useState<number>(0);
 

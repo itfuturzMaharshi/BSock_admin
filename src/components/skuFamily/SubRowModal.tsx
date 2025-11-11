@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from "react";
-import Swal from "sweetalert2";
 import toastHelper from "../../utils/toastHelper";
 import { SkuFamily } from "./types";
 

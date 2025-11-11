@@ -26,7 +26,7 @@ const CustomerCart: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [previewItem, setPreviewItem] = useState<CustomerCart | null>(null);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState<boolean>(false);
-  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
+  const [itemsPerPage] = useState<number>(10);
   const [loading, setLoading] = useState<boolean>(false);
   const [totalDocs, setTotalDocs] = useState<number>(0);
 

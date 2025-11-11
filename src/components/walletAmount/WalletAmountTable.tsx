@@ -45,7 +45,7 @@ const WalletAmountTable: React.FC = () => {
   const [viewingCustomer, setViewingCustomer] =
     useState<CustomerWalletData | null>(null);
   const [totalPages, setTotalPages] = useState<number>(1);
-  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
+  const [itemsPerPage] = useState<number>(10);
   const [loading, setLoading] = useState<boolean>(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [totalDocs, setTotalDocs] = useState<number>(0);

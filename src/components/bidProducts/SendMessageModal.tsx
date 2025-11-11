@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import Swal from "sweetalert2";
 import { BidProductService } from "../../services/bidProducts/bidProduct.services";
 import { BidProduct } from "../../services/bidProducts/bidProduct.services";
 import toastHelper from "../../utils/toastHelper";

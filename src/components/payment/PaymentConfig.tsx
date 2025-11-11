@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import Swal from "sweetalert2";
 import toastHelper from "../../utils/toastHelper";
 import { PaymentConfigService } from "../../services/payment/paymentConfig.services";
 
@@ -39,7 +38,7 @@ interface PaymentConfigProps {
   onRenderButtons?: (buttons: React.ReactNode) => void;
 }
 
-const PaymentConfig: React.FC<PaymentConfigProps> = ({ onRenderButtons }) => {
+const PaymentConfig: React.FC<PaymentConfigProps> = ({ onRenderButtons: _onRenderButtons }) => {
   const [paymentConfig, setPaymentConfig] = useState<PaymentConfig | null>(
     null
   );
@@ -154,38 +153,6 @@ const PaymentConfig: React.FC<PaymentConfigProps> = ({ onRenderButtons }) => {
       console.error("Failed to save payment config:", error);
       toastHelper.showTost("Failed to save payment config!", "error");
     }
-  };
-
-  const handleDeleteConfig = async () => {
-    if (!paymentConfig?._id) return;
-
-    const confirmed = await Swal.fire({
-      title: "Delete Payment Config?",
-      text: "This will permanently delete the entire configuration!",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Yes, delete it!",
-      cancelButtonText: "No, cancel!",
-    });
-
-    if (confirmed.isConfirmed) {
-      try {
-        await PaymentConfigService.deletePaymentConfig(paymentConfig._id);
-        toastHelper.showTost("Payment config deleted successfully!", "success");
-        setPaymentConfig(null);
-      } catch (error) {
-        console.error("Failed to delete payment config:", error);
-        toastHelper.showTost("Failed to delete payment config!", "error");
-      }
-    }
-  };
-
-  const openEditModal = () => {
-    if (!paymentConfig) return;
-    setIsEditMode(true);
-    setFormData(paymentConfig);
-    setEditingModuleIndex(null);
-    setIsModalOpen(true);
   };
 
   const openModuleEditModal = (moduleIndex: number) => {
@@ -306,14 +273,6 @@ const PaymentConfig: React.FC<PaymentConfigProps> = ({ onRenderButtons }) => {
   const updateModule = (index: number, module: PaymentModule) => {
     const updatedModules = [...formData.modules];
     updatedModules[index] = module;
-    setFormData({
-      ...formData,
-      modules: updatedModules,
-    });
-  };
-
-  const removeModule = (index: number) => {
-    const updatedModules = formData.modules.filter((_, i) => i !== index);
     setFormData({
       ...formData,
       modules: updatedModules,
