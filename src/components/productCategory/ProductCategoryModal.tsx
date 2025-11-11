@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ProductCategory } from "../../services/productCategory/productCategory.services";
+import { ProductCategory } from "../../services/productCategory/productCategory.services";                                                                                                                  
 
 interface FormData {
   title: string;
@@ -7,7 +7,7 @@ interface FormData {
   order: number;
 }
 
-interface ProductCategoryModalProps {
+interface ProductCategoryModalProps {                                   
   isOpen: boolean;
   onClose: () => void;
   onSave: (newItem: FormData) => void;
@@ -25,7 +25,7 @@ const ProductCategoryModal: React.FC<ProductCategoryModalProps> = ({
     description: "",
     order: 0,
   });
-  const [errors, setErrors] = useState<Partial<FormData>>({});
+  const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
 
   useEffect(() => {
     if (editItem) {
@@ -45,9 +45,12 @@ const ProductCategoryModal: React.FC<ProductCategoryModalProps> = ({
   }, [editItem, isOpen]);
 
   const validate = (): boolean => {
-    const newErrors: Partial<FormData> = {};
+    const newErrors: Partial<Record<keyof FormData, string>> = {};
     if (!formData.title.trim()) {
       newErrors.title = "Title is required";
+    }
+    if (formData.order === undefined || formData.order === null || isNaN(formData.order) || formData.order < 0) {
+      newErrors.order = "Order is required and must be 0 or higher";
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -121,7 +124,7 @@ const ProductCategoryModal: React.FC<ProductCategoryModalProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Order
+              Order <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
