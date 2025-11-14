@@ -76,10 +76,14 @@ const CurrencyConversionTable: React.FC = () => {
     } catch (err: any) {
       console.error("Error saving currency conversion:", err);
       
+      // Error message is already shown by the service, but we can add additional handling if needed
       if (err.message?.includes('Authentication required')) {
         toastHelper.showTost("Please login to save currency conversions", "error");
       } else if (err.message?.includes('API endpoint not found')) {
         toastHelper.showTost("Currency conversion feature is not available. Please contact administrator.", "error");
+      } else if (err.message) {
+        // Service already shows the error toast, so we don't need to show it again
+        // Just log it for debugging
       } else {
         toastHelper.showTost("Failed to save currency conversion", "error");
       }
@@ -117,10 +121,14 @@ const CurrencyConversionTable: React.FC = () => {
       } catch (err: any) {
         console.error("Error deleting currency conversion:", err);
         
+        // Error message is already shown by the service, but we can add additional handling if needed
         if (err.message?.includes('Authentication required')) {
           toastHelper.showTost("Please login to delete currency conversions", "error");
         } else if (err.message?.includes('API endpoint not found')) {
           toastHelper.showTost("Currency conversion feature is not available. Please contact administrator.", "error");
+        } else if (err.message) {
+          // Service already shows the error toast, so we don't need to show it again
+          // Just log it for debugging
         } else {
           toastHelper.showTost("Failed to delete currency conversion", "error");
         }

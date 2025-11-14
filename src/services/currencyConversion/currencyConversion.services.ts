@@ -60,6 +60,13 @@ export class CurrencyConversionService {
 
       const responseData = res.data;
 
+      // Check if data is 0, which indicates an error condition
+      if (responseData.data === 0) {
+        const errorMessage = responseData.message || 'Currency conversion already exists';
+        toastHelper.showTost(errorMessage, 'error');
+        throw new Error(errorMessage);
+      }
+
       if (res.status === 200) {
         toastHelper.showTost(responseData.message || 'Currency conversion created successfully!', 'success');
       } else {
@@ -106,6 +113,13 @@ export class CurrencyConversionService {
       });
 
       const responseData = res.data;
+
+      // Check if data is 0, which indicates an error condition
+      if (responseData.data === 0) {
+        const errorMessage = responseData.message || 'Currency conversion not found';
+        toastHelper.showTost(errorMessage, 'error');
+        throw new Error(errorMessage);
+      }
 
       if (res.status === 200) {
         // toastHelper.showTost(responseData.message || 'Currency conversion retrieved successfully!', 'success');
@@ -154,6 +168,13 @@ export class CurrencyConversionService {
 
       const responseData = res.data;
 
+      // Check if data is 0, which indicates an error condition
+      if (responseData.data === 0) {
+        const errorMessage = responseData.message || 'Currency conversion not found';
+        toastHelper.showTost(errorMessage, 'error');
+        throw new Error(errorMessage);
+      }
+
       if (res.status === 200) {
         toastHelper.showTost(responseData.message || 'Currency conversion updated successfully!', 'success');
       } else {
@@ -200,6 +221,13 @@ export class CurrencyConversionService {
       });
 
       const responseData = res.data;
+
+      // Check if data is 0, which indicates an error condition
+      if (responseData.data === 0) {
+        const errorMessage = responseData.message || 'Currency conversion not found';
+        toastHelper.showTost(errorMessage, 'error');
+        throw new Error(errorMessage);
+      }
 
       if (res.status === 200) {
         toastHelper.showTost(responseData.message || 'Currency conversion deleted successfully!', 'success');
