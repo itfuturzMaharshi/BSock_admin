@@ -245,44 +245,54 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
           )}
 
           {/* Shipping Address */}
-          {order.shippingAddress && order.shippingAddress.address && (
+          {order.shippingAddress && (order.shippingAddress.address || order.shippingAddress.country) && (
             <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
                 Shipping Address
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Address
-                  </label>
-                  <p className="text-sm text-gray-900 dark:text-gray-100">
-                    {order.shippingAddress?.address || "-"}
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    City
-                  </label>
-                  <p className="text-sm text-gray-900 dark:text-gray-100">
-                    {order.shippingAddress?.city || "-"}
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Postal Code
-                  </label>
-                  <p className="text-sm text-gray-900 dark:text-gray-100">
-                    {order.shippingAddress?.postalCode || "-"}
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Country
-                  </label>
-                  <p className="text-sm text-gray-900 dark:text-gray-100">
-                    {order.shippingAddress?.country || "-"}
-                  </p>
-                </div>
+                {order.shippingAddress?.address && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Address
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-gray-100">
+                      {order.shippingAddress.address}
+                    </p>
+                  </div>
+                )}
+                {order.shippingAddress?.city && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      City
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-gray-100">
+                      {order.shippingAddress.city}
+                    </p>
+                  </div>
+                )}
+                {order.shippingAddress?.postalCode && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Postal Code
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-gray-100">
+                      {order.shippingAddress.postalCode}
+                    </p>
+                  </div>
+                )}
+                {order.shippingAddress?.country && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Country
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-gray-100">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                        {order.shippingAddress.country.charAt(0).toUpperCase() + order.shippingAddress.country.slice(1)}
+                      </span>
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           )}
