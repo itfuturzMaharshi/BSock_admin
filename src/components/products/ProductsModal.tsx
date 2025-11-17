@@ -34,6 +34,9 @@ interface FormData {
 interface ValidationErrors {
   skuFamilyId?: string;
   subSkuFamilyId?: string;
+  productcategoriesId?: string;
+  brandId?: string;
+  gradeId?: string;
   simType?: string;
   color?: string;
   ram?: string;
@@ -47,6 +50,7 @@ interface ValidationErrors {
   expiryTime?: string;
   isNegotiable?: string;
   isFlashDeal?: string;
+  [key: string]: string | undefined;
 }
 
 interface TouchedFields {
@@ -107,13 +111,13 @@ const ProductModal: React.FC<ProductModalProps> = ({
     { _id: string; name: string }[]
   >([]);
   const [productCategories, setProductCategories] = useState<
-    { _id: string; title: string }[]
+    { _id?: string; title: string }[]
   >([]);
   const [brands, setBrands] = useState<
-    { _id: string; title: string }[]
+    { _id?: string; title: string }[]
   >([]);
   const [grades, setGrades] = useState<
-    { _id: string; title: string; brand: string | { _id: string; title: string } }[]
+    { _id?: string; title: string; brand: string | { _id?: string; title: string } }[]
   >([]);
   const [skuLoading, setSkuLoading] = useState<boolean>(false);
   const [subSkuLoading, setSubSkuLoading] = useState<boolean>(false);
@@ -591,7 +595,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
     requiredFields.forEach((fieldName) => {
       const error = validateField(fieldName, formData[fieldName]);
       if (error) {
-        errors[fieldName] = error;
+        (errors as any)[fieldName] = error;
         isValid = false;
       }
     });

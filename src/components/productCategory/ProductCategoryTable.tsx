@@ -16,8 +16,8 @@ const ProductCategoryTable: React.FC = () => {
   const itemsPerPage = 10;
   const [totalDocs, setTotalDocs] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(false);
-  const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
-  const [editingOrderValue, setEditingOrderValue] = useState<string>("");
+  const [editingSequenceId, setEditingSequenceId] = useState<string | null>(null);
+  const [editingSequenceValue, setEditingSequenceValue] = useState<string>("");
 
   useEffect(() => {
     fetchCategories();
@@ -96,60 +96,48 @@ const ProductCategoryTable: React.FC = () => {
     }
   };
 
-  const handleOrderClick = (item: ProductCategory) => {
+  const handleSequenceClick = (item: ProductCategory) => {
     if (!item._id) return;
-    setEditingOrderId(item._id);
-    setEditingOrderValue((item.order ?? 0).toString());
+    setEditingSequenceId(item._id);
+    setEditingSequenceValue((item.sequence ?? 0).toString());
   };
 
-  const handleOrderCancel = () => {
-    setEditingOrderId(null);
-    setEditingOrderValue("");
+  const handleSequenceCancel = () => {
+    setEditingSequenceId(null);
+    setEditingSequenceValue("");
   };
 
-  const handleOrderSave = async (item: ProductCategory) => {
+  const handleSequenceSave = async (item: ProductCategory) => {
     if (!item._id) return;
     
-    const newOrder = parseInt(editingOrderValue, 10);
-    if (isNaN(newOrder) || newOrder < 0) {
-      toastHelper.error("Please enter a valid order number (0 or higher)");
+    if (editingSequenceValue === "" || editingSequenceValue === null) {
+      handleSequenceCancel();
+      return;
+    }
+    
+    const newSequence = parseInt(editingSequenceValue, 10);
+    if (isNaN(newSequence) || newSequence < 0) {
+      toastHelper.showTost("Please enter a valid sequence number (0 or higher)", "error");
       return;
     }
 
-    const currentOrder = item.order ?? 0;
+    const currentSequence = item.sequence ?? 0;
     
-    // If the new order is the same as current, just cancel editing
-    if (newOrder === currentOrder) {
-      handleOrderCancel();
+    // If the new sequence is the same as current, just cancel editing
+    if (newSequence === currentSequence) {
+      handleSequenceCancel();
       return;
     }
 
     try {
-      // Find the category that currently has the target order
-      const targetCategory = categoriesData.find(
-        (cat) => cat._id !== item._id && (cat.order ?? 0) === newOrder
-      );
-
-      if (targetCategory && targetCategory._id) {
-        // Swap orders: current item gets newOrder, target item gets currentOrder
-        const orders = [
-          { id: item._id, order: newOrder },
-          { id: targetCategory._id, order: currentOrder },
-        ];
-        await ProductCategoryService.updateProductCategoryOrder(orders);
-        toastHelper.showTost("Order updated successfully!", "success");
-      } else {
-        // No category has this order, just update the current one
-        await ProductCategoryService.updateProductCategory(item._id, { order: newOrder });
-        toastHelper.showTost("Order updated successfully!", "success");
-      }
-
-      setEditingOrderId(null);
-      setEditingOrderValue("");
+      await ProductCategoryService.updateSequence(item._id, newSequence);
+      setEditingSequenceId(null);
+      setEditingSequenceValue("");
       await fetchCategories();
-    } catch (error) {
-      console.error("Failed to update order:", error);
-      toastHelper.error("Failed to update order");
+    } catch (error: any) {
+      console.error("Failed to update sequence:", error);
+      const errorMessage = error?.message || "Failed to update sequence";
+      toastHelper.showTost(errorMessage, "error");
     }
   };
 
@@ -176,6 +164,56 @@ const ProductCategoryTable: React.FC = () => {
           </div>
           <div className="flex items-center gap-3">
             <button
+              className="inline-flex items-center gap-1 rounded-lg bg-green-600 text-white px-4 py-2 text-sm font-medium hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 transition-colors"
+              onClick={async () => {
+                try {
+                  await ProductCategoryService.downloadSample();
+                } catch (error) {
+                  console.error('Failed to download sample:', error);
+                }
+              }}
+              title="Download Sample Excel"
+            >
+              <i className="fas fa-download text-xs"></i>
+              Sample
+            </button>
+            <button
+              className="inline-flex items-center gap-1 rounded-lg bg-purple-600 text-white px-4 py-2 text-sm font-medium hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600 transition-colors"
+              onClick={async () => {
+                try {
+                  await ProductCategoryService.exportToExcel();
+                  fetchCategories();
+                } catch (error) {
+                  console.error('Failed to export:', error);
+                }
+              }}
+              title="Export to Excel"
+            >
+              <i className="fas fa-file-export text-xs"></i>
+              Export
+            </button>
+            <label className="inline-flex items-center gap-1 rounded-lg bg-orange-600 text-white px-4 py-2 text-sm font-medium hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600 transition-colors cursor-pointer">
+              <i className="fas fa-file-import text-xs"></i>
+              Import
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    try {
+                      await ProductCategoryService.importFromExcel(file);
+                      fetchCategories();
+                    } catch (error) {
+                      console.error('Failed to import:', error);
+                    }
+                  }
+                  e.target.value = '';
+                }}
+              />
+            </label>
+            <button
               className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
               onClick={() => {
                 setEditCategory(null);
@@ -193,13 +231,19 @@ const ProductCategoryTable: React.FC = () => {
             <thead className="bg-gray-100 dark:bg-gray-900">
               <tr>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                  ID
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                  Code
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Title
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Description
                 </th>
                 <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Order
+                  Sequence
                 </th>
                 <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Actions
@@ -209,7 +253,7 @@ const ProductCategoryTable: React.FC = () => {
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="p-12 text-center">
+                  <td colSpan={6} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
                       Loading Product Categories...
@@ -218,7 +262,7 @@ const ProductCategoryTable: React.FC = () => {
                 </tr>
               ) : categoriesData.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="p-12 text-center">
+                  <td colSpan={6} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       No product categories found
                     </div>
@@ -230,6 +274,12 @@ const ProductCategoryTable: React.FC = () => {
                     key={item._id || index}
                     className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                   >
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      {item.id || "-"}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      {item.code || "-"}
+                    </td>
                     <td className="px-6 py-4">
                       <div className="text-sm font-medium text-gray-800 dark:text-gray-200">
                         {item.title}
@@ -239,53 +289,57 @@ const ProductCategoryTable: React.FC = () => {
                       {item.description || "-"}
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
-                      {editingOrderId === item._id ? (
-                        <div className="flex items-center justify-center gap-2">
-                          <input
-                            type="text"
-                            value={editingOrderValue}
-                            onChange={(e) => {
-                              const value = e.target.value;
-                              // Only allow digits
-                              if (value === "" || /^\d+$/.test(value)) {
-                                setEditingOrderValue(value);
+                      <div className="flex items-center justify-center gap-2">
+                        <input
+                          type="number"
+                          min="0"
+                          value={editingSequenceId === item._id ? editingSequenceValue : (item.sequence ?? 0)}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (editingSequenceId !== item._id) {
+                              handleSequenceClick(item);
+                            }
+                            // Allow empty or valid numbers
+                            if (value === "" || /^\d+$/.test(value)) {
+                              setEditingSequenceValue(value);
+                            }
+                          }}
+                          onBlur={() => {
+                            if (editingSequenceId === item._id && editingSequenceValue !== "") {
+                              handleSequenceSave(item);
+                            } else if (editingSequenceId === item._id) {
+                              handleSequenceCancel();
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              if (editingSequenceId === item._id) {
+                                handleSequenceSave(item);
+                              } else {
+                                handleSequenceClick(item);
                               }
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                handleOrderSave(item);
-                              } else if (e.key === "Escape") {
-                                handleOrderCancel();
-                              }
-                            }}
-                            className="w-16 px-2 py-1 text-center border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-sm"
-                            autoFocus
-                            onClick={(e) => e.stopPropagation()}
-                          />
+                            } else if (e.key === "Escape" && editingSequenceId === item._id) {
+                              handleSequenceCancel();
+                            }
+                          }}
+                          onFocus={() => {
+                            if (editingSequenceId !== item._id) {
+                              handleSequenceClick(item);
+                            }
+                          }}
+                          className="w-20 px-2 py-1 text-center border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-sm"
+                          placeholder="0"
+                        />
+                        {editingSequenceId === item._id && (
                           <button
-                            onClick={() => handleOrderSave(item)}
+                            onClick={() => handleSequenceSave(item)}
                             className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300"
-                            title="Save Order"
+                            title="Save Sequence"
                           >
-                            <i className="fas fa-check"></i>
+                            <i className="fas fa-check text-xs"></i>
                           </button>
-                          <button
-                            onClick={handleOrderCancel}
-                            className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
-                            title="Cancel"
-                          >
-                            <i className="fas fa-times"></i>
-                          </button>
-                        </div>
-                      ) : (
-                        <div
-                          onClick={() => handleOrderClick(item)}
-                          className="text-gray-600 dark:text-gray-400 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 hover:underline"
-                          title="Click to edit order"
-                        >
-                          {item.order ?? 0}
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
                       <div className="inline-flex items-center gap-3">
