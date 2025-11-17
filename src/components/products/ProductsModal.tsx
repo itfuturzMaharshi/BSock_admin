@@ -117,7 +117,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
     { _id?: string; title: string }[]
   >([]);
   const [grades, setGrades] = useState<
-    { _id?: string; title: string; brand: string | { _id?: string; title: string } }[]
+    { _id?: string; title: string; brand?: string | { _id?: string; title: string; code?: string } }[]
   >([]);
   const [skuLoading, setSkuLoading] = useState<boolean>(false);
   const [subSkuLoading, setSubSkuLoading] = useState<boolean>(false);

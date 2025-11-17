@@ -96,7 +96,8 @@ const GradeTable: React.FC = () => {
     }
   };
 
-  const getBrandTitle = (brand: string | { _id: string; title: string }): string => {
+  const getBrandTitle = (brand?: string | { _id: string; title: string }): string => {
+    if (!brand) return '-';
     if (typeof brand === 'string') return brand;
     return brand?.title || '-';
   };

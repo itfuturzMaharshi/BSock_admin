@@ -7,7 +7,7 @@ interface FormData {
   code?: string;
   title: string;
   description: string;
-  brand: string;
+  brand?: string;
   sequence?: number;
 }
 
@@ -79,9 +79,7 @@ const GradeModal: React.FC<GradeModalProps> = ({
     if (!formData.title.trim()) {
       newErrors.title = "Title is required";
     }
-    if (!formData.brand) {
-      newErrors.brand = "Brand is required";
-    }
+    // Brand is optional, no validation needed
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -170,27 +168,22 @@ const GradeModal: React.FC<GradeModalProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Brand <span className="text-red-500">*</span>
+              Brand
             </label>
             <select
-              value={formData.brand}
+              value={formData.brand || ""}
               onChange={(e) =>
-                setFormData({ ...formData, brand: e.target.value })
+                setFormData({ ...formData, brand: e.target.value || undefined })
               }
-              className={`w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white dark:border-gray-600 ${
-                errors.brand ? "border-red-500" : "border-gray-300"
-              }`}
+              className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
             >
-              <option value="">Select a brand</option>
+              <option value="">Select a brand (optional)</option>
               {brands.map((brand) => (
                 <option key={brand._id} value={brand._id}>
                   {brand.title}
                 </option>
               ))}
             </select>
-            {errors.brand && (
-              <p className="mt-1 text-sm text-red-500">{errors.brand}</p>
-            )}
           </div>
 
           <div>

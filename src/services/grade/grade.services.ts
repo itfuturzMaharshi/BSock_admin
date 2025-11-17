@@ -7,7 +7,7 @@ export interface Grade {
   code?: string;
   title: string;
   description?: string;
-  brand: string | { _id: string; title: string; code?: string };
+  brand?: string | { _id: string; title: string; code?: string };
   sequence?: number;
   createdAt?: string;
   updatedAt?: string;
