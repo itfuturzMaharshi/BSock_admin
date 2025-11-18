@@ -3,6 +3,7 @@ import toastHelper from "../../utils/toastHelper";
 import { SkuFamily } from "./types";
 
 interface ValidationErrors {
+  id?: string;
   name?: string;
   code?: string;
   brand?: string;
@@ -11,9 +12,11 @@ interface ValidationErrors {
   country?: string;
   simType?: string;
   networkBands?: string;
+  sequence?: string;
 }
 
 interface TouchedFields {
+  id: boolean;
   name: boolean;
   code: boolean;
   brand: boolean;
@@ -22,6 +25,7 @@ interface TouchedFields {
   country: boolean;
   simType: boolean;
   networkBands: boolean;
+  sequence: boolean;
 }
 
 interface SkuFamilyModalProps {
@@ -38,14 +42,16 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
   editItem,
 }) => {
   const [formData, setFormData] = useState({
-    name: "",
+    id: "",
     code: "",
+    name: "",
     brand: "",
     description: "",
     colorVariant: [] as string[],
     country: [] as string[],
     simType: [] as string[],
     networkBands: [] as string[],
+    sequence: 0,
   });
   const [newImages, setNewImages] = useState<File[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
@@ -57,6 +63,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
     {}
   );
   const [touched, setTouched] = useState<TouchedFields>({
+    id: false,
     name: false,
     code: false,
     brand: false,
@@ -65,6 +72,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
     country: false,
     simType: false,
     networkBands: false,
+    sequence: false,
   });
   // const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -124,6 +132,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
       setApiError("");
       setValidationErrors({});
       setTouched({
+        id: false,
         name: false,
         code: false,
         brand: false,
@@ -132,20 +141,23 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
         country: false,
         simType: false,
         networkBands: false,
+        sequence: false,
       });
     };
 
     if (!isOpen) {
       // Clean up when modal closes
       setFormData({
-        name: "",
+        id: "",
         code: "",
+        name: "",
         brand: "",
         description: "",
         colorVariant: [],
         country: [],
         simType: [],
         networkBands: [],
+        sequence: 0,
       });
       setExistingImages([]);
       setNewImages([]);
@@ -185,14 +197,16 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
 
       // Set form data
       setFormData({
-        name: editItem.name || "",
+        id: editItem.id || "",
         code: editItem.code || "",
+        name: editItem.name || "",
         brand: editItem.brand || "",
         description: editItem.description || "",
         colorVariant,
         country,
         simType,
         networkBands,
+        sequence: editItem.sequence ?? 0,
       });
 
       // Handle images
@@ -205,14 +219,16 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
     } else {
       // Reset for new item
       setFormData({
-        name: "",
+        id: "",
         code: "",
+        name: "",
         brand: "",
         description: "",
         colorVariant: [],
         country: [],
         simType: [],
         networkBands: [],
+        sequence: 0,
       });
       setExistingImages([]);
     }
@@ -359,6 +375,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
 
     // Mark all fields as touched
     setTouched({
+      id: true,
       name: true,
       code: true,
       brand: true,
@@ -367,6 +384,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
       country: true,
       simType: true,
       networkBands: true,
+      sequence: true,
     });
 
     const isValid = validateForm();
@@ -380,14 +398,16 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
 
     try {
       const formDataToSend = new FormData();
-      formDataToSend.append("name", formData.name.trim());
+      if (formData.id) formDataToSend.append("id", formData.id.trim());
       formDataToSend.append("code", formData.code.trim());
+      formDataToSend.append("name", formData.name.trim());
       formDataToSend.append("brand", formData.brand.trim());
       formDataToSend.append("description", formData.description.trim());
       formDataToSend.append("colorVariant", formData.colorVariant.join(", "));
       formDataToSend.append("country", formData.country.join(", "));
       formDataToSend.append("simType", formData.simType.join(", "));
       formDataToSend.append("networkBands", formData.networkBands.join(", "));
+      formDataToSend.append("sequence", formData.sequence?.toString() || "0");
       newImages.forEach((image) => {
         formDataToSend.append("images", image);
       });
@@ -643,36 +663,25 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
             onSubmit={handleSubmit}
             className="space-y-6"
           >
-            {/* Name, Code, and Brand Row */}
+            {/* ID, Code, and Name Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                  Name
+                  ID
                 </label>
                 <input
                   type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  onBlur={handleBlur}
-                  className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm ${
-                    touched.name && validationErrors.name
-                      ? "border-red-500 focus:ring-red-500"
-                      : "border-gray-200 dark:border-gray-700"
-                  }`}
-                  placeholder="Enter Name"
-                  required
+                  name="id"
+                  value={formData.id || ''}
+                  onChange={(e) => setFormData({ ...formData, id: e.target.value })}
+                  className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm"
+                  placeholder="Enter ID (optional)"
                   disabled={isLoading}
                 />
-                {touched.name && validationErrors.name && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {validationErrors.name}
-                  </p>
-                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                  Code
+                  Code <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -697,7 +706,36 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                  Brand
+                  Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  onBlur={handleBlur}
+                  className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm ${
+                    touched.name && validationErrors.name
+                      ? "border-red-500 focus:ring-red-500"
+                      : "border-gray-200 dark:border-gray-700"
+                  }`}
+                  placeholder="Enter Name"
+                  required
+                  disabled={isLoading}
+                />
+                {touched.name && validationErrors.name && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {validationErrors.name}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Brand and Sequence Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                  Brand <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -719,6 +757,24 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                     {validationErrors.brand}
                   </p>
                 )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                  Sequence
+                </label>
+                <input
+                  type="number"
+                  name="sequence"
+                  value={formData.sequence || 0}
+                  onChange={(e) => setFormData({ ...formData, sequence: parseInt(e.target.value) || 0 })}
+                  min="0"
+                  className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm"
+                  placeholder="Enter sequence number (optional)"
+                  disabled={isLoading}
+                />
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Lower numbers appear first in lists
+                </p>
               </div>
             </div>
 

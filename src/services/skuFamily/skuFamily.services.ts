@@ -3,8 +3,9 @@ import api from '../api/api';
 
 interface SkuFamily {
   _id?: string;
-  name: string;
+  id?: string;
   code: string;
+  name: string;
   brand: string;
   description: string;
   images: string[];
@@ -13,6 +14,7 @@ interface SkuFamily {
   simType: string;
   networkBands: string;
   countryVariant?: string;
+  sequence?: number;
   isApproved?: boolean;
   isDeleted?: boolean;
   createdAt?: string;
@@ -186,6 +188,168 @@ export class SkuFamilyService {
       return res.data;
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Failed to fetch SKU Families';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
+
+  static exportToExcel = async (): Promise<void> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/skuFamily/export`;
+
+    try {
+      const res = await api.get(url, { 
+        responseType: 'blob',
+        headers: {
+          'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        }
+      });
+      
+      // Check if response is actually a blob
+      if (!(res.data instanceof Blob)) {
+        // If it's a string (error message), try to parse it
+        if (typeof res.data === 'string') {
+          throw new Error('Server returned an error instead of file');
+        }
+        // Convert to blob if it's an ArrayBuffer or similar
+        const blob = new Blob([res.data], { 
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+        });
+        const link = document.createElement('a');
+        link.href = window.URL.createObjectURL(blob);
+        link.download = `sku_families_export_${Date.now()}.xlsx`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(link.href);
+        toastHelper.showTost('SKU Families exported successfully!', 'success');
+        return;
+      }
+      
+      const blob = res.data;
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = `sku_families_export_${Date.now()}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(link.href);
+      toastHelper.showTost('SKU Families exported successfully!', 'success');
+    } catch (err: any) {
+      console.error('Export error:', err);
+      // Try to extract error message from blob response if it's an error
+      if (err.response?.data instanceof Blob) {
+        const text = await err.response.data.text();
+        try {
+          const errorData = JSON.parse(text);
+          toastHelper.showTost(errorData.message || 'Failed to export SKU Families', 'error');
+        } catch {
+          toastHelper.showTost('Failed to export SKU Families', 'error');
+        }
+      } else {
+        const errorMessage = err.response?.data?.message || err.message || 'Failed to export SKU Families';
+        toastHelper.showTost(errorMessage, 'error');
+      }
+      throw err;
+    }
+  };
+
+  static downloadSample = async (): Promise<void> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/skuFamily/sample`;
+
+    try {
+      const res = await api.get(url, { 
+        responseType: 'blob',
+        headers: {
+          'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        }
+      });
+      
+      // Check if response is actually a blob
+      if (!(res.data instanceof Blob)) {
+        // If it's a string (error message), try to parse it
+        if (typeof res.data === 'string') {
+          throw new Error('Server returned an error instead of file');
+        }
+        // Convert to blob if it's an ArrayBuffer or similar
+        const blob = new Blob([res.data], { 
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+        });
+        const link = document.createElement('a');
+        link.href = window.URL.createObjectURL(blob);
+        link.download = 'sku_families_sample.xlsx';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(link.href);
+        toastHelper.showTost('Sample file downloaded successfully!', 'success');
+        return;
+      }
+      
+      const blob = res.data;
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = 'sku_families_sample.xlsx';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(link.href);
+      toastHelper.showTost('Sample file downloaded successfully!', 'success');
+    } catch (err: any) {
+      console.error('Download sample error:', err);
+      // Try to extract error message from blob response if it's an error
+      if (err.response?.data instanceof Blob) {
+        const text = await err.response.data.text();
+        try {
+          const errorData = JSON.parse(text);
+          toastHelper.showTost(errorData.message || 'Failed to download sample', 'error');
+        } catch {
+          toastHelper.showTost('Failed to download sample file', 'error');
+        }
+      } else {
+        const errorMessage = err.response?.data?.message || err.message || 'Failed to download sample';
+        toastHelper.showTost(errorMessage, 'error');
+      }
+      throw err;
+    }
+  };
+
+  static importFromExcel = async (file: File): Promise<any> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/skuFamily/import`;
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await api.post(url, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      toastHelper.showTost(res.data.message || 'SKU Families imported successfully!', 'success');
+      return res.data;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to import SKU Families';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
+
+  static updateSequence = async (id: string, sequence: number): Promise<any> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/skuFamily/update-sequence`;
+
+    try {
+      const res = await api.post(url, { id, sequence });
+      toastHelper.showTost(res.data.message || 'Sequence updated successfully!', 'success');
+      return res.data;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to update sequence';
       toastHelper.showTost(errorMessage, 'error');
       throw new Error(errorMessage);
     }

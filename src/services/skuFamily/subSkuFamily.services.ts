@@ -3,8 +3,9 @@ import api from '../api/api';
 
 interface SubSkuFamily {
   _id?: string;
-  name: string;
+  id?: string;
   code: string;
+  name: string;
   brand: string;
   description: string;
   images: string[];
@@ -14,6 +15,7 @@ interface SubSkuFamily {
   networkBands: string[];
   skuFamilyId: string;
   countryVariant?: string;
+  sequence?: number;
   isApproved?: boolean;
   isDeleted?: boolean;
   createdAt?: string;
@@ -128,6 +130,22 @@ export class SubSkuFamilyService {
       return res.data;
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Failed to fetch Sub SKU Families';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
+
+  static updateSequence = async (id: string, sequence: number): Promise<any> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/subSkuFamily/update-sequence`;
+
+    try {
+      const res = await api.post(url, { id, sequence });
+      toastHelper.showTost(res.data.message || 'Sequence updated successfully!', 'success');
+      return res.data;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to update sequence';
       toastHelper.showTost(errorMessage, 'error');
       throw new Error(errorMessage);
     }

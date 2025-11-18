@@ -44,6 +44,10 @@ const SkuFamilyTable: React.FC = () => {
     top: number;
     left: number;
   } | null>(null);
+  const [editingSequenceId, setEditingSequenceId] = useState<string | null>(null);
+  const [editingSequenceValue, setEditingSequenceValue] = useState<string>("");
+  const [editingSubRowSequenceId, setEditingSubRowSequenceId] = useState<string | null>(null);
+  const [editingSubRowSequenceValue, setEditingSubRowSequenceValue] = useState<string>("");
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -189,6 +193,53 @@ const SkuFamilyTable: React.FC = () => {
     setOpenDropdownId(null);
   };
 
+  const handleSequenceSave = async (item: SkuFamily) => {
+    if (!item._id) return;
+    const sequence = parseInt(editingSequenceValue);
+    if (isNaN(sequence) || sequence < 0) {
+      toastHelper.showTost("Sequence must be a valid number (0 or higher)", "error");
+      setEditingSequenceId(null);
+      setEditingSequenceValue("");
+      return;
+    }
+    try {
+      await SkuFamilyService.updateSequence(item._id, sequence);
+      setEditingSequenceId(null);
+      setEditingSequenceValue("");
+      fetchData();
+    } catch (err: any) {
+      console.error("Error updating sequence:", err);
+      setEditingSequenceId(null);
+      setEditingSequenceValue("");
+    }
+  };
+
+  const handleSubRowSequenceSave = async (subRow: any, parentId?: string) => {
+    if (!subRow._id) return;
+    const sequence = parseInt(editingSubRowSequenceValue);
+    if (isNaN(sequence) || sequence < 0) {
+      toastHelper.showTost("Sequence must be a valid number (0 or higher)", "error");
+      setEditingSubRowSequenceId(null);
+      setEditingSubRowSequenceValue("");
+      return;
+    }
+    try {
+      await SubSkuFamilyService.updateSequence(subRow._id, sequence);
+      setEditingSubRowSequenceId(null);
+      setEditingSubRowSequenceValue("");
+      // Refresh the sub-rows for this parent
+      if (parentId) {
+        await fetchSubRows(parentId);
+      } else if (subRow.skuFamilyId) {
+        await fetchSubRows(subRow.skuFamilyId);
+      }
+    } catch (err: any) {
+      console.error("Error updating sub-row sequence:", err);
+      setEditingSubRowSequenceId(null);
+      setEditingSubRowSequenceValue("");
+    }
+  };
+
   const handleView = (skuFamily: SkuFamily) => {
     setSelectedSkuFamily(skuFamily);
     setOpenDropdownId(null);
@@ -208,9 +259,16 @@ const SkuFamilyTable: React.FC = () => {
 
   const handleSubRowSave = async (formData: FormData) => {
     try {
-      // Add skuFamilyId to formData
-      if (parentRowId) {
-        formData.append("skuFamilyId", parentRowId);
+      // If skuFamilyCode is not provided, use parentRowId as fallback
+      if (!formData.has("skuFamilyCode") && parentRowId) {
+        // Get the SKU Family code from the parent
+        const parentSkuFamily = skuFamilyData.find(item => item._id === parentRowId);
+        if (parentSkuFamily && parentSkuFamily.code) {
+          formData.append("skuFamilyCode", parentSkuFamily.code);
+        } else {
+          // Fallback to ID if code not available
+          formData.append("skuFamilyId", parentRowId);
+        }
       }
 
       // Use SubSkuFamilyService to create the sub-row
@@ -279,9 +337,15 @@ const SkuFamilyTable: React.FC = () => {
     try {
       if (!editingSubRow) return;
 
-      // Add skuFamilyId to formData (ensure it's a string, not array) - only if not already present
-      if (!formData.has("skuFamilyId")) {
-        formData.append("skuFamilyId", editingSubRow.parentId);
+      // If skuFamilyCode is not provided, get it from the parent SKU Family
+      if (!formData.has("skuFamilyCode")) {
+        const parentSkuFamily = skuFamilyData.find(item => item._id === editingSubRow.parentId);
+        if (parentSkuFamily && parentSkuFamily.code) {
+          formData.append("skuFamilyCode", parentSkuFamily.code);
+        } else {
+          // Fallback to ID if code not available
+          formData.append("skuFamilyId", editingSubRow.parentId);
+        }
       }
 
       // Use SubSkuFamilyService to update the sub-row
@@ -386,16 +450,68 @@ const SkuFamilyTable: React.FC = () => {
               />
             </div>
           </div>
-          <button
-            className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
-            onClick={() => {
-              setEditId(null);
-              setIsModalOpen(true);
-            }}
-          >
-            <i className="fas fa-plus text-xs"></i>
-            Add SKU Family
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              className="inline-flex items-center gap-1 rounded-lg bg-green-600 text-white px-4 py-2 text-sm font-medium hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 transition-colors"
+              onClick={async () => {
+                try {
+                  await SkuFamilyService.downloadSample();
+                } catch (error) {
+                  console.error('Failed to download sample:', error);
+                }
+              }}
+              title="Download Sample Excel"
+            >
+              <i className="fas fa-download text-xs"></i>
+              Sample
+            </button>
+            <button
+              className="inline-flex items-center gap-1 rounded-lg bg-purple-600 text-white px-4 py-2 text-sm font-medium hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600 transition-colors"
+              onClick={async () => {
+                try {
+                  await SkuFamilyService.exportToExcel();
+                  fetchData();
+                } catch (error) {
+                  console.error('Failed to export:', error);
+                }
+              }}
+              title="Export to Excel"
+            >
+              <i className="fas fa-file-export text-xs"></i>
+              Export
+            </button>
+            <label className="inline-flex items-center gap-1 rounded-lg bg-orange-600 text-white px-4 py-2 text-sm font-medium hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600 transition-colors cursor-pointer">
+              <i className="fas fa-file-import text-xs"></i>
+              Import
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    try {
+                      await SkuFamilyService.importFromExcel(file);
+                      fetchData();
+                    } catch (error) {
+                      console.error('Failed to import:', error);
+                    }
+                  }
+                  e.target.value = '';
+                }}
+              />
+            </label>
+            <button
+              className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
+              onClick={() => {
+                setEditId(null);
+                setIsModalOpen(true);
+              }}
+            >
+              <i className="fas fa-plus text-xs"></i>
+              Add SKU Family
+            </button>
+          </div>
         </div>
         <div className="w-full overflow-hidden">
           <table className="w-full table-fixed">
@@ -404,9 +520,12 @@ const SkuFamilyTable: React.FC = () => {
                 <th className="w-12 px-2 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   <i className="fas fa-expand-arrows-alt text-gray-500"></i>
                 </th>
-                {/* <th className="w-20 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Image
-                </th> */}
+                <th className="w-20 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                  ID
+                </th>
+                <th className="w-24 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                  Code
+                </th>
                 <th className="w-32 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Name
                 </th>
@@ -416,6 +535,9 @@ const SkuFamilyTable: React.FC = () => {
                 <th className="w-20 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Country
                 </th>
+                <th className="w-24 px-2 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                  Sequence
+                </th>
                 <th className="w-20 px-2 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Actions
                 </th>
@@ -424,7 +546,7 @@ const SkuFamilyTable: React.FC = () => {
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="p-12 text-center">
+                  <td colSpan={8} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
                       Loading SKU Families...
@@ -433,7 +555,7 @@ const SkuFamilyTable: React.FC = () => {
                 </tr>
               ) : !skuFamilyData || skuFamilyData.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-16 text-center">
+                  <td colSpan={8} className="p-16 text-center">
                     <div className="flex flex-col items-center justify-center space-y-4">
                       <div className="w-24 h-24 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
                         <i className="fas fa-box-open text-4xl text-gray-400 dark:text-gray-500"></i>
@@ -488,7 +610,12 @@ const SkuFamilyTable: React.FC = () => {
                           ></i>
                         </button>
                       </td>
-
+                      <td className="w-20 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
+                        {item.id || "-"}
+                      </td>
+                      <td className="w-24 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
+                        {item.code || "-"}
+                      </td>
                       <td className="w-32 px-2 py-4 text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
                         {item.name || "N/A"}
                       </td>
@@ -497,6 +624,43 @@ const SkuFamilyTable: React.FC = () => {
                       </td>
                       <td className="w-20 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
                         {item.country || "N/A"}
+                      </td>
+                      <td className="w-24 px-2 py-4 text-sm text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <input
+                            type="number"
+                            min="0"
+                            value={editingSequenceId === item._id ? editingSequenceValue : (item.sequence ?? 0)}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              if (editingSequenceId !== item._id) {
+                                setEditingSequenceId(item._id || null);
+                              }
+                              if (value === "" || /^\d+$/.test(value)) {
+                                setEditingSequenceValue(value);
+                              }
+                            }}
+                            onBlur={() => {
+                              if (editingSequenceId === item._id && editingSequenceValue !== "") {
+                                handleSequenceSave(item);
+                              } else if (editingSequenceId === item._id) {
+                                setEditingSequenceId(null);
+                                setEditingSequenceValue("");
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && editingSequenceId === item._id) {
+                                handleSequenceSave(item);
+                              } else if (e.key === "Escape" && editingSequenceId === item._id) {
+                                setEditingSequenceId(null);
+                                setEditingSequenceValue("");
+                              }
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-20 px-2 py-1 text-center border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-sm"
+                            placeholder="0"
+                          />
+                        </div>
                       </td>
                       <td className="w-20 px-2 py-4 text-sm text-center relative">
                         <div className="inline-flex items-center justify-center gap-3">
@@ -555,6 +719,12 @@ const SkuFamilyTable: React.FC = () => {
                           <td className="w-12 px-2 py-4 text-center">
                             <div className="w-4 h-4 border-l-2 border-b-2 border-gray-300 dark:border-gray-500 ml-2"></div>
                           </td>
+                          <td className="w-20 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
+                            {/* ID for sub-row */}
+                          </td>
+                          <td className="w-24 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
+                            {/* Code for sub-row */}
+                          </td>
                           <td className="w-32 px-2 py-4 text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
                             <div className="flex items-center gap-3">
                               <img
@@ -586,6 +756,43 @@ const SkuFamilyTable: React.FC = () => {
                           </td>
                           <td className="w-20 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
                             {subRow.country || "N/A"}
+                          </td>
+                          <td className="w-24 px-2 py-4 text-sm text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <input
+                                type="number"
+                                min="0"
+                                value={editingSubRowSequenceId === subRow._id ? editingSubRowSequenceValue : ((subRow as any).sequence ?? 0)}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  if (editingSubRowSequenceId !== subRow._id) {
+                                    setEditingSubRowSequenceId(subRow._id || null);
+                                  }
+                                  if (value === "" || /^\d+$/.test(value)) {
+                                    setEditingSubRowSequenceValue(value);
+                                  }
+                                }}
+                                onBlur={() => {
+                                  if (editingSubRowSequenceId === subRow._id && editingSubRowSequenceValue !== "") {
+                                    handleSubRowSequenceSave(subRow, item._id || undefined);
+                                  } else if (editingSubRowSequenceId === subRow._id) {
+                                    setEditingSubRowSequenceId(null);
+                                    setEditingSubRowSequenceValue("");
+                                  }
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" && editingSubRowSequenceId === subRow._id) {
+                                    handleSubRowSequenceSave(subRow, item._id || undefined);
+                                  } else if (e.key === "Escape" && editingSubRowSequenceId === subRow._id) {
+                                    setEditingSubRowSequenceId(null);
+                                    setEditingSubRowSequenceValue("");
+                                  }
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                className="w-20 px-2 py-1 text-center border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-sm"
+                                placeholder="0"
+                              />
+                            </div>
                           </td>
                           <td className="w-20 px-2 py-4 text-sm text-center">
                             <div className="subrow-dropdown-container relative">
@@ -691,7 +898,7 @@ const SkuFamilyTable: React.FC = () => {
                           <td className="w-12 px-2 py-4 text-center">
                             <div className="w-4 h-4 border-l-2 border-b-2 border-gray-300 dark:border-gray-500 ml-2"></div>
                           </td>
-                          <td className="px-2 py-4 text-sm text-gray-500 dark:text-gray-400" colSpan={4}>
+                          <td className="px-2 py-4 text-sm text-gray-500 dark:text-gray-400" colSpan={7}>
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <i className="fas fa-box-open text-gray-400 dark:text-gray-500"></i>

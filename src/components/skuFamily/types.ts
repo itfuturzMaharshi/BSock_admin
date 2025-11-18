@@ -1,7 +1,8 @@
 export interface SkuFamily {
   _id?: string;
-  name: string;
+  id?: string;
   code: string;
+  name: string;
   brand: string;
   description: string;
   images: string[];
@@ -10,6 +11,7 @@ export interface SkuFamily {
   simType: string | string[];
   networkBands: string | string[];
   countryVariant?: string;
+  sequence?: number;
   isApproved?: boolean;
   isDeleted?: boolean;
   createdAt?: string;

@@ -3,6 +3,7 @@ import toastHelper from "../../utils/toastHelper";
 import { SkuFamily } from "./types";
 
 interface ValidationErrors {
+  skuFamilyCode?: string;
   name?: string;
   code?: string;
   brand?: string;
@@ -11,9 +12,11 @@ interface ValidationErrors {
   country?: string;
   simType?: string;
   networkBands?: string;
+  sequence?: string;
 }
 
 interface TouchedFields {
+  skuFamilyCode: boolean;
   name: boolean;
   code: boolean;
   brand: boolean;
@@ -22,6 +25,7 @@ interface TouchedFields {
   country: boolean;
   simType: boolean;
   networkBands: boolean;
+  sequence: boolean;
 }
 
 interface SubRowModalProps {
@@ -40,6 +44,7 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
   viewMode = false,
 }) => {
   const [formData, setFormData] = useState({
+    skuFamilyCode: "",
     name: "",
     code: "",
     brand: "",
@@ -48,6 +53,7 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
     country: "",
     simType: "",
     networkBands: "",
+    sequence: 0,
   });
   const [newImages, setNewImages] = useState<File[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
@@ -60,6 +66,7 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
     {}
   );
   const [touched, setTouched] = useState<TouchedFields>({
+    skuFamilyCode: false,
     name: false,
     code: false,
     brand: false,
@@ -68,6 +75,7 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
     country: false,
     simType: false,
     networkBands: false,
+    sequence: false,
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -152,7 +160,11 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
         console.log("Edit item received:", editItem); // Debug log
         console.log("Edit item images:", editItem.images); // Debug log
 
+        // Get SKU Family code from editItem if available (it might be populated)
+        const skuFamilyCode = (editItem as any).skuFamilyId?.code || (editItem as any).skuFamilyCode || "";
+
         setFormData({
+          skuFamilyCode: skuFamilyCode,
           name: editItem.name || "",
           code: editItem.code || "",
           brand: editItem.brand || "",
@@ -161,6 +173,7 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
           country: cleanArrayData(editItem.country), // Country is not an array
           simType: cleanArrayData(editItem.simType),
           networkBands: cleanArrayData(editItem.networkBands),
+          sequence: (editItem as any).sequence ?? 0,
         });
 
         // Handle existing images properly - ensure it's always an array
@@ -173,6 +186,7 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
         setExistingImages(imageArray);
       } else {
         setFormData({
+          skuFamilyCode: "",
           name: "",
           code: "",
           brand: "",
@@ -181,12 +195,14 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
           country: "",
           simType: "",
           networkBands: "",
+          sequence: 0,
         });
         setExistingImages([]);
       }
     } else {
       // Clean up when modal closes
       setFormData({
+        skuFamilyCode: "",
         name: "",
         code: "",
         brand: "",
@@ -195,6 +211,7 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
         country: "",
         simType: "",
         networkBands: "",
+        sequence: 0,
       });
       setExistingImages([]);
       setNewImages([]);
@@ -321,6 +338,8 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
     value: any
   ): string | undefined => {
     switch (name) {
+      case "skuFamilyCode":
+        return !value || value.trim() === "" ? "SKU Family Code is required" : undefined;
       case "name":
         return !value || value.trim() === "" ? "Name is required" : undefined;
       case "code":
@@ -352,6 +371,7 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
 
     // Only validate required fields
     const requiredFields: (keyof typeof formData)[] = [
+      "skuFamilyCode",
       "name",
       "code",
       "brand",
@@ -394,6 +414,7 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
 
     // Mark all fields as touched
     setTouched({
+      skuFamilyCode: true,
       name: true,
       code: true,
       brand: true,
@@ -402,6 +423,7 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
       country: true,
       simType: true,
       networkBands: true,
+      sequence: true,
     });
 
     const isValid = validateForm();
@@ -415,6 +437,7 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
 
     try {
       const formDataToSend = new FormData();
+      formDataToSend.append("skuFamilyCode", formData.skuFamilyCode.trim());
       formDataToSend.append("name", formData.name.trim());
       formDataToSend.append("code", formData.code.trim());
       formDataToSend.append("brand", formData.brand.trim());
@@ -428,9 +451,7 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
       formDataToSend.append("country", formData.country); // Country is not an array
       formDataToSend.append("simType", JSON.stringify(simTypeArray));
       formDataToSend.append("networkBands", JSON.stringify(networkBandsArray));
-      
-      // Note: skuFamilyId is handled by the parent component (SkuFamilyTable)
-      // to avoid duplicate entries
+      formDataToSend.append("sequence", formData.sequence?.toString() || "0");
       
       newImages.forEach((image) => {
         formDataToSend.append("images", image);
@@ -502,6 +523,33 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
             onSubmit={handleSubmit}
             className="space-y-6"
           >
+            {/* SKU Family Code */}
+            <div>
+              <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                SKU Family Code <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="skuFamilyCode"
+                value={formData.skuFamilyCode}
+                onChange={handleInputChange}
+                onBlur={handleBlur}
+                className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm ${
+                  touched.skuFamilyCode && validationErrors.skuFamilyCode
+                    ? "border-red-500 focus:ring-red-500"
+                    : "border-gray-200 dark:border-gray-700"
+                }`}
+                placeholder="Enter SKU Family Code"
+                required
+                disabled={isLoading || viewMode}
+              />
+              {touched.skuFamilyCode && validationErrors.skuFamilyCode && (
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                  {validationErrors.skuFamilyCode}
+                </p>
+              )}
+            </div>
+
             {/* Name, Code, and Brand Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
@@ -578,6 +626,24 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
                     {validationErrors.brand}
                   </p>
                 )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                  Sequence
+                </label>
+                <input
+                  type="number"
+                  name="sequence"
+                  value={formData.sequence || 0}
+                  onChange={(e) => setFormData({ ...formData, sequence: parseInt(e.target.value) || 0 })}
+                  min="0"
+                  className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm"
+                  placeholder="Enter sequence number (optional)"
+                  disabled={isLoading || viewMode}
+                />
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Lower numbers appear first in lists
+                </p>
               </div>
             </div>
             {/* Description, Color Variant, and Country Row */}
