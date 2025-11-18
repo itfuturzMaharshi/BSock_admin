@@ -720,10 +720,10 @@ const SkuFamilyTable: React.FC = () => {
                             <div className="w-4 h-4 border-l-2 border-b-2 border-gray-300 dark:border-gray-500 ml-2"></div>
                           </td>
                           <td className="w-20 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
-                            {/* ID for sub-row */}
+                            {(subRow as any).id || "N/A"}
                           </td>
                           <td className="w-24 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
-                            {/* Code for sub-row */}
+                            {subRow.code || "N/A"}
                           </td>
                           <td className="w-32 px-2 py-4 text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
                             <div className="flex items-center gap-3">

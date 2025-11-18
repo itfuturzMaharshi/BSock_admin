@@ -3,6 +3,7 @@ import toastHelper from "../../utils/toastHelper";
 import { SkuFamily } from "./types";
 
 interface ValidationErrors {
+  id?: string;
   skuFamilyCode?: string;
   name?: string;
   code?: string;
@@ -16,6 +17,7 @@ interface ValidationErrors {
 }
 
 interface TouchedFields {
+  id: boolean;
   skuFamilyCode: boolean;
   name: boolean;
   code: boolean;
@@ -44,6 +46,7 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
   viewMode = false,
 }) => {
   const [formData, setFormData] = useState({
+    id: "",
     skuFamilyCode: "",
     name: "",
     code: "",
@@ -66,6 +69,7 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
     {}
   );
   const [touched, setTouched] = useState<TouchedFields>({
+    id: false,
     skuFamilyCode: false,
     name: false,
     code: false,
@@ -164,6 +168,7 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
         const skuFamilyCode = (editItem as any).skuFamilyId?.code || (editItem as any).skuFamilyCode || "";
 
         setFormData({
+          id: (editItem as any).id || "",
           skuFamilyCode: skuFamilyCode,
           name: editItem.name || "",
           code: editItem.code || "",
@@ -186,6 +191,7 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
         setExistingImages(imageArray);
       } else {
         setFormData({
+          id: "",
           skuFamilyCode: "",
           name: "",
           code: "",
@@ -202,6 +208,7 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
     } else {
       // Clean up when modal closes
       setFormData({
+        id: "",
         skuFamilyCode: "",
         name: "",
         code: "",
@@ -414,6 +421,7 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
 
     // Mark all fields as touched
     setTouched({
+      id: true,
       skuFamilyCode: true,
       name: true,
       code: true,
@@ -437,6 +445,9 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
 
     try {
       const formDataToSend = new FormData();
+      if (formData.id) {
+        formDataToSend.append("id", formData.id.trim());
+      }
       formDataToSend.append("skuFamilyCode", formData.skuFamilyCode.trim());
       formDataToSend.append("name", formData.name.trim());
       formDataToSend.append("code", formData.code.trim());
@@ -550,8 +561,32 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
               )}
             </div>
 
-            {/* Name, Code, and Brand Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* ID, Name, Code, and Brand Row */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                  ID
+                </label>
+                <input
+                  type="text"
+                  name="id"
+                  value={formData.id || ''}
+                  onChange={handleInputChange}
+                  onBlur={handleBlur}
+                  className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm ${
+                    touched.id && validationErrors.id
+                      ? "border-red-500 focus:ring-red-500"
+                      : "border-gray-200 dark:border-gray-700"
+                  }`}
+                  placeholder="Enter ID (optional)"
+                  disabled={isLoading || viewMode}
+                />
+                {touched.id && validationErrors.id && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {validationErrors.id}
+                  </p>
+                )}
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                   Name
