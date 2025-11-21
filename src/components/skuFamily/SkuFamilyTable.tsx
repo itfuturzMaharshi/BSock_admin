@@ -196,7 +196,7 @@ const SkuFamilyTable: React.FC = () => {
   const handleSequenceSave = async (item: SkuFamily) => {
     if (!item._id) return;
     const sequence = parseInt(editingSequenceValue);
-    if (isNaN(sequence) || sequence < 0) {
+    if (isNaN(sequence) || sequence < 1) {
       toastHelper.showTost("Sequence must be a valid number (0 or higher)", "error");
       setEditingSequenceId(null);
       setEditingSequenceValue("");
@@ -217,7 +217,7 @@ const SkuFamilyTable: React.FC = () => {
   const handleSubRowSequenceSave = async (subRow: any, parentId?: string) => {
     if (!subRow._id) return;
     const sequence = parseInt(editingSubRowSequenceValue);
-    if (isNaN(sequence) || sequence < 0) {
+    if (isNaN(sequence) || sequence < 1) {
       toastHelper.showTost("Sequence must be a valid number (0 or higher)", "error");
       setEditingSubRowSequenceId(null);
       setEditingSubRowSequenceValue("");
@@ -629,8 +629,8 @@ const SkuFamilyTable: React.FC = () => {
                         <div className="flex items-center justify-center gap-2">
                           <input
                             type="number"
-                            min="0"
-                            value={editingSequenceId === item._id ? editingSequenceValue : (item.sequence ?? 0)}
+                            min="1"
+                            value={editingSequenceId === item._id ? editingSequenceValue : (item.sequence ?? 1)}
                             onChange={(e) => {
                               const value = e.target.value;
                               if (editingSequenceId !== item._id) {
@@ -761,8 +761,8 @@ const SkuFamilyTable: React.FC = () => {
                             <div className="flex items-center justify-center gap-2">
                               <input
                                 type="number"
-                                min="0"
-                                value={editingSubRowSequenceId === subRow._id ? editingSubRowSequenceValue : ((subRow as any).sequence ?? 0)}
+                                min="1"
+                                value={editingSubRowSequenceId === subRow._id ? editingSubRowSequenceValue : ((subRow as any).sequence ?? 1)}
                                 onChange={(e) => {
                                   const value = e.target.value;
                                   if (editingSubRowSequenceId !== subRow._id) {

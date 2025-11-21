@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ProductCategory } from "../../services/productCategory/productCategory.services";                                                                                                                  
+import { Storage } from "../../services/storage/storage.services";
 
 interface FormData {
   id?: string;
@@ -9,14 +9,14 @@ interface FormData {
   sequence?: number;
 }
 
-interface ProductCategoryModalProps {                                   
+interface StorageModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (newItem: FormData) => void;
-  editItem?: ProductCategory;
+  editItem?: Storage;
 }
 
-const ProductCategoryModal: React.FC<ProductCategoryModalProps> = ({
+const StorageModal: React.FC<StorageModalProps> = ({
   isOpen,
   onClose,
   onSave,
@@ -29,7 +29,7 @@ const ProductCategoryModal: React.FC<ProductCategoryModalProps> = ({
     description: "",
     sequence: 1,
   });
-  const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
+  const [errors, setErrors] = useState<Partial<FormData>>({});
 
   useEffect(() => {
     if (editItem) {
@@ -53,7 +53,7 @@ const ProductCategoryModal: React.FC<ProductCategoryModalProps> = ({
   }, [editItem, isOpen]);
 
   const validate = (): boolean => {
-    const newErrors: Partial<Record<keyof FormData, string>> = {};
+    const newErrors: Partial<FormData> = {};
     if (!formData.title.trim()) {
       newErrors.title = "Title is required";
     }
@@ -81,7 +81,7 @@ const ProductCategoryModal: React.FC<ProductCategoryModalProps> = ({
       >
         <div className="flex items-center justify-between p-4 sm:p-5 md:p-6 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-900 z-10">
           <h2 className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-900 dark:text-white">
-            {editItem ? "Edit Product Category" : "Add Product Category"}
+            {editItem ? "Edit Storage" : "Add Storage"}
           </h2>
           <button
             onClick={onClose}
@@ -104,7 +104,7 @@ const ProductCategoryModal: React.FC<ProductCategoryModalProps> = ({
                 setFormData({ ...formData, id: e.target.value })
               }
               className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
-              placeholder="Enter category ID"
+              placeholder="Enter storage ID"
             />
           </div>
 
@@ -119,7 +119,7 @@ const ProductCategoryModal: React.FC<ProductCategoryModalProps> = ({
                 setFormData({ ...formData, code: e.target.value })
               }
               className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
-              placeholder="Enter category code"
+              placeholder="Enter storage code"
             />
           </div>
 
@@ -136,7 +136,7 @@ const ProductCategoryModal: React.FC<ProductCategoryModalProps> = ({
               className={`w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white dark:border-gray-600 ${
                 errors.title ? "border-red-500" : "border-gray-300"
               }`}
-              placeholder="Enter product category title"
+              placeholder="Enter storage title"
             />
             {errors.title && (
               <p className="mt-1 text-sm text-red-500">{errors.title}</p>
@@ -154,7 +154,7 @@ const ProductCategoryModal: React.FC<ProductCategoryModalProps> = ({
               }
               rows={4}
               className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white resize-y"
-              placeholder="Enter product category description"
+              placeholder="Enter storage description"
             />
           </div>
 
@@ -198,5 +198,5 @@ const ProductCategoryModal: React.FC<ProductCategoryModalProps> = ({
   );
 };
 
-export default ProductCategoryModal;
+export default StorageModal;
 

@@ -35,6 +35,9 @@ import BidTracking from "./pages/BidProducts/BidTracking";
 import Brand from "./pages/Brand/Brand";
 import Grade from "./pages/Grade/Grade";
 import ProductCategory from "./pages/ProductCategory/ProductCategory";
+import Color from "./pages/Color/Color";
+import Ram from "./pages/Ram/Ram";
+import Storage from "./pages/Storage/Storage";
 
 export default function App() {
   return (
@@ -73,6 +76,9 @@ export default function App() {
             <Route path="/masters/brand" element={<Brand />} />
             <Route path="/masters/grade" element={<Grade />} />
             <Route path="/masters/product-category" element={<ProductCategory />} />
+            <Route path="/masters/color" element={<Color />} />
+            <Route path="/masters/ram" element={<Ram />} />
+            <Route path="/masters/storage" element={<Storage />} />
 
             {/* Forms */}
             <Route path="/form-elements" element={<FormElements />} />

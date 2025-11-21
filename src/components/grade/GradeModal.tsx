@@ -30,7 +30,7 @@ const GradeModal: React.FC<GradeModalProps> = ({
     title: "",
     description: "",
     brand: "",
-    sequence: 0,
+    sequence: 1,
   });
   const [errors, setErrors] = useState<Partial<FormData>>({});
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -49,7 +49,7 @@ const GradeModal: React.FC<GradeModalProps> = ({
         title: editItem.title || "",
         description: editItem.description || "",
         brand: typeof editItem.brand === 'object' ? editItem.brand._id : editItem.brand || "",
-        sequence: editItem.sequence ?? 0,
+        sequence: editItem.sequence ?? 1,
       });
     } else {
       setFormData({
@@ -58,7 +58,7 @@ const GradeModal: React.FC<GradeModalProps> = ({
         title: "",
         description: "",
         brand: "",
-        sequence: 0,
+        sequence: 1,
       });
     }
     setErrors({});
@@ -127,7 +127,7 @@ const GradeModal: React.FC<GradeModalProps> = ({
                 setFormData({ ...formData, id: e.target.value })
               }
               className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
-              placeholder="Enter grade ID (optional)"
+              placeholder="Enter grade ID"
             />
           </div>
 
@@ -142,7 +142,7 @@ const GradeModal: React.FC<GradeModalProps> = ({
                 setFormData({ ...formData, code: e.target.value })
               }
               className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
-              placeholder="Enter grade code (optional)"
+              placeholder="Enter grade code"
             />
           </div>
 
@@ -209,9 +209,9 @@ const GradeModal: React.FC<GradeModalProps> = ({
               type="number"
               value={formData.sequence}
               onChange={(e) =>
-                setFormData({ ...formData, sequence: parseInt(e.target.value) || 0 })
+                setFormData({ ...formData, sequence: parseInt(e.target.value) || 1 })
               }
-              min="0"
+              min="1"
               className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
               placeholder="Enter sequence number (optional)"
             />

@@ -56,7 +56,7 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
     country: "",
     simType: "",
     networkBands: "",
-    sequence: 0,
+    sequence: 1,
   });
   const [newImages, setNewImages] = useState<File[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
@@ -178,7 +178,7 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
           country: cleanArrayData(editItem.country), // Country is not an array
           simType: cleanArrayData(editItem.simType),
           networkBands: cleanArrayData(editItem.networkBands),
-          sequence: (editItem as any).sequence ?? 0,
+          sequence: (editItem as any).sequence ?? 1,
         });
 
         // Handle existing images properly - ensure it's always an array
@@ -201,7 +201,7 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
           country: "",
           simType: "",
           networkBands: "",
-          sequence: 0,
+          sequence: 1,
         });
         setExistingImages([]);
       }
@@ -218,7 +218,7 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
         country: "",
         simType: "",
         networkBands: "",
-        sequence: 0,
+        sequence: 1,
       });
       setExistingImages([]);
       setNewImages([]);
@@ -462,7 +462,7 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
       formDataToSend.append("country", formData.country); // Country is not an array
       formDataToSend.append("simType", JSON.stringify(simTypeArray));
       formDataToSend.append("networkBands", JSON.stringify(networkBandsArray));
-      formDataToSend.append("sequence", formData.sequence?.toString() || "0");
+      formDataToSend.append("sequence", formData.sequence?.toString() || "1");
       
       newImages.forEach((image) => {
         formDataToSend.append("images", image);
@@ -669,9 +669,9 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
                 <input
                   type="number"
                   name="sequence"
-                  value={formData.sequence || 0}
-                  onChange={(e) => setFormData({ ...formData, sequence: parseInt(e.target.value) || 0 })}
-                  min="0"
+                  value={formData.sequence || 1}
+                  onChange={(e) => setFormData({ ...formData, sequence: parseInt(e.target.value) || 1 })}
+                  min="1"
                   className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm"
                   placeholder="Enter sequence number (optional)"
                   disabled={isLoading || viewMode}

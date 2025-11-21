@@ -51,7 +51,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
     country: [] as string[],
     simType: [] as string[],
     networkBands: [] as string[],
-    sequence: 0,
+    sequence: 1,
   });
   const [newImages, setNewImages] = useState<File[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
@@ -157,7 +157,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
         country: [],
         simType: [],
         networkBands: [],
-        sequence: 0,
+        sequence: 1,
       });
       setExistingImages([]);
       setNewImages([]);
@@ -206,7 +206,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
         country,
         simType,
         networkBands,
-        sequence: editItem.sequence ?? 0,
+        sequence: editItem.sequence ?? 1,
       });
 
       // Handle images
@@ -228,7 +228,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
         country: [],
         simType: [],
         networkBands: [],
-        sequence: 0,
+        sequence: 1,
       });
       setExistingImages([]);
     }
@@ -407,7 +407,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
       formDataToSend.append("country", formData.country.join(", "));
       formDataToSend.append("simType", formData.simType.join(", "));
       formDataToSend.append("networkBands", formData.networkBands.join(", "));
-      formDataToSend.append("sequence", formData.sequence?.toString() || "0");
+      formDataToSend.append("sequence", formData.sequence?.toString() || "1");
       newImages.forEach((image) => {
         formDataToSend.append("images", image);
       });
@@ -765,9 +765,9 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                 <input
                   type="number"
                   name="sequence"
-                  value={formData.sequence || 0}
-                  onChange={(e) => setFormData({ ...formData, sequence: parseInt(e.target.value) || 0 })}
-                  min="0"
+                  value={formData.sequence || 1}
+                  onChange={(e) => setFormData({ ...formData, sequence: parseInt(e.target.value) || 1 })}
+                  min="1"
                   className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm"
                   placeholder="Enter sequence number (optional)"
                   disabled={isLoading}
