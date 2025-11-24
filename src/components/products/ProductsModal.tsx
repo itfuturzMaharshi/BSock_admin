@@ -276,7 +276,8 @@ const ProductModal: React.FC<ProductModalProps> = ({
         try {
           setProductCategoryLoading(true);
           const response = await ProductCategoryService.getProductCategoryList(1, 1000);
-          setProductCategories(response.data.docs || []);
+          const categories = (response.data.docs || []).filter((cat: any) => cat && cat._id && cat.title && typeof cat.title === 'string');
+          setProductCategories(categories);
         } catch (error: any) {
           console.error("Failed to load Product Categories:", error);
         } finally {
@@ -288,7 +289,8 @@ const ProductModal: React.FC<ProductModalProps> = ({
         try {
           setBrandLoading(true);
           const response = await BrandService.getBrandList(1, 1000);
-          setBrands(response.data.docs || []);
+          const brandsList = (response.data.docs || []).filter((brand: any) => brand && brand._id && brand.title && typeof brand.title === 'string');
+          setBrands(brandsList);
         } catch (error: any) {
           console.error("Failed to load Brands:", error);
         } finally {
@@ -300,7 +302,8 @@ const ProductModal: React.FC<ProductModalProps> = ({
         try {
           setGradeLoading(true);
           const response = await GradeService.getGradeList(1, 1000);
-          setGrades(response.data.docs || []);
+          const gradesList = (response.data.docs || []).filter((grade: any) => grade && grade._id && grade.title && typeof grade.title === 'string');
+          setGrades(gradesList);
         } catch (error: any) {
           console.error("Failed to load Grades:", error);
         } finally {
@@ -915,8 +918,21 @@ const ProductModal: React.FC<ProductModalProps> = ({
                   Product Category
                 </label>
                 <Select
-                  options={productCategories.map(cat => ({ value: cat._id, label: cat.title }))}
-                  value={productCategories.find(cat => cat._id === formData.productcategoriesId) ? { value: formData.productcategoriesId, label: productCategories.find(cat => cat._id === formData.productcategoriesId)?.title || '' } : null}
+                  options={productCategories
+                    .filter(cat => cat && cat._id && cat.title && typeof cat.title === 'string')
+                    .map(cat => ({ 
+                      value: cat._id || '', 
+                      label: cat.title 
+                    }))}
+                  value={(() => {
+                    if (!formData.productcategoriesId) return null;
+                    const found = productCategories.find(cat => cat && cat._id === formData.productcategoriesId);
+                    if (!found || !found._id || !found.title || typeof found.title !== 'string') return null;
+                    return { 
+                      value: found._id, 
+                      label: found.title 
+                    };
+                  })()}
                   onChange={(selectedOption: any) => {
                     const value = selectedOption?.value || '';
                     setFormData(prev => ({ ...prev, productcategoriesId: value }));
@@ -940,8 +956,21 @@ const ProductModal: React.FC<ProductModalProps> = ({
                   Brand
                 </label>
                 <Select
-                  options={brands.map(brand => ({ value: brand._id, label: brand.title }))}
-                  value={brands.find(brand => brand._id === formData.brandId) ? { value: formData.brandId, label: brands.find(brand => brand._id === formData.brandId)?.title || '' } : null}
+                  options={brands
+                    .filter(brand => brand && brand._id && brand.title && typeof brand.title === 'string')
+                    .map(brand => ({ 
+                      value: brand._id || '', 
+                      label: brand.title 
+                    }))}
+                  value={(() => {
+                    if (!formData.brandId) return null;
+                    const found = brands.find(brand => brand && brand._id === formData.brandId);
+                    if (!found || !found._id || !found.title || typeof found.title !== 'string') return null;
+                    return { 
+                      value: found._id, 
+                      label: found.title 
+                    };
+                  })()}
                   onChange={(selectedOption: any) => {
                     const value = selectedOption?.value || '';
                     setFormData(prev => ({ ...prev, brandId: value }));
@@ -965,17 +994,31 @@ const ProductModal: React.FC<ProductModalProps> = ({
                   Grade
                 </label>
                 <Select
-                  options={grades.map(grade => ({ 
-                    value: grade._id, 
-                    label: grade.title + (typeof grade.brand === 'object' ? ` (${grade.brand.title})` : '')
-                  }))}
-                  value={grades.find(grade => grade._id === formData.gradeId) ? { 
-                    value: formData.gradeId, 
-                    label: (() => {
-                      const grade = grades.find(g => g._id === formData.gradeId);
-                      return grade ? grade.title + (typeof grade.brand === 'object' ? ` (${grade.brand.title})` : '') : '';
-                    })()
-                  } : null}
+                  options={grades
+                    .filter(grade => grade && grade._id && grade.title && typeof grade.title === 'string')
+                    .map(grade => {
+                      const title = grade.title;
+                      const brandTitle = (typeof grade.brand === 'object' && grade.brand && grade.brand.title && typeof grade.brand.title === 'string') 
+                        ? ` (${grade.brand.title})` 
+                        : '';
+                      return { 
+                        value: grade._id || '', 
+                        label: title + brandTitle
+                      };
+                    })}
+                  value={(() => {
+                    if (!formData.gradeId) return null;
+                    const found = grades.find(grade => grade && grade._id === formData.gradeId);
+                    if (!found || !found._id || !found.title || typeof found.title !== 'string') return null;
+                    const title = found.title;
+                    const brandTitle = (typeof found.brand === 'object' && found.brand && found.brand.title && typeof found.brand.title === 'string') 
+                      ? ` (${found.brand.title})` 
+                      : '';
+                    return { 
+                      value: found._id, 
+                      label: title + brandTitle
+                    };
+                  })()}
                   onChange={(selectedOption: any) => {
                     const value = selectedOption?.value || '';
                     setFormData(prev => ({ ...prev, gradeId: value }));

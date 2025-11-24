@@ -27,6 +27,7 @@ export interface Product {
   updatedBy?: string;
   canVerify?: boolean;
   canApprove?: boolean;
+  sequence?: number | null;
 }
 
 export interface ListResponse {
@@ -157,7 +158,7 @@ export class ProductService {
   };
 
   // Get product list with pagination and search
-  static getProductList = async (page: number, limit: number, search?: string): Promise<ListResponse> => {
+  static getProductList = async (page: number, limit: number, search?: string, moveToTop?: boolean): Promise<ListResponse> => {
     const baseUrl = import.meta.env.VITE_BASE_URL;
     const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
     const url = `${baseUrl}/api/${adminRoute}/product/list`;
@@ -166,6 +167,11 @@ export class ProductService {
     if (search) {
       body.search = search;
     }
+    // Always send moveToTop to backend for explicit filtering
+    // When false, backend returns all products; when true, only products with sequence
+    body.moveToTop = moveToTop === true;
+    
+    console.log('ProductService.getProductList - moveToTop:', moveToTop, 'sending:', body.moveToTop);
 
     try {
       const res = await api.post(url, body);
@@ -343,6 +349,40 @@ export class ProductService {
       return res.data as Blob;
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Failed to export products';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
+
+  // Toggle sequence for products
+  static toggleSequence = async (productIds: string[]): Promise<any> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/product/toggle-sequence`;
+
+    try {
+      const res = await api.post(url, { productIds });
+      toastHelper.showTost(res.data.message || 'Sequence updated successfully!', 'success');
+      return res.data;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to toggle sequence';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
+
+  // Move product to top
+  static moveToTop = async (id: string): Promise<any> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/product/move-to-top`;
+
+    try {
+      const res = await api.post(url, { id });
+      toastHelper.showTost(res.data.message || 'Product moved to top successfully!', 'success');
+      return res.data;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to move product to top';
       toastHelper.showTost(errorMessage, 'error');
       throw new Error(errorMessage);
     }

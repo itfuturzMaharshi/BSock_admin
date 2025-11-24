@@ -21,6 +21,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const debouncedSearchTerm = useDebounce(searchTerm, 1000);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [moveToTopFilter, setMoveToTopFilter] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
@@ -38,6 +39,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
   } | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
 
   const handleExport = async () => {
     try {
@@ -57,7 +59,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
   // Fetch products on component mount and when page/search/filter changes
   useEffect(() => {
     fetchProducts();
-  }, [currentPage, debouncedSearchTerm, statusFilter]);
+  }, [currentPage, debouncedSearchTerm, statusFilter, moveToTopFilter]);
 
   // Reset to first page when search term changes
   useEffect(() => {
@@ -93,11 +95,14 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
   const fetchProducts = async () => {
     try {
       setLoading(true);
+      console.log('fetchProducts - moveToTopFilter:', moveToTopFilter);
       const response = await ProductService.getProductList(
         currentPage,
         itemsPerPage,
-        debouncedSearchTerm
+        debouncedSearchTerm,
+        moveToTopFilter
       );
+      console.log('fetchProducts - response data count:', response.data.docs.length);
 
       let filteredData = response.data.docs;
 
@@ -281,6 +286,81 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
     setDropdownPosition(null);
   };
 
+  const handleToggleSelect = (productId: string | undefined) => {
+    if (!productId) return;
+    setSelectedProductIds((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(productId)) {
+        newSet.delete(productId);
+      } else {
+        newSet.add(productId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedProductIds.size === productsData.length) {
+      setSelectedProductIds(new Set());
+    } else {
+      const allIds = productsData
+        .map((p) => p._id)
+        .filter((id): id is string => Boolean(id));
+      setSelectedProductIds(new Set(allIds));
+    }
+  };
+
+  const handleToggleSequence = async () => {
+    if (selectedProductIds.size === 0) {
+      toastHelper.showTost('Please select at least one product', 'warning');
+      return;
+    }
+
+    const confirmed = await Swal.fire({
+      title: 'Toggle Sequence',
+      text: `Are you sure you want to toggle sequence for ${selectedProductIds.size} product(s)?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, toggle it!',
+      cancelButtonText: 'No, cancel!',
+    });
+
+    if (confirmed.isConfirmed) {
+      try {
+        const productIdsArray = Array.from(selectedProductIds);
+        await ProductService.toggleSequence(productIdsArray);
+        setSelectedProductIds(new Set());
+        fetchProducts();
+      } catch (error) {
+        console.error('Failed to toggle sequence:', error);
+      }
+    }
+  };
+
+  const handleMoveToTop = async (product: Product) => {
+    if (!product._id) return;
+
+    const confirmed = await Swal.fire({
+      title: 'Move to Top',
+      text: 'Are you sure you want to move this product to the top?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, move it!',
+      cancelButtonText: 'No, cancel!',
+    });
+
+    if (confirmed.isConfirmed) {
+      try {
+        await ProductService.moveToTop(product._id);
+        fetchProducts();
+      } catch (error) {
+        console.error('Failed to move product to top:', error);
+      }
+    }
+    setOpenDropdownId(null);
+    setDropdownPosition(null);
+  };
+
   const getSkuFamilyText = (skuFamilyId: any): string => {
     if (skuFamilyId == null) return "";
     if (typeof skuFamilyId === "string") return skuFamilyId;
@@ -439,6 +519,21 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                setMoveToTopFilter(!moveToTopFilter);
+                setCurrentPage(1);
+              }}
+              className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                moveToTopFilter
+                  ? 'bg-orange-600 text-white hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600'
+                  : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
+              }`}
+              title={moveToTopFilter ? 'Show all products' : 'Show only products moved to top'}
+            >
+              <i className={`fas ${moveToTopFilter ? 'fa-check-circle' : 'fa-arrow-up'} text-xs`}></i>
+              {moveToTopFilter ? 'Moved to Top' : 'Move to Top Filter'}
+            </button>
             <div className="relative">
               <select
                 value={statusFilter}
@@ -456,6 +551,15 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
               <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
             </div>
             <div className="flex items-center gap-1">
+              {selectedProductIds.size > 0 && (
+                <button
+                  className="inline-flex items-center gap-1 rounded-lg bg-yellow-600 text-white px-4 py-2 text-sm font-medium hover:bg-yellow-700 dark:bg-yellow-500 dark:hover:bg-yellow-600 transition-colors"
+                  onClick={handleToggleSequence}
+                >
+                  <i className="fas fa-sort-numeric-down text-xs"></i>
+                  Toggle Sequence ({selectedProductIds.size})
+                </button>
+              )}
               <button
                 className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
                 onClick={() => setIsUploadModalOpen(true)}
@@ -488,6 +592,14 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
           <table className="w-full table-auto">
             <thead className="bg-gray-100 dark:bg-gray-900">
               <tr>
+                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                  <input
+                    type="checkbox"
+                    checked={productsData.length > 0 && selectedProductIds.size === productsData.length}
+                    onChange={handleSelectAll}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded cursor-pointer"
+                  />
+                </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Image
                 </th>
@@ -514,7 +626,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="p-12 text-center">
+                  <td colSpan={8} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
                       Loading Products...
@@ -523,7 +635,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                 </tr>
               ) : productsData.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-12 text-center">
+                  <td colSpan={8} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       No products found
                     </div>
@@ -533,8 +645,20 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                 productsData.map((item: Product, index: number) => (
                   <tr
                     key={item._id || index}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                    className={`hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${
+                      item.sequence !== null && item.sequence !== undefined
+                        ? 'bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-500'
+                        : ''
+                    }`}
                   >
+                    <td className="px-6 py-4 text-center">
+                      <input
+                        type="checkbox"
+                        checked={item._id ? selectedProductIds.has(item._id) : false}
+                        onChange={() => handleToggleSelect(item._id)}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded cursor-pointer"
+                      />
+                    </td>
                     <td className="px-6 py-4">
                       <img
                         src={getProductImageSrc(item) || placeholderImage}
@@ -656,6 +780,16 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                                   Approve
                                 </button>
                               )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleMoveToTop(item);
+                              }}
+                              className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-orange-600"
+                            >
+                              <i className="fas fa-arrow-up"></i>
+                              Move to Top
+                            </button>
                              <button
                                onClick={(e) => {
                                  e.stopPropagation();

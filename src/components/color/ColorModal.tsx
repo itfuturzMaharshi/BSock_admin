@@ -200,3 +200,4 @@ const ColorModal: React.FC<ColorModalProps> = ({
 
 export default ColorModal;
 
+
