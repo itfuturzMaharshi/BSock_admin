@@ -164,10 +164,11 @@ const ColorModal: React.FC<ColorModalProps> = ({
             </label>
             <input
               type="number"
-              value={formData.sequence}
-              onChange={(e) =>
-                setFormData({ ...formData, sequence: parseInt(e.target.value) || 1 })
-              }
+              value={formData.sequence || ''}
+              onChange={(e) => {
+                const value = e.target.value;
+                setFormData({ ...formData, sequence: value === '' ? undefined : parseInt(value) || 1 });
+              }}
               min="1"
               className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
               placeholder="Enter sequence number (optional)"

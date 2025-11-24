@@ -51,7 +51,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
     country: [] as string[],
     simType: [] as string[],
     networkBands: [] as string[],
-    sequence: 1,
+    sequence: 1 as number | undefined,
   });
   const [newImages, setNewImages] = useState<File[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
@@ -765,12 +765,14 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                 <input
                   type="number"
                   name="sequence"
-                  value={formData.sequence || 1}
-                  onChange={(e) => setFormData({ ...formData, sequence: parseInt(e.target.value) || 1 })}
+                  value={formData.sequence || ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFormData({ ...formData, sequence: value === '' ? undefined : parseInt(value) || 1 });
+                  }}
                   min="1"
                   className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm"
                   placeholder="Enter sequence number (optional)"
-                  disabled={isLoading}
                 />
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                   Lower numbers appear first in lists
