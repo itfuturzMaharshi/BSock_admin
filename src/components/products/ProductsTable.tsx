@@ -21,7 +21,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const debouncedSearchTerm = useDebounce(searchTerm, 1000);
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [moveToTopFilter, setMoveToTopFilter] = useState<boolean>(false);
+  const [productFilter, setProductFilter] = useState<string>("all"); // "all" | "moveToTop" | "expiredOnly"
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
@@ -59,7 +59,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
   // Fetch products on component mount and when page/search/filter changes
   useEffect(() => {
     fetchProducts();
-  }, [currentPage, debouncedSearchTerm, statusFilter, moveToTopFilter]);
+  }, [currentPage, debouncedSearchTerm, statusFilter, productFilter]);
 
   // Reset to first page when search term changes
   useEffect(() => {
@@ -95,12 +95,15 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      console.log('fetchProducts - moveToTopFilter:', moveToTopFilter);
+      console.log('fetchProducts - productFilter:', productFilter);
+      const moveToTop = productFilter === "moveToTop";
+      const expiredOnly = productFilter === "expiredOnly";
       const response = await ProductService.getProductList(
         currentPage,
         itemsPerPage,
         debouncedSearchTerm,
-        moveToTopFilter
+        moveToTop,
+        expiredOnly
       );
       console.log('fetchProducts - response data count:', response.data.docs.length);
 
@@ -337,6 +340,62 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
     }
   };
 
+  const handleExpire = async (product: Product) => {
+    if (!product._id) return;
+
+    const confirmed = await Swal.fire({
+      title: 'Expire Product',
+      text: 'Are you sure you want to expire this product? It will be hidden from the frontend.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, expire it!',
+      cancelButtonText: 'No, cancel!',
+    });
+
+    if (confirmed.isConfirmed) {
+      try {
+        await ProductService.expireProducts(product._id);
+        setSelectedProductIds((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(product._id!);
+          return newSet;
+        });
+        fetchProducts();
+      } catch (error) {
+        console.error('Failed to expire product:', error);
+      }
+    }
+    setOpenDropdownId(null);
+    setDropdownPosition(null);
+  };
+
+  const handleBulkExpire = async () => {
+    if (selectedProductIds.size === 0) {
+      toastHelper.showTost('Please select at least one product', 'warning');
+      return;
+    }
+
+    const confirmed = await Swal.fire({
+      title: 'Expire Products',
+      text: `Are you sure you want to expire ${selectedProductIds.size} product(s)? They will be hidden from the frontend.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, expire them!',
+      cancelButtonText: 'No, cancel!',
+    });
+
+    if (confirmed.isConfirmed) {
+      try {
+        const productIdsArray = Array.from(selectedProductIds);
+        await ProductService.expireProducts(productIdsArray);
+        setSelectedProductIds(new Set());
+        fetchProducts();
+      } catch (error) {
+        console.error('Failed to expire products:', error);
+      }
+    }
+  };
+
   const handleMoveToTop = async (product: Product) => {
     if (!product._id) return;
 
@@ -519,21 +578,21 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => {
-                setMoveToTopFilter(!moveToTopFilter);
-                setCurrentPage(1);
-              }}
-              className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                moveToTopFilter
-                  ? 'bg-orange-600 text-white hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600'
-                  : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
-              }`}
-              title={moveToTopFilter ? 'Show all products' : 'Show only products moved to top'}
-            >
-              <i className={`fas ${moveToTopFilter ? 'fa-check-circle' : 'fa-arrow-up'} text-xs`}></i>
-              {moveToTopFilter ? 'Moved to Top' : 'Move to Top Filter'}
-            </button>
+            <div className="relative">
+              <select
+                value={productFilter}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                  setProductFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="pl-3 pr-8 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm appearance-none cursor-pointer min-w-[180px]"
+              >
+                <option value="all">All Products</option>
+                <option value="moveToTop">Moved to Top</option>
+                <option value="expiredOnly">Expired Only</option>
+              </select>
+              <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+            </div>
             <div className="relative">
               <select
                 value={statusFilter}
@@ -552,13 +611,22 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
             </div>
             <div className="flex items-center gap-1">
               {selectedProductIds.size > 0 && (
-                <button
-                  className="inline-flex items-center gap-1 rounded-lg bg-yellow-600 text-white px-4 py-2 text-sm font-medium hover:bg-yellow-700 dark:bg-yellow-500 dark:hover:bg-yellow-600 transition-colors"
-                  onClick={handleToggleSequence}
-                >
-                  <i className="fas fa-sort-numeric-down text-xs"></i>
-                  Toggle Sequence ({selectedProductIds.size})
-                </button>
+                <>
+                  <button
+                    className="inline-flex items-center gap-1 rounded-lg bg-yellow-600 text-white px-4 py-2 text-sm font-medium hover:bg-yellow-700 dark:bg-yellow-500 dark:hover:bg-yellow-600 transition-colors"
+                    onClick={handleToggleSequence}
+                  >
+                    <i className="fas fa-sort-numeric-down text-xs"></i>
+                    Toggle Sequence ({selectedProductIds.size})
+                  </button>
+                  <button
+                    className="inline-flex items-center gap-1 rounded-lg bg-red-600 text-white px-4 py-2 text-sm font-medium hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 transition-colors"
+                    onClick={handleBulkExpire}
+                  >
+                    <i className="fas fa-clock text-xs"></i>
+                    Expire ({selectedProductIds.size})
+                  </button>
+                </>
               )}
               <button
                 className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
@@ -789,6 +857,16 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                             >
                               <i className="fas fa-arrow-up"></i>
                               Move to Top
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleExpire(item);
+                              }}
+                              className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-red-600"
+                            >
+                              <i className="fas fa-clock"></i>
+                              Expire
                             </button>
                              <button
                                onClick={(e) => {

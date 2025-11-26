@@ -1,6 +1,5 @@
 import React, { useState, useRef } from "react";
 import { ProductService } from "../../services/product/product.services";
-import toastHelper from "../../utils/toastHelper";
 
 interface UploadExcelModalProps {
   isOpen: boolean;
@@ -14,35 +13,9 @@ const UploadExcelModal: React.FC<UploadExcelModalProps> = ({ isOpen, onClose }) 
 
   const handleDownloadSample = async () => {
     try {
-      // Get the base URL from the current location
-      const baseUrl = window.location.pathname.includes('/adminapp') ? '/adminapp' : '';
-      
-      // Download the sample Excel file from public root
-      const response = await fetch(`${baseUrl}/sample-template.xlsx`);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "sample-product-template.xlsx";
-      link.style.display = "none";
-      
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      // Clean up the blob URL
-      window.URL.revokeObjectURL(url);
-      
-      toastHelper.showTost("Sample Excel file downloaded successfully!", "success");
+      await ProductService.downloadSample();
     } catch (error) {
       console.error("Download failed:", error);
-      toastHelper.showTost("Failed to download sample file. Please try again.", "error");
     }
   };
 

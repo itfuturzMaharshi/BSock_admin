@@ -28,7 +28,9 @@ interface FormData {
   purchaseType: string; // 'full' | 'partial'
   isNegotiable: boolean;
   isFlashDeal: string;
+  startTime: string; // ISO string (e.g., "2025-10-30T03:30:00.000Z")
   expiryTime: string; // ISO string (e.g., "2025-10-30T03:30:00.000Z")
+  groupCode: string;
 }
 
 interface ValidationErrors {
@@ -47,6 +49,7 @@ interface ValidationErrors {
   country?: string;
   moq?: string;
   purchaseType?: string;
+  startTime?: string;
   expiryTime?: string;
   isNegotiable?: string;
   isFlashDeal?: string;
@@ -66,6 +69,7 @@ interface TouchedFields {
   country: boolean;
   moq: boolean;
   purchaseType: boolean;
+  startTime: boolean;
   expiryTime: boolean;
   isNegotiable: boolean;
   isFlashDeal: boolean;
@@ -102,7 +106,9 @@ const ProductModal: React.FC<ProductModalProps> = ({
     purchaseType: "partial",
     isNegotiable: false,
     isFlashDeal: "false",
+    startTime: "",
     expiryTime: "",
+    groupCode: "",
   });
   const [skuFamilies, setSkuFamilies] = useState<
     { _id: string; name: string }[]
@@ -145,6 +151,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
     country: false,
     moq: false,
     purchaseType: false,
+    startTime: false,
     expiryTime: false,
     isNegotiable: false,
     isFlashDeal: false,
@@ -359,7 +366,9 @@ const ProductModal: React.FC<ProductModalProps> = ({
           purchaseType: (editItem as any).purchaseType || "partial",
           isNegotiable: editItem.isNegotiable,
           isFlashDeal: `${(editItem as any).isFlashDeal ?? false}`,
+          startTime: (editItem as any).startTime || "",
           expiryTime: editItem.expiryTime || "",
+          groupCode: (editItem as any).groupCode || "",
         });
         
         // If editing, fetch sub SKUs if SKU family is selected
@@ -382,11 +391,13 @@ const ProductModal: React.FC<ProductModalProps> = ({
           stock: 0,
           country: "",
           moq: 0,
-          purchaseType: "partial",
-          isNegotiable: false,
-          isFlashDeal: "false",
-          expiryTime: "",
-        });
+    purchaseType: "partial",
+    isNegotiable: false,
+    isFlashDeal: "false",
+    startTime: "",
+    expiryTime: "",
+    groupCode: "",
+  });
       }
       setDateError(null);
       setPriceError(null);
@@ -444,6 +455,31 @@ const ProductModal: React.FC<ProductModalProps> = ({
     if (touched[name as keyof TouchedFields]) {
       const error = validateField(name as keyof FormData, value);
       setValidationErrors((prev) => ({ ...prev, [name]: error }));
+    }
+  };
+
+  const handleStartTimeChange = (date: Date | null) => {
+    if (date && !isNaN(date.getTime())) {
+      setFormData((prev) => ({
+        ...prev,
+        startTime: date.toISOString(),
+      }));
+      setDateError(null);
+
+      if (touched.startTime) {
+        const error = validateField("startTime", date.toISOString());
+        setValidationErrors((prev) => ({ ...prev, startTime: error }));
+      }
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        startTime: "",
+      }));
+
+      if (touched.startTime) {
+        const error = validateField("startTime", "");
+        setValidationErrors((prev) => ({ ...prev, startTime: error }));
+      }
     }
   };
 
@@ -656,6 +692,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
       country: true,
       moq: true,
       purchaseType: true,
+      startTime: true,
       expiryTime: true,
       isNegotiable: true,
       isFlashDeal: true,
@@ -1343,32 +1380,44 @@ const ProductModal: React.FC<ProductModalProps> = ({
               </div>
             </div>
 
-            {/* Expiry Time, Is Negotiable, and Is Flash Deal Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="flex items-center mt-6">
-                <input
-                  type="checkbox"
-                  name="isNegotiable"
-                  checked={formData.isNegotiable}
-                  onChange={handleInputChange}
-                  className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 transition duration-200"
-                />
-                <label className="ml-2 text-sm font-medium text-gray-950 dark:text-gray-200">
-                  Is Negotiable
+            {/* Start Time, Expiry Time, Is Negotiable, and Is Flash Deal Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                  Start Time
                 </label>
-              </div>
-
-              <div className="flex items-center mt-6">
-                <input
-                  type="checkbox"
-                  name="isFlashDeal"
-                  checked={formData.isFlashDeal === "true"}
-                  onChange={handleInputChange}
-                  className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 transition duration-200"
+                <DatePicker
+                  selected={
+                    formData.startTime ? new Date(formData.startTime) : null
+                  }
+                  onChange={handleStartTimeChange}
+                  onBlur={() => {
+                    setTouched((prev) => ({ ...prev, startTime: true }));
+                    const error = validateField(
+                      "startTime",
+                      formData.startTime
+                    );
+                    setValidationErrors((prev) => ({
+                      ...prev,
+                      startTime: error,
+                    }));
+                  }}
+                  showTimeSelect
+                  timeFormat="HH:mm"
+                  timeIntervals={15}
+                  dateFormat="yyyy-MM-dd HH:mm"
+                  placeholderText="Select start date and time (optional)"
+                  className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm ${
+                    touched.startTime && validationErrors.startTime
+                      ? "border-red-500 focus:ring-red-500"
+                      : "border-gray-200 dark:border-gray-700"
+                  }`}
                 />
-                <label className="ml-2 text-sm font-medium text-gray-950 dark:text-gray-200">
-                  Is Flash Deal
-                </label>
+                {touched.startTime && validationErrors.startTime && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {validationErrors.startTime}
+                  </p>
+                )}
               </div>
 
               {formData.isFlashDeal === "true" && (
@@ -1417,6 +1466,50 @@ const ProductModal: React.FC<ProductModalProps> = ({
                   )}
                 </div>
               )}
+            </div>
+
+            {/* Is Negotiable and Is Flash Deal Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center mt-6">
+                <input
+                  type="checkbox"
+                  name="isNegotiable"
+                  checked={formData.isNegotiable}
+                  onChange={handleInputChange}
+                  className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 transition duration-200"
+                />
+                <label className="ml-2 text-sm font-medium text-gray-950 dark:text-gray-200">
+                  Is Negotiable
+                </label>
+              </div>
+
+              <div className="flex items-center mt-6">
+                <input
+                  type="checkbox"
+                  name="isFlashDeal"
+                  checked={formData.isFlashDeal === "true"}
+                  onChange={handleInputChange}
+                  className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 transition duration-200"
+                />
+                <label className="ml-2 text-sm font-medium text-gray-950 dark:text-gray-200">
+                  Is Flash Deal
+                </label>
+              </div>
+            </div>
+
+            {/* Group Code Field */}
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                Group Code <span className="text-gray-500 text-xs">(Optional - for multi-variant products)</span>
+              </label>
+              <input
+                type="text"
+                name="groupCode"
+                value={formData.groupCode}
+                onChange={handleInputChange}
+                placeholder="Enter group code (e.g., GROUP001)"
+                className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm"
+              />
             </div>
           </form>
         </div>

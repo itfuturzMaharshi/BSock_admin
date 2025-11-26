@@ -18,7 +18,9 @@ export interface Product {
   purchaseType?: string; // 'full' | 'partial'
   isNegotiable: boolean;
   isFlashDeal: string;
+  startTime: string; // ISO string (e.g., "2025-10-30T03:30:00.000Z")
   expiryTime: string; // ISO string (e.g., "2025-10-30T03:30:00.000Z")
+  groupCode?: string;
   status?: string;
   isVerified?: boolean;
   verifiedBy?: string;
@@ -117,7 +119,9 @@ export class ProductService {
         isFlashDeal: typeof productData.isFlashDeal === 'string' 
           ? productData.isFlashDeal === 'true' 
           : Boolean(productData.isFlashDeal),
+        startTime: productData.startTime || null,
         expiryTime: productData.expiryTime || null,
+        groupCode: productData.groupCode || null,
       };
 
       // Remove null/undefined values to avoid sending unnecessary data
@@ -158,7 +162,7 @@ export class ProductService {
   };
 
   // Get product list with pagination and search
-  static getProductList = async (page: number, limit: number, search?: string, moveToTop?: boolean): Promise<ListResponse> => {
+  static getProductList = async (page: number, limit: number, search?: string, moveToTop?: boolean, expiredOnly?: boolean): Promise<ListResponse> => {
     const baseUrl = import.meta.env.VITE_BASE_URL;
     const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
     const url = `${baseUrl}/api/${adminRoute}/product/list`;
@@ -170,8 +174,10 @@ export class ProductService {
     // Always send moveToTop to backend for explicit filtering
     // When false, backend returns all products; when true, only products with sequence
     body.moveToTop = moveToTop === true;
+    // Send expiredOnly filter
+    body.expiredOnly = expiredOnly === true;
     
-    console.log('ProductService.getProductList - moveToTop:', moveToTop, 'sending:', body.moveToTop);
+    console.log('ProductService.getProductList - moveToTop:', moveToTop, 'expiredOnly:', expiredOnly, 'sending:', body.moveToTop, body.expiredOnly);
 
     try {
       const res = await api.post(url, body);
@@ -383,6 +389,75 @@ export class ProductService {
       return res.data;
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Failed to move product to top';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
+
+  // Expire products (single or multiple)
+  static expireProducts = async (ids: string | string[]): Promise<any> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/product/expire`;
+
+    try {
+      const res = await api.post(url, { ids });
+      toastHelper.showTost(res.data.message || 'Product(s) expired successfully!', 'success');
+      return res.data;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to expire product(s)';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
+
+  // Download sample Excel template
+  static downloadSample = async (): Promise<void> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/product/sample`;
+
+    try {
+      const res = await api.get(url, { 
+        responseType: 'blob',
+        headers: {
+          'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        }
+      });
+      
+      // Check if response is actually a blob
+      if (!(res.data instanceof Blob)) {
+        // If it's a string (error message), try to parse it
+        if (typeof res.data === 'string') {
+          throw new Error('Server returned an error instead of file');
+        }
+        // Convert to blob if it's an ArrayBuffer or similar
+        const blob = new Blob([res.data], { 
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+        });
+        const link = document.createElement('a');
+        link.href = window.URL.createObjectURL(blob);
+        link.download = 'product_sample.xlsx';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(link.href);
+        toastHelper.showTost('Sample file downloaded successfully!', 'success');
+        return;
+      }
+      
+      const blob = res.data;
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = 'product_sample.xlsx';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(link.href);
+      toastHelper.showTost('Sample file downloaded successfully!', 'success');
+    } catch (err: any) {
+      console.error('Download sample error:', err);
+      const errorMessage = err.response?.data?.message || 'Failed to download sample Excel file';
       toastHelper.showTost(errorMessage, 'error');
       throw new Error(errorMessage);
     }
