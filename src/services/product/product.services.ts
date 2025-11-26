@@ -433,6 +433,23 @@ export class ProductService {
     }
   };
 
+  // Mark products as sold out (set stock to 0)
+  static markSoldOut = async (ids: string | string[]): Promise<any> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/product/mark-sold-out`;
+
+    try {
+      const res = await api.post(url, { ids });
+      toastHelper.showTost(res.data.message || 'Product(s) marked as sold out successfully!', 'success');
+      return res.data;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to mark products as sold out';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
+
   // Download sample Excel template
   static downloadSample = async (): Promise<void> => {
     const baseUrl = import.meta.env.VITE_BASE_URL;

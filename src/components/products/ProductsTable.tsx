@@ -40,6 +40,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
   const [loading, setLoading] = useState<boolean>(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
+  const [bulkActionDropdownOpen, setBulkActionDropdownOpen] = useState<boolean>(false);
 
   const handleExport = async () => {
     try {
@@ -436,6 +437,33 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
     }
   };
 
+  const handleMarkSoldOut = async () => {
+    if (selectedProductIds.size === 0) {
+      toastHelper.showTost('Please select at least one product', 'warning');
+      return;
+    }
+
+    const confirmed = await Swal.fire({
+      title: 'Mark as Sold Out',
+      text: `Are you sure you want to mark ${selectedProductIds.size} product(s) as sold out? This will set their stock to 0.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, mark as sold out!',
+      cancelButtonText: 'No, cancel!',
+    });
+
+    if (confirmed.isConfirmed) {
+      try {
+        const productIdsArray = Array.from(selectedProductIds);
+        await ProductService.markSoldOut(productIdsArray);
+        setSelectedProductIds(new Set());
+        fetchProducts();
+      } catch (error) {
+        console.error('Failed to mark products as sold out:', error);
+      }
+    }
+  };
+
   const handleMoveToTop = async (product: Product) => {
     if (!product._id) return;
 
@@ -653,29 +681,68 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
             </div>
             <div className="flex items-center gap-1">
               {selectedProductIds.size > 0 && (
-                <>
+                <div className="relative">
                   <button
-                    className="inline-flex items-center gap-1 rounded-lg bg-yellow-600 text-white px-4 py-2 text-sm font-medium hover:bg-yellow-700 dark:bg-yellow-500 dark:hover:bg-yellow-600 transition-colors"
-                    onClick={handleToggleSequence}
+                    className="inline-flex items-center gap-2 rounded-lg bg-blue-600 text-white px-4 py-2 text-sm font-medium hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
+                    onClick={() => setBulkActionDropdownOpen(!bulkActionDropdownOpen)}
                   >
-                    <i className="fas fa-sort-numeric-down text-xs"></i>
-                    Toggle Sequence ({selectedProductIds.size})
+                    <i className="fas fa-cog text-xs"></i>
+                    Actions ({selectedProductIds.size})
+                    <i className={`fas fa-chevron-${bulkActionDropdownOpen ? 'up' : 'down'} text-xs`}></i>
                   </button>
-                  <button
-                    className="inline-flex items-center gap-1 rounded-lg bg-red-600 text-white px-4 py-2 text-sm font-medium hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 transition-colors"
-                    onClick={handleBulkExpire}
-                  >
-                    <i className="fas fa-clock text-xs"></i>
-                    Expire ({selectedProductIds.size})
-                  </button>
-                  <button
-                    className="inline-flex items-center gap-1 rounded-lg bg-purple-600 text-white px-4 py-2 text-sm font-medium hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600 transition-colors"
-                    onClick={handleBulkToggleTimer}
-                  >
-                    <i className="fas fa-stopwatch text-xs"></i>
-                    Toggle Timer ({selectedProductIds.size})
-                  </button>
-                </>
+                  {bulkActionDropdownOpen && (
+                    <>
+                      <div 
+                        className="fixed inset-0 z-10" 
+                        onClick={() => setBulkActionDropdownOpen(false)}
+                      ></div>
+                      <div className="absolute right-0 mt-2 w-56 rounded-lg shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-20">
+                        <div className="py-1" role="menu">
+                          <button
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                            onClick={() => {
+                              setBulkActionDropdownOpen(false);
+                              handleToggleSequence();
+                            }}
+                          >
+                            <i className="fas fa-sort-numeric-down text-xs text-yellow-600"></i>
+                            Toggle Sequence
+                          </button>
+                          <button
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                            onClick={() => {
+                              setBulkActionDropdownOpen(false);
+                              handleBulkExpire();
+                            }}
+                          >
+                            <i className="fas fa-clock text-xs text-red-600"></i>
+                            Expire
+                          </button>
+                          <button
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                            onClick={() => {
+                              setBulkActionDropdownOpen(false);
+                              handleBulkToggleTimer();
+                            }}
+                          >
+                            <i className="fas fa-stopwatch text-xs text-purple-600"></i>
+                            Toggle Timer
+                          </button>
+                          <button
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                            onClick={() => {
+                              setBulkActionDropdownOpen(false);
+                              handleMarkSoldOut();
+                            }}
+                          >
+                            <i className="fas fa-box text-xs text-orange-600"></i>
+                            Mark as Sold Out
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
               )}
               <button
                 className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
