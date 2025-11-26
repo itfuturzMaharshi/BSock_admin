@@ -30,6 +30,7 @@ export interface Product {
   canVerify?: boolean;
   canApprove?: boolean;
   sequence?: number | null;
+  isShowTimer?: boolean;
 }
 
 export interface ListResponse {
@@ -162,7 +163,7 @@ export class ProductService {
   };
 
   // Get product list with pagination and search
-  static getProductList = async (page: number, limit: number, search?: string, moveToTop?: boolean, expiredOnly?: boolean): Promise<ListResponse> => {
+  static getProductList = async (page: number, limit: number, search?: string, moveToTop?: boolean, expiredOnly?: boolean, soldOut?: boolean, showTimer?: boolean): Promise<ListResponse> => {
     const baseUrl = import.meta.env.VITE_BASE_URL;
     const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
     const url = `${baseUrl}/api/${adminRoute}/product/list`;
@@ -176,8 +177,12 @@ export class ProductService {
     body.moveToTop = moveToTop === true;
     // Send expiredOnly filter
     body.expiredOnly = expiredOnly === true;
+    // Send soldOut filter
+    body.soldOut = soldOut === true;
+    // Send showTimer filter
+    body.showTimer = showTimer === true;
     
-    console.log('ProductService.getProductList - moveToTop:', moveToTop, 'expiredOnly:', expiredOnly, 'sending:', body.moveToTop, body.expiredOnly);
+    console.log('ProductService.getProductList - moveToTop:', moveToTop, 'expiredOnly:', expiredOnly, 'soldOut:', soldOut, 'showTimer:', showTimer, 'sending:', body.moveToTop, body.expiredOnly, body.soldOut, body.showTimer);
 
     try {
       const res = await api.post(url, body);
@@ -406,6 +411,23 @@ export class ProductService {
       return res.data;
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Failed to expire product(s)';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
+
+  // Toggle Timer for products (single or multiple)
+  static toggleTimer = async (ids: string | string[], isShowTimer: boolean): Promise<any> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/product/toggle-timer`;
+
+    try {
+      const res = await api.post(url, { ids, isShowTimer });
+      toastHelper.showTost(res.data.message || `Timer ${isShowTimer ? 'enabled' : 'disabled'} successfully!`, 'success');
+      return res.data;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to toggle timer';
       toastHelper.showTost(errorMessage, 'error');
       throw new Error(errorMessage);
     }

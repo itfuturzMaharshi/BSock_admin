@@ -21,7 +21,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const debouncedSearchTerm = useDebounce(searchTerm, 1000);
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [productFilter, setProductFilter] = useState<string>("all"); // "all" | "moveToTop" | "expiredOnly"
+  const [productFilter, setProductFilter] = useState<string>("all"); // "all" | "moveToTop" | "expiredOnly" | "soldOut" | "showTimer"
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
@@ -98,12 +98,16 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
       console.log('fetchProducts - productFilter:', productFilter);
       const moveToTop = productFilter === "moveToTop";
       const expiredOnly = productFilter === "expiredOnly";
+      const soldOut = productFilter === "soldOut";
+      const showTimer = productFilter === "showTimer";
       const response = await ProductService.getProductList(
         currentPage,
         itemsPerPage,
         debouncedSearchTerm,
         moveToTop,
-        expiredOnly
+        expiredOnly,
+        soldOut,
+        showTimer
       );
       console.log('fetchProducts - response data count:', response.data.docs.length);
 
@@ -396,6 +400,42 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
     }
   };
 
+  const handleBulkToggleTimer = async () => {
+    if (selectedProductIds.size === 0) {
+      toastHelper.showTost('Please select at least one product', 'warning');
+      return;
+    }
+
+    // Check current timer state of selected products
+    const selectedProducts = productsData.filter(p => p._id && selectedProductIds.has(p._id));
+    const allHaveTimer = selectedProducts.every(p => p.isShowTimer === true);
+    const allNoTimer = selectedProducts.every(p => p.isShowTimer === false || p.isShowTimer === undefined);
+    
+    // Determine new state: if all have timer, disable; otherwise enable
+    const newTimerState = !allHaveTimer;
+    const actionText = newTimerState ? 'enable' : 'disable';
+
+    const confirmed = await Swal.fire({
+      title: `${actionText.charAt(0).toUpperCase() + actionText.slice(1)} Timer`,
+      text: `Are you sure you want to ${actionText} timer for ${selectedProductIds.size} product(s)?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: `Yes, ${actionText} it!`,
+      cancelButtonText: 'No, cancel!',
+    });
+
+    if (confirmed.isConfirmed) {
+      try {
+        const productIdsArray = Array.from(selectedProductIds);
+        await ProductService.toggleTimer(productIdsArray, newTimerState);
+        setSelectedProductIds(new Set());
+        fetchProducts();
+      } catch (error) {
+        console.error('Failed to toggle timer:', error);
+      }
+    }
+  };
+
   const handleMoveToTop = async (product: Product) => {
     if (!product._id) return;
 
@@ -590,6 +630,8 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                 <option value="all">All Products</option>
                 <option value="moveToTop">Moved to Top</option>
                 <option value="expiredOnly">Expired Only</option>
+                <option value="soldOut">Sold Out</option>
+                <option value="showTimer">Timer Enabled</option>
               </select>
               <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
             </div>
@@ -625,6 +667,13 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                   >
                     <i className="fas fa-clock text-xs"></i>
                     Expire ({selectedProductIds.size})
+                  </button>
+                  <button
+                    className="inline-flex items-center gap-1 rounded-lg bg-purple-600 text-white px-4 py-2 text-sm font-medium hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600 transition-colors"
+                    onClick={handleBulkToggleTimer}
+                  >
+                    <i className="fas fa-stopwatch text-xs"></i>
+                    Toggle Timer ({selectedProductIds.size})
                   </button>
                 </>
               )}
