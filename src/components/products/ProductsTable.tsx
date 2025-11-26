@@ -410,7 +410,6 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
     // Check current timer state of selected products
     const selectedProducts = productsData.filter(p => p._id && selectedProductIds.has(p._id));
     const allHaveTimer = selectedProducts.every(p => p.isShowTimer === true);
-    const allNoTimer = selectedProducts.every(p => p.isShowTimer === false || p.isShowTimer === undefined);
     
     // Determine new state: if all have timer, disable; otherwise enable
     const newTimerState = !allHaveTimer;
