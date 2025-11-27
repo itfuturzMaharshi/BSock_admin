@@ -6,9 +6,19 @@ import {
 import { ProductCategoryService } from "../../services/productCategory/productCategory.services";
 import { BrandService } from "../../services/brand/brand.services";
 import { GradeService } from "../../services/grade/grade.services";
+import { CostModuleService } from "../../services/costModule/costModule.services";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import Select from 'react-select';
+
+interface CountryDeliverable {
+  country: string;
+  price: number | string;
+  charges: Array<{
+    name: string;
+    value: number | string;
+  }>;
+}
 
 interface FormData {
   skuFamilyId: string;
@@ -31,6 +41,7 @@ interface FormData {
   startTime: string; // ISO string (e.g., "2025-10-30T03:30:00.000Z")
   expiryTime: string; // ISO string (e.g., "2025-10-30T03:30:00.000Z")
   groupCode: string;
+  countryDeliverables: CountryDeliverable[];
 }
 
 interface ValidationErrors {
@@ -109,7 +120,9 @@ const ProductModal: React.FC<ProductModalProps> = ({
     startTime: "",
     expiryTime: "",
     groupCode: "",
+    countryDeliverables: [],
   });
+  const [costsByCountry, setCostsByCountry] = useState<Record<string, Array<{ _id: string; name: string; costType: string; value: number }>>>({});
   const [skuFamilies, setSkuFamilies] = useState<
     { _id: string; name: string }[]
   >([]);
@@ -160,6 +173,24 @@ const ProductModal: React.FC<ProductModalProps> = ({
   const colorOptions = ["Graphite", "Silver", "Gold", "Sierra Blue", "Mixed"];
   const countryOptions = ["Hongkong", "Dubai", "Singapore"];
   const simOptions = ["E-Sim", "Physical Sim"];
+
+  // Fetch costs by country when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchCostsByCountry();
+    }
+  }, [isOpen]);
+
+  const fetchCostsByCountry = async () => {
+    try {
+      const response = await CostModuleService.getCostsByCountry();
+      if (response.status === 200 && response.data) {
+        setCostsByCountry(response.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch costs:", error);
+    }
+  };
   const ramOptions = ["4GB", "6GB", "8GB", "16GB", "32GB"];
   const storageOptions = ["128GB", "256GB", "512GB", "1TB"];
   const conditionOptions = ["AAA", "A+", "Mixed"];
@@ -369,6 +400,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
           startTime: (editItem as any).startTime || "",
           expiryTime: editItem.expiryTime || "",
           groupCode: (editItem as any).groupCode || "",
+          countryDeliverables: (editItem as any).countryDeliverables || [],
         });
         
         // If editing, fetch sub SKUs if SKU family is selected
@@ -397,12 +429,101 @@ const ProductModal: React.FC<ProductModalProps> = ({
     startTime: "",
     expiryTime: "",
     groupCode: "",
+    countryDeliverables: [],
   });
       }
       setDateError(null);
       setPriceError(null);
     }
   }, [isOpen, editItem]);
+
+  // Handlers for countryDeliverables
+  const addCountryDeliverable = () => {
+    setFormData(prev => ({
+      ...prev,
+      countryDeliverables: [
+        ...prev.countryDeliverables,
+        { country: "", price: 0, charges: [] }
+      ]
+    }));
+  };
+
+  const removeCountryDeliverable = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      countryDeliverables: prev.countryDeliverables.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateCountryDeliverable = (index: number, field: keyof CountryDeliverable, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      countryDeliverables: prev.countryDeliverables.map((item, i) =>
+        i === index ? { ...item, [field]: value } : item
+      )
+    }));
+  };
+
+  const addChargeToCountry = (countryIndex: number) => {
+    setFormData(prev => ({
+      ...prev,
+      countryDeliverables: prev.countryDeliverables.map((item, i) =>
+        i === countryIndex
+          ? { ...item, charges: [...item.charges, { name: "", value: 0 }] }
+          : item
+      )
+    }));
+  };
+
+  const removeChargeFromCountry = (countryIndex: number, chargeIndex: number) => {
+    setFormData(prev => ({
+      ...prev,
+      countryDeliverables: prev.countryDeliverables.map((item, i) =>
+        i === countryIndex
+          ? { ...item, charges: item.charges.filter((_, ci) => ci !== chargeIndex) }
+          : item
+      )
+    }));
+  };
+
+  const updateCharge = (countryIndex: number, chargeIndex: number, field: 'name' | 'value', value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      countryDeliverables: prev.countryDeliverables.map((item, i) =>
+        i === countryIndex
+          ? {
+              ...item,
+              charges: item.charges.map((charge, ci) =>
+                ci === chargeIndex ? { ...charge, [field]: value } : charge
+              )
+            }
+          : item
+      )
+    }));
+  };
+
+  const addChargeFromCostModule = (countryIndex: number, costId: string) => {
+    const country = formData.countryDeliverables[countryIndex]?.country;
+    if (!country || !costsByCountry[country]) return;
+
+    const cost = costsByCountry[country].find(c => c._id === costId);
+    if (!cost) return;
+
+    // Check if charge already exists
+    const existingCharge = formData.countryDeliverables[countryIndex].charges.find(
+      c => c.name === cost.name
+    );
+    if (existingCharge) return;
+
+    setFormData(prev => ({
+      ...prev,
+      countryDeliverables: prev.countryDeliverables.map((item, i) =>
+        i === countryIndex
+          ? { ...item, charges: [...item.charges, { name: cost.name, value: cost.value }] }
+          : item
+      )
+    }));
+  };
 
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -1510,6 +1631,161 @@ const ProductModal: React.FC<ProductModalProps> = ({
                 placeholder="Enter group code (e.g., GROUP001)"
                 className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm"
               />
+            </div>
+
+            {/* Country Deliverables Section */}
+            <div className="mt-6 border-t border-gray-200 dark:border-gray-700 pt-6">
+              <div className="flex items-center justify-between mb-4">
+                <label className="block text-sm font-semibold text-gray-950 dark:text-gray-200">
+                  Country Deliverables
+                </label>
+                <button
+                  type="button"
+                  onClick={addCountryDeliverable}
+                  className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200 text-sm flex items-center gap-2"
+                >
+                  <i className="fas fa-plus text-xs"></i>
+                  Add Country
+                </button>
+              </div>
+
+              {formData.countryDeliverables.length === 0 ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+                  No country deliverables added. Click "Add Country" to add country-wise pricing and charges.
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {formData.countryDeliverables.map((deliverable, index) => (
+                    <div
+                      key={index}
+                      className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                          Country Deliverable #{index + 1}
+                        </h4>
+                        <button
+                          type="button"
+                          onClick={() => removeCountryDeliverable(index)}
+                          className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                        >
+                          <i className="fas fa-trash text-sm"></i>
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                            Country <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            value={deliverable.country}
+                            onChange={(e) => updateCountryDeliverable(index, 'country', e.target.value)}
+                            className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm"
+                          >
+                            <option value="">Select Country</option>
+                            {countryOptions.map(country => (
+                              <option key={country} value={country}>{country}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                            Price <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            value={deliverable.price}
+                            onChange={(e) => updateCountryDeliverable(index, 'price', parseFloat(e.target.value) || 0)}
+                            placeholder="Enter price"
+                            className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm"
+                            step="0.01"
+                            min="0"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Charges Section */}
+                      <div className="mt-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <label className="block text-sm font-medium text-gray-950 dark:text-gray-200">
+                            Charges
+                          </label>
+                          <div className="flex gap-2">
+                            {/* Add charge from cost module */}
+                            {deliverable.country && costsByCountry[deliverable.country] && (
+                              <select
+                                value=""
+                                onChange={(e) => {
+                                  if (e.target.value) {
+                                    addChargeFromCostModule(index, e.target.value);
+                                    e.target.value = "";
+                                  }
+                                }}
+                                className="text-xs px-2 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-800 dark:text-gray-200"
+                              >
+                                <option value="">Add from Cost Module</option>
+                                {costsByCountry[deliverable.country].map(cost => (
+                                  <option key={cost._id} value={cost._id}>
+                                    {cost.name} ({cost.costType}: {cost.value}{cost.costType === 'Percentage' ? '%' : ''})
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => addChargeToCountry(index)}
+                              className="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 transition duration-200"
+                            >
+                              <i className="fas fa-plus mr-1"></i>
+                              Add Charge
+                            </button>
+                          </div>
+                        </div>
+
+                        {deliverable.charges.length === 0 ? (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 italic">
+                            No charges added. Click "Add Charge" or select from cost module.
+                          </p>
+                        ) : (
+                          <div className="space-y-2">
+                            {deliverable.charges.map((charge, chargeIndex) => (
+                              <div
+                                key={chargeIndex}
+                                className="flex items-center gap-2 p-2 bg-white dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600"
+                              >
+                                <input
+                                  type="text"
+                                  value={charge.name}
+                                  onChange={(e) => updateCharge(index, chargeIndex, 'name', e.target.value)}
+                                  placeholder="Charge name"
+                                  className="flex-1 p-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded text-sm text-gray-800 dark:text-gray-200"
+                                />
+                                <input
+                                  type="number"
+                                  value={charge.value}
+                                  onChange={(e) => updateCharge(index, chargeIndex, 'value', parseFloat(e.target.value) || 0)}
+                                  placeholder="Value"
+                                  className="w-24 p-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded text-sm text-gray-800 dark:text-gray-200"
+                                  step="0.01"
+                                  min="0"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => removeChargeFromCountry(index, chargeIndex)}
+                                  className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                                >
+                                  <i className="fas fa-trash text-sm"></i>
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </form>
         </div>

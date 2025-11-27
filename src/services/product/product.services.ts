@@ -329,11 +329,50 @@ export class ProductService {
     }
   };
 
-  // Upload Excel file for product import
-  static uploadExcelFile = async (formData: FormData): Promise<ImportResponse> => {
+  // Parse Excel file for product import (first step)
+  static parseExcelFile = async (formData: FormData): Promise<any> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/product/parse-excel`;
+
+    try {
+      const res = await api.post(url, formData);
+      if (res.data?.status !== 200) {
+        throw new Error(res.data?.message || 'Failed to parse Excel file');
+      }
+      return res.data;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to parse Excel file';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
+
+  // Import products with selected charges (second step)
+  static importProductsWithCharges = async (filePath: string, selectedCharges: Record<string, string[]>): Promise<ImportResponse> => {
     const baseUrl = import.meta.env.VITE_BASE_URL;
     const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
     const url = `${baseUrl}/api/${adminRoute}/product/import`;
+
+    try {
+      const res = await api.post(url, { filePath, selectedCharges });
+      if (res.data?.status !== 200) {
+        throw new Error(res.data?.message || 'Failed to import products');
+      }
+      toastHelper.showTost(res.data.message || 'Products imported successfully!', 'success');
+      return res.data;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to import products';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
+
+  // Upload Excel file for product import (legacy - kept for backward compatibility)
+  static uploadExcelFile = async (formData: FormData): Promise<ImportResponse> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/product/import-legacy`;
 
     try {
       const res = await api.post(url, formData);
@@ -434,6 +473,44 @@ export class ProductService {
   };
 
   // Mark products as sold out (set stock to 0)
+  static bulkVerify = async (ids: string | string[]): Promise<any> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/product/bulk-verify`;
+
+    try {
+      const res = await api.post(url, { ids });
+      if (res.data?.status !== 200) {
+        throw new Error(res.data?.message || 'Failed to verify product(s)');
+      }
+      toastHelper.showTost(res.data.message || 'Product(s) verified successfully!', 'success');
+      return res.data;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to verify product(s)';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
+
+  static bulkApprove = async (ids: string | string[]): Promise<any> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/product/bulk-approve`;
+
+    try {
+      const res = await api.post(url, { ids });
+      if (res.data?.status !== 200) {
+        throw new Error(res.data?.message || 'Failed to approve product(s)');
+      }
+      toastHelper.showTost(res.data.message || 'Product(s) approved successfully!', 'success');
+      return res.data;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to approve product(s)';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
+
   static markSoldOut = async (ids: string | string[]): Promise<any> => {
     const baseUrl = import.meta.env.VITE_BASE_URL;
     const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;

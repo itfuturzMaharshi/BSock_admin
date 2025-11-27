@@ -463,6 +463,60 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
     }
   };
 
+  const handleBulkVerify = async () => {
+    if (selectedProductIds.size === 0) {
+      toastHelper.showTost('Please select at least one product', 'warning');
+      return;
+    }
+
+    const confirmed = await Swal.fire({
+      title: 'Verify Products',
+      text: `Are you sure you want to verify ${selectedProductIds.size} product(s)?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, verify them!',
+      cancelButtonText: 'No, cancel!',
+    });
+
+    if (confirmed.isConfirmed) {
+      try {
+        const productIdsArray = Array.from(selectedProductIds);
+        await ProductService.bulkVerify(productIdsArray);
+        setSelectedProductIds(new Set());
+        fetchProducts();
+      } catch (error) {
+        console.error('Failed to verify products:', error);
+      }
+    }
+  };
+
+  const handleBulkApprove = async () => {
+    if (selectedProductIds.size === 0) {
+      toastHelper.showTost('Please select at least one product', 'warning');
+      return;
+    }
+
+    const confirmed = await Swal.fire({
+      title: 'Approve Products',
+      text: `Are you sure you want to approve ${selectedProductIds.size} product(s)? Products must be verified first.`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, approve them!',
+      cancelButtonText: 'No, cancel!',
+    });
+
+    if (confirmed.isConfirmed) {
+      try {
+        const productIdsArray = Array.from(selectedProductIds);
+        await ProductService.bulkApprove(productIdsArray);
+        setSelectedProductIds(new Set());
+        fetchProducts();
+      } catch (error) {
+        console.error('Failed to approve products:', error);
+      }
+    }
+  };
+
   const handleMoveToTop = async (product: Product) => {
     if (!product._id) return;
 
@@ -736,6 +790,26 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                           >
                             <i className="fas fa-box text-xs text-orange-600"></i>
                             Mark as Sold Out
+                          </button>
+                          <button
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                            onClick={() => {
+                              setBulkActionDropdownOpen(false);
+                              handleBulkVerify();
+                            }}
+                          >
+                            <i className="fas fa-check-circle text-xs text-green-600"></i>
+                            Verify
+                          </button>
+                          <button
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                            onClick={() => {
+                              setBulkActionDropdownOpen(false);
+                              handleBulkApprove();
+                            }}
+                          >
+                            <i className="fas fa-check-double text-xs text-blue-600"></i>
+                            Approve
                           </button>
                         </div>
                       </div>
@@ -1066,10 +1140,11 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
         onSave={handleSave}
         editItem={editProduct || undefined}
       />
-      <UploadExcelModal
-        isOpen={isUploadModalOpen}
-        onClose={() => setIsUploadModalOpen(false)}
-      />
+        <UploadExcelModal
+          isOpen={isUploadModalOpen}
+          onClose={() => setIsUploadModalOpen(false)}
+          onImportComplete={fetchProducts}
+        />
 
       <ProductHistoryModal
         isOpen={isHistoryModalOpen}

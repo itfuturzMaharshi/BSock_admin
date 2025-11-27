@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { CostModuleService } from "../../services/costModule/costModule.services";
 import toastHelper from "../../utils/toastHelper";
 import Select from "react-select";
 import CreatableSelect from "react-select/creatable";
@@ -7,9 +6,7 @@ import CreatableSelect from "react-select/creatable";
 // Define the interface for CostModule data
 interface CostModule {
   _id?: string;
-  type: string;
-  products: Product[];
-  categories: string[];
+  name: string;
   countries: string[];
   remark: string;
   costType: "Percentage" | "Fixed";
@@ -22,9 +19,7 @@ interface CostModule {
 
 // Define the interface for form data
 interface FormData {
-  type: string;
-  products: string[];
-  categories: string[];
+  name: string;
   countries: string[];
   remark: string;
   costType: "Percentage" | "Fixed";
@@ -35,15 +30,8 @@ interface FormData {
   isDeleted: boolean;
 }
 
-interface Product {
-  _id: string;
-  specification: string;
-}
-
 interface ValidationErrors {
-  type?: string;
-  products?: string;
-  categories?: string;
+  name?: string;
   countries?: string;
   remark?: string;
   costType?: string;
@@ -55,9 +43,7 @@ interface ValidationErrors {
 }
 
 interface TouchedFields {
-  type: boolean;
-  products: boolean;
-  categories: boolean;
+  name: boolean;
   countries: boolean;
   remark: boolean;
   costType: boolean;
@@ -82,9 +68,7 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
   editItem,
 }) => {
   const [formData, setFormData] = useState<FormData>({
-    type: "Product",
-    products: [],
-    categories: [],
+    name: "",
     countries: [],
     remark: "",
     costType: "Percentage",
@@ -95,15 +79,11 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
     isDeleted: false,
   });
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [productsList, setProductsList] = useState<Product[]>([]);
-  const [loadingProducts, setLoadingProducts] = useState<boolean>(false);
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>(
     {}
   );
   const [touched, setTouched] = useState<TouchedFields>({
-    type: false,
-    products: false,
-    categories: false,
+    name: false,
     countries: false,
     remark: false,
     costType: false,
@@ -114,44 +94,20 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
     isDeleted: false,
   });
 
-  // Default options for type and costField
-  const [typeOptions, setTypeOptions] = useState<string[]>(["Product", "Country", "ExtraDelivery"]);
+  // Default options for costField
   const [costFieldOptions, setCostFieldOptions] = useState<string[]>(["price", "quantity", "logistic"]);
 
   // Static countries list
   const countriesList = ["Hongkong", "Dubai", "Singapore"];
-
-  // Fetch products when modal opens
-  useEffect(() => {
-    const fetchProducts = async () => {
-      setLoadingProducts(true);
-      try {
-        const products = await CostModuleService.listProductsByName();
-        console.log("Fetched products:", products); // Debug log
-        setProductsList(products.filter((product) => product.specification)); // Filter out products with null/undefined specification
-      } catch (error) {
-        console.error("Error fetching products:", error);
-        toastHelper.error("Failed to fetch products");
-      } finally {
-        setLoadingProducts(false);
-      }
-    };
-
-    if (isOpen) {
-      fetchProducts();
-    }
-  }, [isOpen]);
 
   // Update form data when modal opens or editItem changes
   useEffect(() => {
     if (isOpen) {
       if (editItem) {
         setFormData({
-          type: editItem.type,
-          products: editItem.products.map((p) => p._id),
-          categories: editItem.categories || [],
+          name: editItem.name || "",
           countries: editItem.countries || [],
-          remark: editItem.remark,
+          remark: editItem.remark || "",
           costType: editItem.costType,
           costField: editItem.costField || "price",
           value: editItem.value.toString(),
@@ -161,9 +117,7 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
         });
       } else {
         setFormData({
-          type: "Product",
-          products: [],
-          categories: [],
+          name: "",
           countries: [],
           remark: "",
           costType: "Percentage",
@@ -177,23 +131,15 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
     }
   }, [isOpen, editItem]);
 
-  // Add custom type and costField to options when editItem changes
+  // Add custom costField to options when editItem changes
   useEffect(() => {
-    if (editItem) {
-      setTypeOptions((prev) => {
-        if (!prev.includes(editItem.type)) {
-          return [...prev, editItem.type];
+    if (editItem && editItem.costField) {
+      setCostFieldOptions((prev) => {
+        if (!prev.includes(editItem.costField)) {
+          return [...prev, editItem.costField];
         }
         return prev;
       });
-      if (editItem.costField) {
-        setCostFieldOptions((prev) => {
-          if (!prev.includes(editItem.costField)) {
-            return [...prev, editItem.costField];
-          }
-          return prev;
-        });
-      }
     }
   }, [editItem]);
 
@@ -216,16 +162,6 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
     }
   };
 
-  // Handle product selection change for react-select
-  const handleProductChange = (selectedOption: any) => {
-    setFormData((prev) => ({
-      ...prev,
-      products: selectedOption
-        ? selectedOption.map((option: any) => option.value)
-        : [],
-    }));
-  };
-
   const handleCountryChange = (selectedOption: any) => {
     setFormData((prev) => ({
       ...prev,
@@ -240,18 +176,12 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
     value: any
   ): string | undefined => {
     switch (name) {
-      case "type":
-        return !value ? "Type is required" : undefined;
-      case "products":
-        return formData.type === "Product" &&
-          (!value || (Array.isArray(value) && value.length === 0))
-          ? "At least one product is required"
-          : undefined;
+      case "name":
+        return !value || value.trim() === "" ? "Name is required" : undefined;
       case "costField":
         return !value ? "Cost Field is required" : undefined;
       case "countries":
-        return formData.type === "Country" &&
-          (!value || (Array.isArray(value) && value.length === 0))
+        return (!value || (Array.isArray(value) && value.length === 0))
           ? "At least one country is required"
           : undefined;
       case "remark":
@@ -293,9 +223,11 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
 
     // Only validate required fields
     const requiredFields: (keyof FormData)[] = [
-      "type",
+      "name",
+      "countries",
       "remark",
       "costType",
+      "costField",
       "value",
     ];
 
@@ -306,28 +238,6 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
         isValid = false;
       }
     });
-
-    // Validate costField
-    const costFieldError = validateField("costField", formData.costField);
-    if (costFieldError) {
-      errors.costField = costFieldError;
-      isValid = false;
-    }
-
-    // Conditional validation based on type
-    if (formData.type === "Product") {
-      const error = validateField("products", formData.products);
-      if (error) {
-        errors.products = error;
-        isValid = false;
-      }
-    } else if (formData.type === "Country") {
-      const error = validateField("countries", formData.countries);
-      if (error) {
-        errors.countries = error;
-        isValid = false;
-      }
-    }
 
     // Validate min/max values
     const minError = validateField("minValue", formData.minValue);
@@ -385,9 +295,7 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
 
     // Mark all fields as touched
     setTouched({
-      type: true,
-      products: true,
-      categories: true,
+      name: true,
       countries: true,
       remark: true,
       costType: true,
@@ -405,13 +313,7 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
     }
     setIsSubmitting(true);
     const newItem: CostModule = {
-      type: formData.type,
-      products: formData.products.map((id) => ({
-        _id: id,
-        specification:
-          productsList.find((p) => p._id === id)?.specification || "Unknown",
-      })),
-      categories: formData.categories,
+      name: formData.name,
       countries: formData.countries,
       remark: formData.remark,
       costType: formData.costType,
@@ -436,22 +338,11 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
 
   const title = editItem ? "Edit Cost Module" : "Create Cost Module";
 
-  // Prepare product options for react-select
-  const productOptions = productsList.map((product) => ({
-    value: product._id,
-    label: product.specification,
-  }));
-
   // Prepare country options
   const countryOptions = countriesList.map((country) => ({
     value: country,
     label: country,
   }));
-
-  // Find the selected products for react-select
-  const selectedProducts = productOptions.filter((option) =>
-    formData.products.includes(option.value)
-  );
 
   const selectedCountries = countryOptions.filter((option) =>
     formData.countries.includes(option.value)
@@ -581,45 +472,35 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
             onSubmit={handleSubmit}
             className="space-y-8"
           >
-            {/* Type, Cost Field, and Cost Type Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                  Type
-                </label>
-                <CreatableSelect
-                  value={{ value: formData.type, label: formData.type }}
-                  onChange={(newValue: any) => {
-                    const value = newValue?.value || "";
-                    setFormData((prev) => ({ ...prev, type: value }));
-                    if (value && !typeOptions.includes(value)) {
-                      setTypeOptions([...typeOptions, value]);
-                    }
-                    if (touched.type) {
-                      const error = validateField("type", value);
-                      setValidationErrors((prev) => ({ ...prev, type: error }));
-                    }
-                  }}
-                  onBlur={() => {
-                    setTouched((prev) => ({ ...prev, type: true }));
-                    const error = validateField("type", formData.type);
-                    setValidationErrors((prev) => ({ ...prev, type: error }));
-                  }}
-                  options={typeOptions.map((opt) => ({ value: opt, label: opt }))}
-                  placeholder="Select or create type"
-                  isDisabled={isSubmitting}
-                  styles={customStyles}
-                  isClearable
-                  isSearchable
-                  classNamePrefix="react-select"
-                  formatCreateLabel={(inputValue) => `Add "${inputValue}"`}
-                />
-                {touched.type && validationErrors.type && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {validationErrors.type}
-                  </p>
-                )}
-              </div>
+            {/* Name Field */}
+            <div>
+              <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleInputChange}
+                onBlur={handleBlur}
+                className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm ${
+                  touched.name && validationErrors.name
+                    ? "border-red-500 focus:ring-red-500"
+                    : "border-gray-200 dark:border-gray-700"
+                }`}
+                placeholder="Enter cost name"
+                required
+                disabled={isSubmitting}
+              />
+              {touched.name && validationErrors.name && (
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                  {validationErrors.name}
+                </p>
+              )}
+            </div>
+
+            {/* Cost Field, Cost Type Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                   Cost Field <span className="text-red-500">*</span>
@@ -664,7 +545,7 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                  Cost Type
+                  Cost Type <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <select
@@ -693,54 +574,31 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
               </div>
             </div>
 
-            {/* Conditional Fields */}
-            {formData.type === "Product" && (
-              <div>
-                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                  Product
-                </label>
-                <div className="w-full">
-                  <Select
-                    isMulti
-                    options={productOptions}
-                    value={selectedProducts}
-                    onChange={handleProductChange}
-                    placeholder={
-                      loadingProducts
-                        ? "Loading products..."
-                        : "Select products"
-                    }
-                    isLoading={loadingProducts}
-                    isDisabled={isSubmitting || loadingProducts}
-                    styles={customStyles}
-                    isClearable
-                    isSearchable
-                    classNamePrefix="react-select"
-                  />
-                </div>
+            {/* Countries Field */}
+            <div>
+              <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                Countries <span className="text-red-500">*</span>
+              </label>
+              <div className="w-full">
+                <Select
+                  isMulti
+                  options={countryOptions}
+                  value={selectedCountries}
+                  onChange={handleCountryChange}
+                  placeholder="Select countries"
+                  isDisabled={isSubmitting}
+                  styles={customStyles}
+                  isClearable
+                  isSearchable
+                  classNamePrefix="react-select"
+                />
               </div>
-            )}
-            {["Country", "ExtraDelivery"].includes(formData.type) && (
-              <div>
-                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                  Countries
-                </label>
-                <div className="w-full">
-                  <Select
-                    isMulti
-                    options={countryOptions}
-                    value={selectedCountries}
-                    onChange={handleCountryChange}
-                    placeholder="Select countries"
-                    isDisabled={isSubmitting}
-                    styles={customStyles}
-                    isClearable
-                    isSearchable
-                    classNamePrefix="react-select"
-                  />
-                </div>
-              </div>
-            )}
+              {touched.countries && validationErrors.countries && (
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                  {validationErrors.countries}
+                </p>
+              )}
+            </div>
 
             {/* Remark */}
             <div>

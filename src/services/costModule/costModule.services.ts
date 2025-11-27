@@ -3,9 +3,7 @@ import api from '../api/api';
 
 interface CostModule {
   _id?: string;
-  type: string;
-  products: string[];
-  categories: string[];
+  name: string;
   countries: string[];
   remark: string;
   costType: 'Percentage' | 'Fixed';
@@ -22,7 +20,6 @@ interface ListQueryParams {
   page?: number;
   limit?: number;
   search?: string;
-  type?: string;
   costType?: 'Percentage' | 'Fixed';
 }
 
@@ -221,6 +218,40 @@ export class CostModuleService {
     } catch (err: any) {
       console.error('Error fetching products:', err); // Debug log
       return [];
+    }
+  };
+
+  // Get costs grouped by country
+  static getCostsByCountry = async (): Promise<CostModuleResponse> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/cost/get-by-country`;
+
+    try {
+      const res = await api.post(url, {}, {
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const responseData = res.data;
+
+      if (res.status === 200) {
+        return {
+          status: res.status,
+          message: responseData.message,
+          data: responseData.data,
+        };
+      } else {
+        toastHelper.showTost(responseData.message || 'Failed to retrieve costs by country', 'warning');
+        return {
+          status: res.status,
+          message: responseData.message,
+          data: {},
+        };
+      }
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to retrieve costs by country';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
     }
   };
 }

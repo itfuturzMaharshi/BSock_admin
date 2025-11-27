@@ -4,12 +4,10 @@ import CostModuleModal from "./CostModuleModal";
 import { CostModuleService } from "../../services/costModule/costModule.services";
 import { useDebounce } from "../../hooks/useDebounce";
 
-// Define the interface for CostModule data (output from list, with populated products)
+// Define the interface for CostModule data
 interface CostModule {
   _id?: string;
-  type: string;
-  products: Product[];
-  categories: string[];
+  name: string;
   countries: string[];
   remark: string;
   costType: "Percentage" | "Fixed";
@@ -18,11 +16,6 @@ interface CostModule {
   minValue?: number;
   maxValue?: number;
   isDeleted: boolean;
-}
-
-interface Product {
-  _id: string;
-  specification: string;
 }
 
 const CostModuleTable: React.FC = () => {
@@ -77,9 +70,7 @@ const CostModuleTable: React.FC = () => {
       if (editItem && editItem._id) {
         // Update existing cost module
         const updates = {
-          type: newItem.type,
-          products: newItem.products.map((p) => p._id),
-          categories: newItem.categories,
+          name: newItem.name,
           countries: newItem.countries,
           remark: newItem.remark,
           costType: newItem.costType,
@@ -92,9 +83,7 @@ const CostModuleTable: React.FC = () => {
       } else {
         // Create new cost module
         await CostModuleService.createCostModule({
-          type: newItem.type,
-          products: newItem.products.map((p) => p._id),
-          categories: newItem.categories,
+          name: newItem.name,
           countries: newItem.countries,
           remark: newItem.remark,
           costType: newItem.costType,
@@ -157,7 +146,7 @@ const CostModuleTable: React.FC = () => {
               <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
               <input
                 type="text"
-                placeholder="Search by remark..."
+                placeholder="Search by name, remark, or country..."
                 className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full"
                 value={searchTerm}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
@@ -186,13 +175,7 @@ const CostModuleTable: React.FC = () => {
             <thead className="bg-gray-100 dark:bg-gray-900">
               <tr>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Type
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Products
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Categories
+                  Name
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Countries
@@ -223,7 +206,7 @@ const CostModuleTable: React.FC = () => {
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={11} className="p-12 text-center">
+                  <td colSpan={9} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
                       Loading Cost Modules...
@@ -232,7 +215,7 @@ const CostModuleTable: React.FC = () => {
                 </tr>
               ) : paginatedData.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="p-12 text-center">
+                  <td colSpan={9} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       No cost modules found
                     </div>
@@ -249,14 +232,7 @@ const CostModuleTable: React.FC = () => {
                     }`}
                   >
                     <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-gray-200">
-                      {item.type}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.products.map((p) => p.specification).join(", ") ||
-                        "-"}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.categories?.join(", ") || "-"}
+                      {item.name}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                       {item.countries.join(", ") || "-"}
