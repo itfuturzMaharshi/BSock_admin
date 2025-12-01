@@ -59,6 +59,28 @@ export default function SignInForm() {
       // Check if login was successful and token exists
       if (response.status === 200 && response.token) {
         localStorage.setItem(LOCAL_STORAGE_KEYS.TOKEN, response.token);
+        
+        // Store permissions if available
+        let permissionsToStore = null;
+        if (response.permissions) {
+          permissionsToStore = response.permissions;
+        } else if (response.data?.permissions) {
+          permissionsToStore = response.data.permissions;
+        } else if (response.data?.data?.permissions) {
+          permissionsToStore = response.data.data.permissions;
+        }
+        
+        if (permissionsToStore) {
+          console.log('Storing permissions from login:', permissionsToStore);
+          localStorage.setItem('adminPermissions', JSON.stringify(permissionsToStore));
+          localStorage.setItem('adminRole', permissionsToStore.role || 'admin');
+          
+          // Dispatch event to notify sidebar to update immediately
+          window.dispatchEvent(new Event('permissionsUpdated'));
+        } else {
+          console.warn('No permissions found in login response. Full response:', response);
+        }
+        
         // Connect socket after login
         try { SocketService.connect(); } catch {}
         navigate("/home");

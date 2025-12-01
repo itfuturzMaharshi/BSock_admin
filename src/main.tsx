@@ -7,14 +7,17 @@ import App from "./App.tsx";
 import { AppWrapper } from "./components/common/PageMeta.tsx";
 import { ThemeProvider } from "./context/ThemeContext.tsx";
 import { SocketProvider } from "./context/SocketContext";
+import { PermissionsProvider } from "./context/PermissionsContext";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ThemeProvider>
       <SocketProvider>
-        <AppWrapper>
-          <App />
-        </AppWrapper>
+        <PermissionsProvider>
+          <AppWrapper>
+            <App />
+          </AppWrapper>
+        </PermissionsProvider>
       </SocketProvider>
     </ThemeProvider>
   </StrictMode>,

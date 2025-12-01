@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import Swal from "sweetalert2";
 import toastHelper from "../../utils/toastHelper";
 import AdminsModal from "./AdminsModal";
+import PermissionManagementModal from "./PermissionManagementModal";
 import { AdminService, Admin, UpdateAdminRequest } from "../../services/admin/admin.services";
 import { LOCAL_STORAGE_KEYS } from "../../constants/localStorage";
 import { useDebounce } from "../../hooks/useDebounce";
@@ -18,6 +19,8 @@ const AdminsTable: React.FC = () => {
   const [totalDocs, setTotalDocs] = useState<number>(0);
   const [resettingPassword, setResettingPassword] = useState<string | null>(null);
   const [togglingStatus, setTogglingStatus] = useState<string | null>(null);
+  const [permissionModalOpen, setPermissionModalOpen] = useState<boolean>(false);
+  const [selectedAdminForPermissions, setSelectedAdminForPermissions] = useState<Admin | null>(null);
   const itemsPerPage = 10;
 
   // Fetch admins data
@@ -322,6 +325,16 @@ const AdminsTable: React.FC = () => {
                           )}
                         </button>
                         <button
+                          onClick={() => {
+                            setSelectedAdminForPermissions(item);
+                            setPermissionModalOpen(true);
+                          }}
+                          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                          title="Manage Permissions"
+                        >
+                          <i className="fas fa-shield-alt"></i>
+                        </button>
+                        <button
                           onClick={() => handleDelete(item)}
                           className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
                           title="Delete Admin"
@@ -394,6 +407,22 @@ const AdminsTable: React.FC = () => {
         onSave={handleSave}
         editAdmin={editingAdmin}
       />
+
+      {selectedAdminForPermissions && (
+        <PermissionManagementModal
+          isOpen={permissionModalOpen}
+          onClose={() => {
+            setPermissionModalOpen(false);
+            setSelectedAdminForPermissions(null);
+          }}
+          adminId={selectedAdminForPermissions._id}
+          adminName={selectedAdminForPermissions.name}
+          adminRole={selectedAdminForPermissions.role || 'admin'}
+          onUpdate={() => {
+            fetchAdmins();
+          }}
+        />
+      )}
     </div>
   );
 };

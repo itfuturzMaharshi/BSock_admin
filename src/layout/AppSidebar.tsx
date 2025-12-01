@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useSidebar } from "../context/SidebarContext";
 import Logo from "../components/common/Logo";
+import { RoleManagementService, MyPermissions } from "../services/roleManagement/roleManagement.services";
 
 type NavItem = {
   name: string;
@@ -15,9 +16,8 @@ const navItems: NavItem[] = [
     icon: <i className="fas fa-th-large"></i>,
     name: "Dashboard",
     path: "/home",
-    // subItems: [{ name: "Ecommerce", path: "/", pro: false }],
+    // Dashboard always visible, no permission check needed
   },
-
   {
     icon: <i className="fas fa-user-shield"></i>,
     name: "Admins",
@@ -43,7 +43,6 @@ const navItems: NavItem[] = [
     name: "Sku Family",
     path: "/sku-family",
   },
-
   {
     icon: <i className="fas fa-box-open"></i>,
     name: "Products",
@@ -52,6 +51,7 @@ const navItems: NavItem[] = [
   {
     icon: <i className="fas fa-layer-group"></i>,
     name: "Masters",
+    path: "/masters", // Add path for matching
     subItems: [
       { name: "Grade", path: "/masters/grade" },
       { name: "Brand", path: "/masters/brand" },
@@ -74,10 +74,10 @@ const navItems: NavItem[] = [
   {
     icon: <i className="fas fa-cog"></i>,
     name: "Configuration",
+    path: "/configuration", // Add path for matching
     subItems: [
       { name: "Payment Config", path: "/payments" },
       { name: "Cost Config", path: "/cost-module" },
-      // { name: "Notification Config", path: "#" },
     ],
   },
   {
@@ -95,11 +95,6 @@ const navItems: NavItem[] = [
     name: "Bid Products",
     path: "/bid-products",
   },
-  // {
-  //   icon: <i className="fas fa-search-location"></i>,
-  //   name: "Bid Tracking",
-  //   path: "/bid-tracking",
-  // },
 ];
 
 const AppSidebar: React.FC = () => {
@@ -114,15 +109,182 @@ const AppSidebar: React.FC = () => {
     {}
   );
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [permissions, setPermissions] = useState<MyPermissions | null>(null);
+  const [filteredNavItems, setFilteredNavItems] = useState<NavItem[]>(navItems);
 
   const isActive = useCallback(
     (path: string) => location.pathname === path,
     [location.pathname]
   );
 
+  // Helper function to filter nav items based on permissions
+  const filterNavItemsByPermissions = (permissionsData: MyPermissions) => {
+    console.log('Filtering nav items with permissions:', permissionsData);
+    
+    if (!permissionsData || !permissionsData.modules) {
+      console.warn('Invalid permissions data, showing all items');
+      setFilteredNavItems(navItems);
+      return;
+    }
+    
+    if (permissionsData.role === 'superadmin') {
+      // Superadmin sees all items
+      setFilteredNavItems(navItems);
+      console.log('Superadmin: Showing all menu items');
+      return;
+    }
+    
+    // Filter based on module access
+    const filtered = navItems.filter((item) => {
+      // For Dashboard, always show (no module mapping needed)
+      if (item.path === '/home' || item.name === 'Dashboard') {
+        console.log(`✓ Showing Dashboard (always visible)`);
+        return true;
+      }
+      
+      // Find matching module in permissions by path
+      let module = null;
+      
+      // First try direct path match
+      if (item.path) {
+        module = permissionsData.modules.find((m) => m.path === item.path);
+      }
+      
+      // If no direct match and item has subItems, check if any subItem path matches module path
+      if (!module && item.subItems) {
+        module = permissionsData.modules.find((m) => {
+          // Check if module path matches any subItem path
+          return item.subItems?.some((si) => si.path === m.path);
+        });
+      }
+      
+      // If still no match, check if module has subItems that match item's subItems
+      if (!module && item.subItems) {
+        module = permissionsData.modules.find((m) => {
+          if (m.subItems) {
+            // Check if any module subItem matches any navItem subItem
+            return m.subItems.some((msi) => 
+              item.subItems?.some((si) => si.path === msi.path)
+            );
+          }
+          return false;
+        });
+      }
+      
+      const hasAccess = module?.hasAccess || false;
+      
+      if (hasAccess) {
+        console.log(`✓ Showing menu item: ${item.name} (module: ${module?.key}, path: ${item.path})`);
+      } else {
+        console.log(`✗ Hiding menu item: ${item.name} (no access, path: ${item.path})`);
+        if (!module) {
+          console.log(`  → No matching module found in permissions`);
+        } else {
+          console.log(`  → Module found but hasAccess: ${module.hasAccess}`);
+        }
+      }
+      
+      return hasAccess;
+    });
+    
+    setFilteredNavItems(filtered);
+    console.log(`Filtered menu items for role ${permissionsData.role}:`, {
+      total: navItems.length,
+      shown: filtered.length,
+      hidden: navItems.length - filtered.length,
+      items: filtered.map(i => i.name)
+    });
+  };
+
+  // Fetch permissions and filter nav items
+  useEffect(() => {
+    const loadPermissions = async () => {
+      try {
+        // First, try to get permissions from localStorage (from login)
+        const storedPermissions = localStorage.getItem('adminPermissions');
+        const storedRole = localStorage.getItem('adminRole');
+        
+        if (storedPermissions && storedRole) {
+          try {
+            const parsedPermissions = JSON.parse(storedPermissions);
+            console.log('✓ Using permissions from localStorage:', {
+              role: parsedPermissions.role,
+              modulesCount: parsedPermissions.modules?.length || 0,
+              modules: parsedPermissions.modules?.map((m: any) => ({ name: m.name, hasAccess: m.hasAccess })) || []
+            });
+            setPermissions(parsedPermissions);
+            filterNavItemsByPermissions(parsedPermissions);
+            return; // Use stored permissions, no need to fetch
+          } catch (e) {
+            console.error('Error parsing stored permissions:', e);
+            // Clear invalid stored data
+            localStorage.removeItem('adminPermissions');
+            localStorage.removeItem('adminRole');
+          }
+        }
+        
+        // If no stored permissions, fetch from API
+        console.log('Fetching permissions from API...');
+        const myPermissions = await RoleManagementService.getMyPermissions();
+        console.log('Fetched permissions from API:', myPermissions);
+        setPermissions(myPermissions);
+        
+        // Store in localStorage for future use
+        localStorage.setItem('adminPermissions', JSON.stringify(myPermissions));
+        localStorage.setItem('adminRole', myPermissions.role);
+
+        // Filter nav items based on permissions
+        filterNavItemsByPermissions(myPermissions);
+      } catch (error) {
+        console.error('Error loading permissions:', error);
+        // On error, show all items (fallback)
+        setFilteredNavItems(navItems);
+      }
+    };
+
+    loadPermissions();
+
+    // Listen for permission updates (when permissions are changed in admin panel)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'adminPermissions' && e.newValue) {
+        try {
+          const newPermissions = JSON.parse(e.newValue);
+          console.log('Permissions updated from storage:', newPermissions);
+          setPermissions(newPermissions);
+          filterNavItemsByPermissions(newPermissions);
+        } catch (error) {
+          console.error('Error parsing updated permissions:', error);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    // Also listen for custom event (for same-tab updates)
+    const handlePermissionUpdate = () => {
+      const storedPermissions = localStorage.getItem('adminPermissions');
+      if (storedPermissions) {
+        try {
+          const parsedPermissions = JSON.parse(storedPermissions);
+          setPermissions(parsedPermissions);
+          filterNavItemsByPermissions(parsedPermissions);
+        } catch (error) {
+          console.error('Error parsing updated permissions:', error);
+        }
+      }
+    };
+
+    window.addEventListener('permissionsUpdated', handlePermissionUpdate);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('permissionsUpdated', handlePermissionUpdate);
+    };
+  }, []);
+
   useEffect(() => {
     let submenuMatched = false;
-    navItems.forEach((nav, index) => {
+    filteredNavItems.forEach((nav, index) => {
       if (nav.subItems) {
         nav.subItems.forEach((subItem) => {
           if (isActive(subItem.path)) {
@@ -349,7 +511,14 @@ const AppSidebar: React.FC = () => {
                   <i className="fas fa-ellipsis-h size-6"></i>
                 )}
               </h2>
-              {renderMenuItems(navItems, "main")}
+              {/* Debug: Show permissions status */}
+              {/* {process.env.NODE_ENV === 'development' && permissions && (
+                <div className="mb-2 p-2 bg-yellow-100 dark:bg-yellow-900 text-xs rounded">
+                  <div>Role: <strong>{permissions.role}</strong></div>
+                  <div>Visible Items: {filteredNavItems.length} / {navItems.length}</div>
+                </div>
+              )} */}
+              {renderMenuItems(filteredNavItems, "main")}
             </div>
           </div>
         </nav>

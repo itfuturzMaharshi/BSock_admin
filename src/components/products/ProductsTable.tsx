@@ -11,12 +11,17 @@ import {
 } from "../../services/product/product.services";
 import placeholderImage from "../../../public/images/product/noimage.jpg";
 import { useDebounce } from "../../hooks/useDebounce";
+import { usePermissions } from "../../context/PermissionsContext";
 
 interface ProductsTableProps {
   loggedInAdminId?: string; 
 }
 
 const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
+  const { hasPermission } = usePermissions();
+  const canWrite = hasPermission('/products', 'write');
+  const canVerifyApprove = hasPermission('/products', 'verifyApprove');
+  
   const [productsData, setProductsData] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const debouncedSearchTerm = useDebounce(searchTerm, 1000);
@@ -751,95 +756,105 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                       ></div>
                       <div className="absolute right-0 mt-2 w-56 rounded-lg shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-20">
                         <div className="py-1" role="menu">
-                          <button
-                            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-                            onClick={() => {
-                              setBulkActionDropdownOpen(false);
-                              handleToggleSequence();
-                            }}
-                          >
-                            <i className="fas fa-sort-numeric-down text-xs text-yellow-600"></i>
-                            Toggle Sequence
-                          </button>
-                          <button
-                            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-                            onClick={() => {
-                              setBulkActionDropdownOpen(false);
-                              handleBulkExpire();
-                            }}
-                          >
-                            <i className="fas fa-clock text-xs text-red-600"></i>
-                            Expire
-                          </button>
-                          <button
-                            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-                            onClick={() => {
-                              setBulkActionDropdownOpen(false);
-                              handleBulkToggleTimer();
-                            }}
-                          >
-                            <i className="fas fa-stopwatch text-xs text-purple-600"></i>
-                            Toggle Timer
-                          </button>
-                          <button
-                            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-                            onClick={() => {
-                              setBulkActionDropdownOpen(false);
-                              handleMarkSoldOut();
-                            }}
-                          >
-                            <i className="fas fa-box text-xs text-orange-600"></i>
-                            Mark as Sold Out
-                          </button>
-                          <button
-                            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-                            onClick={() => {
-                              setBulkActionDropdownOpen(false);
-                              handleBulkVerify();
-                            }}
-                          >
-                            <i className="fas fa-check-circle text-xs text-green-600"></i>
-                            Verify
-                          </button>
-                          <button
-                            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-                            onClick={() => {
-                              setBulkActionDropdownOpen(false);
-                              handleBulkApprove();
-                            }}
-                          >
-                            <i className="fas fa-check-double text-xs text-blue-600"></i>
-                            Approve
-                          </button>
+                          {canWrite && (
+                            <button
+                              className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                              onClick={() => {
+                                setBulkActionDropdownOpen(false);
+                                handleToggleSequence();
+                              }}
+                            >
+                              <i className="fas fa-sort-numeric-down text-xs text-yellow-600"></i>
+                              Toggle Sequence
+                            </button>
+                          )}
+                          {canVerifyApprove && (
+                            <>
+                              <button
+                                className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                                onClick={() => {
+                                  setBulkActionDropdownOpen(false);
+                                  handleBulkExpire();
+                                }}
+                              >
+                                <i className="fas fa-clock text-xs text-red-600"></i>
+                                Expire
+                              </button>
+                              <button
+                                className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                                onClick={() => {
+                                  setBulkActionDropdownOpen(false);
+                                  handleBulkToggleTimer();
+                                }}
+                              >
+                                <i className="fas fa-stopwatch text-xs text-purple-600"></i>
+                                Toggle Timer
+                              </button>
+                              <button
+                                className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                                onClick={() => {
+                                  setBulkActionDropdownOpen(false);
+                                  handleMarkSoldOut();
+                                }}
+                              >
+                                <i className="fas fa-box text-xs text-orange-600"></i>
+                                Mark as Sold Out
+                              </button>
+                              <button
+                                className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                                onClick={() => {
+                                  setBulkActionDropdownOpen(false);
+                                  handleBulkVerify();
+                                }}
+                              >
+                                <i className="fas fa-check-circle text-xs text-green-600"></i>
+                                Verify
+                              </button>
+                              <button
+                                className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                                onClick={() => {
+                                  setBulkActionDropdownOpen(false);
+                                  handleBulkApprove();
+                                }}
+                              >
+                                <i className="fas fa-check-double text-xs text-blue-600"></i>
+                                Approve
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </>
                   )}
                 </div>
               )}
-              <button
-                className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
-                onClick={() => setIsUploadModalOpen(true)}
-              >
-                <i className="fas fa-upload text-xs"></i>
-                Import
-              </button>
+              {canWrite && (
+                <>
+                  <button
+                    className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
+                    onClick={() => setIsUploadModalOpen(true)}
+                  >
+                    <i className="fas fa-upload text-xs"></i>
+                    Import
+                  </button>
+                  <button
+                    className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
+                    onClick={() => {
+                      setEditProduct(null);
+                      setIsModalOpen(true);
+                    }}
+                  >
+                    <i className="fas fa-plus text-xs"></i>
+                    Add Product
+                  </button>
+                </>
+              )}
               <button
                 className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
                 onClick={handleExport}
               >
                 <i className="fas fa-download text-xs"></i>
                 Export
-              </button>
-              <button
-                className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
-                onClick={() => {
-                  setEditProduct(null);
-                  setIsModalOpen(true);
-                }}
-              >
-                <i className="fas fa-plus text-xs"></i>
-                Add Product
               </button>
             </div>
           </div>
@@ -991,7 +1006,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                               zIndex: 9999,
                             }}
                           >
-                            {item.canVerify &&
+                            {canVerifyApprove && item.canVerify &&
                               item.verifiedBy !== loggedInAdminId && (
                                 <button
                                   onClick={(e) => {
@@ -1024,7 +1039,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                               <i className="fas fa-history"></i>
                               History
                             </button>
-                            {item.canApprove &&
+                            {canVerifyApprove && item.canApprove &&
                               item.verifiedBy !== loggedInAdminId && (
                                 <button
                                   onClick={(e) => {
@@ -1037,46 +1052,52 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                                   Approve
                                 </button>
                               )}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleMoveToTop(item);
-                              }}
-                              className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-orange-600"
-                            >
-                              <i className="fas fa-arrow-up"></i>
-                              Move to Top
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleExpire(item);
-                              }}
-                              className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-red-600"
-                            >
-                              <i className="fas fa-clock"></i>
-                              Expire
-                            </button>
-                             <button
-                               onClick={(e) => {
-                                 e.stopPropagation();
-                                 handleEdit(item);
-                               }}
-                               className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-green-600"
-                             >
-                               <i className="fas fa-edit"></i>
-                               Edit
-                             </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDelete(item);
-                              }}
-                              className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-red-600"
-                            >
-                              <i className="fas fa-trash"></i>
-                              Delete
-                            </button>
+                            {canWrite && (
+                              <>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleMoveToTop(item);
+                                  }}
+                                  className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-orange-600"
+                                >
+                                  <i className="fas fa-arrow-up"></i>
+                                  Move to Top
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEdit(item);
+                                  }}
+                                  className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-green-600"
+                                >
+                                  <i className="fas fa-edit"></i>
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDelete(item);
+                                  }}
+                                  className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-red-600"
+                                >
+                                  <i className="fas fa-trash"></i>
+                                  Delete
+                                </button>
+                              </>
+                            )}
+                            {canVerifyApprove && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleExpire(item);
+                                }}
+                                className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-red-600"
+                              >
+                                <i className="fas fa-clock"></i>
+                                Expire
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>

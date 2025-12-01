@@ -6,8 +6,12 @@ import { AdminOrderService, Order, TrackingItem, OrderItem } from "../../service
 import { LOCAL_STORAGE_KEYS } from "../../constants/localStorage";
 import OrderDetailsModal from "./OrderDetailsModal";
 import { useDebounce } from "../../hooks/useDebounce";
+import { usePermissions } from "../../context/PermissionsContext";
 
 const OrdersTable: React.FC = () => {
+  const { hasPermission } = usePermissions();
+  const canVerifyApprove = hasPermission('/orders', 'verifyApprove');
+  
   const [ordersData, setOrdersData] = useState<Order[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const debouncedSearchTerm = useDebounce(searchTerm, 1000);
@@ -683,13 +687,15 @@ const OrdersTable: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
                       <div className="inline-flex items-center gap-3">
-                        <button
-                          onClick={() => handleUpdateStatus(order)}
-                          className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300"
-                          title="Update Status"
-                        >
-                          <i className="fas fa-edit"></i>
-                        </button>
+                        {canVerifyApprove && (
+                          <button
+                            onClick={() => handleUpdateStatus(order)}
+                            className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300"
+                            title="Update Status"
+                          >
+                            <i className="fas fa-edit"></i>
+                          </button>
+                        )}
                         <button
                           onClick={() => handleViewOrderDetails(order)}
                           className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
