@@ -8,10 +8,12 @@ import { useDebounce } from "../../hooks/useDebounce";
 interface CostModule {
   _id?: string;
   name: string;
+  name2?: string;
   countries: string[];
   remark: string;
   costType: "Percentage" | "Fixed";
-  costField: string;
+  costField: "product" | "delivery";
+  costUnit?: "pc" | "kg" | "moq" | "order amount";
   value: number;
   minValue?: number;
   maxValue?: number;
@@ -71,10 +73,12 @@ const CostModuleTable: React.FC = () => {
         // Update existing cost module
         const updates = {
           name: newItem.name,
+          name2: newItem.name2,
           countries: newItem.countries,
           remark: newItem.remark,
           costType: newItem.costType,
           costField: newItem.costField,
+          costUnit: newItem.costUnit,
           value: newItem.value,
           minValue: newItem.minValue,
           maxValue: newItem.maxValue,
@@ -84,10 +88,12 @@ const CostModuleTable: React.FC = () => {
         // Create new cost module
         await CostModuleService.createCostModule({
           name: newItem.name,
+          name2: newItem.name2,
           countries: newItem.countries,
           remark: newItem.remark,
           costType: newItem.costType,
           costField: newItem.costField,
+          costUnit: newItem.costUnit,
           value: newItem.value,
           minValue: newItem.minValue,
           maxValue: newItem.maxValue,
@@ -178,6 +184,9 @@ const CostModuleTable: React.FC = () => {
                   Name
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                  Name2
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Countries
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
@@ -188,6 +197,9 @@ const CostModuleTable: React.FC = () => {
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Cost Field
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                  Cost Unit
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Value
@@ -206,7 +218,7 @@ const CostModuleTable: React.FC = () => {
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="p-12 text-center">
+                  <td colSpan={11} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
                       Loading Cost Modules...
@@ -215,7 +227,7 @@ const CostModuleTable: React.FC = () => {
                 </tr>
               ) : paginatedData.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="p-12 text-center">
+                  <td colSpan={11} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       No cost modules found
                     </div>
@@ -233,6 +245,9 @@ const CostModuleTable: React.FC = () => {
                   >
                     <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-gray-200">
                       {item.name}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      {item.name2 || "-"}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                       {item.countries.join(", ") || "-"}
@@ -253,6 +268,9 @@ const CostModuleTable: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                       <span className="capitalize">{item.costField || "-"}</span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      <span className="capitalize">{item.costUnit ? item.costUnit.replace("order amount", "Order Amount") : "-"}</span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                       {item.value}
