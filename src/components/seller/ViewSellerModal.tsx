@@ -204,6 +204,16 @@ const ViewSellerModal: React.FC<ViewSellerModalProps> = ({
                     {getStatusBadge(seller.isApproved, "Approved", "Pending")}
                   </p>
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Seller Category
+                  </label>
+                  <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                    {typeof seller.sellerCategory === 'object' && seller.sellerCategory !== null
+                      ? seller.sellerCategory.title
+                      : seller.sellerCategory || "N/A"}
+                  </p>
+                </div>
               </div>
             </div>
 

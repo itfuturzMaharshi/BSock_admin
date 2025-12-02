@@ -4,6 +4,7 @@ import {
   UpdateSellerRequest,
   Seller,
 } from "../../services/seller/sellerService";
+import { SellerCategoryService, SellerCategory } from "../../services/sellerCategory/sellerCategory.services";
 
 // Define the interface for form data
 interface FormData {
@@ -12,6 +13,7 @@ interface FormData {
   mobileNumber: string;
   isActive: boolean;
   isApproved: boolean;
+  sellerCategory: string;
 }
 
 // Define validation errors interface
@@ -40,27 +42,55 @@ const SellerEditModal: React.FC<SellerEditModalProps> = ({
     mobileNumber: "",
     isActive: true,
     isApproved: false,
+    sellerCategory: "",
   });
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>(
     {}
   );
   const [touched, setTouched] = useState<{ [key: string]: boolean }>({});
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [sellerCategories, setSellerCategories] = useState<SellerCategory[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchSellerCategories();
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen && editSeller) {
       // Populate form with existing seller data
+      const categoryId = typeof editSeller.sellerCategory === 'object' && editSeller.sellerCategory !== null
+        ? editSeller.sellerCategory._id
+        : (editSeller.sellerCategory || "");
+      
       setFormData({
         name: editSeller.name || "",
         email: editSeller.email || "",
         mobileNumber: editSeller.mobileNumber || "",
         isActive: editSeller.isActive !== undefined ? editSeller.isActive : true,
         isApproved: editSeller.isApproved !== undefined ? editSeller.isApproved : false,
+        sellerCategory: categoryId,
       });
       setValidationErrors({});
       setTouched({});
     }
   }, [isOpen, editSeller]);
+
+  const fetchSellerCategories = async () => {
+    setLoadingCategories(true);
+    try {
+      const response = await SellerCategoryService.getSellerCategoryList(1, 1000, '');
+      if (response.data && response.data.docs) {
+        setSellerCategories(response.data.docs);
+      }
+    } catch (error) {
+      console.error("Error fetching seller categories:", error);
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
 
   // Validation functions
   const validateField = (name: string, value: string): string | undefined => {
@@ -160,6 +190,7 @@ const SellerEditModal: React.FC<SellerEditModalProps> = ({
         mobileNumber: formData.mobileNumber || undefined,
         isActive: formData.isActive,
         isApproved: formData.isApproved,
+        sellerCategory: formData.sellerCategory || null,
       };
 
       await SellerService.updateSeller(updateData);
@@ -276,6 +307,27 @@ const SellerEditModal: React.FC<SellerEditModalProps> = ({
                 {validationErrors.mobileNumber}
               </p>
             )}
+          </div>
+
+          {/* Seller Category Dropdown */}
+          <div>
+            <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+              Seller Category
+            </label>
+            <select
+              name="sellerCategory"
+              value={formData.sellerCategory}
+              onChange={(e) => setFormData({ ...formData, sellerCategory: e.target.value })}
+              className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
+              disabled={loadingCategories}
+            >
+              <option value="">Select Seller Category (Optional)</option>
+              {sellerCategories.map((category) => (
+                <option key={category._id} value={category._id}>
+                  {category.title}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Status Checkboxes */}

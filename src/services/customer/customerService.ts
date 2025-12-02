@@ -11,6 +11,14 @@ export interface BusinessProfile {
   currencyCode?: string | null;
 }
 
+export interface CustomerCategory {
+  _id: string;
+  title: string;
+  description?: string;
+  marginType?: 'fixed' | 'percentage' | null;
+  margin?: number | null;
+}
+
 export interface Customer {
   _id: string;
   name: string;
@@ -25,6 +33,7 @@ export interface Customer {
   isApproved?: boolean;
   isAllowBidding?: boolean;
   businessProfile?: BusinessProfile;
+  customerCategory?: CustomerCategory | string | null;
 }
 
 export interface UpdateCustomerRequest {
@@ -38,6 +47,7 @@ export interface UpdateCustomerRequest {
   isActive?: boolean;
   isApproved?: boolean;
   isAllowBidding?: boolean;
+  customerCategory?: string | null;
 }
 
 export interface CustomerListResponse {

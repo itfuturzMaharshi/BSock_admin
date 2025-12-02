@@ -10,6 +10,14 @@ export interface BusinessProfile {
   status?: string;
 }
 
+export interface SellerCategory {
+  _id: string;
+  title: string;
+  description?: string;
+  marginType?: 'fixed' | 'percentage' | null;
+  margin?: number | null;
+}
+
 export interface Seller {
   _id: string;
   name: string;
@@ -20,6 +28,7 @@ export interface Seller {
   isMobileVerified?: boolean;
   isApproved?: boolean;
   businessProfile?: BusinessProfile;
+  sellerCategory?: SellerCategory | string | null;
 }
 
 export interface UpdateSellerRequest {
@@ -29,6 +38,7 @@ export interface UpdateSellerRequest {
   mobileNumber?: string;
   isActive?: boolean;
   isApproved?: boolean;
+  sellerCategory?: string | null;
 }
 
 export interface SellerListResponse {

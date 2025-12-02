@@ -4,6 +4,7 @@ import {
   UpdateCustomerRequest,
   Customer,
 } from "../../services/customer/customerService";
+import { CustomerCategoryService, CustomerCategory } from "../../services/customerCategory/customerCategory.services";
 import CountrySelect from "./CountrySelect";
 
 // Define the interface for form data
@@ -17,6 +18,7 @@ interface FormData {
   isActive: boolean;
   isApproved: boolean;
   isAllowBidding: boolean;
+  customerCategory: string;
 }
 
 // Define validation errors interface
@@ -49,16 +51,29 @@ const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
     isActive: true,
     isApproved: false,
     isAllowBidding: true,
+    customerCategory: "",
   });
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>(
     {}
   );
   const [touched, setTouched] = useState<{ [key: string]: boolean }>({});
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [customerCategories, setCustomerCategories] = useState<CustomerCategory[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchCustomerCategories();
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen && editCustomer) {
       // Populate form with existing customer data
+      const categoryId = typeof editCustomer.customerCategory === 'object' && editCustomer.customerCategory !== null
+        ? editCustomer.customerCategory._id
+        : (editCustomer.customerCategory || "");
+      
       setFormData({
         name: editCustomer.name || "",
         email: editCustomer.email || "",
@@ -69,11 +84,26 @@ const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
         isActive: editCustomer.isActive !== undefined ? editCustomer.isActive : true,
         isApproved: editCustomer.isApproved !== undefined ? editCustomer.isApproved : false,
         isAllowBidding: editCustomer.isAllowBidding !== undefined ? editCustomer.isAllowBidding : true,
+        customerCategory: categoryId,
       });
       setValidationErrors({});
       setTouched({});
     }
   }, [isOpen, editCustomer]);
+
+  const fetchCustomerCategories = async () => {
+    setLoadingCategories(true);
+    try {
+      const response = await CustomerCategoryService.getCustomerCategoryList(1, 1000, '');
+      if (response.data && response.data.docs) {
+        setCustomerCategories(response.data.docs);
+      }
+    } catch (error) {
+      console.error("Error fetching customer categories:", error);
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
 
   // Validation functions
   const validateField = (name: string, value: string): string | undefined => {
@@ -177,6 +207,7 @@ const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
         isActive: formData.isActive,
         isApproved: formData.isApproved,
         isAllowBidding: formData.isAllowBidding,
+        customerCategory: formData.customerCategory || null,
       };
 
       await CustomerService.updateCustomer(updateData);
@@ -344,6 +375,27 @@ const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                 placeholder="Enter WhatsApp Number"
               />
             </div>
+          </div>
+
+          {/* Customer Category Dropdown */}
+          <div>
+            <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+              Customer Category
+            </label>
+            <select
+              name="customerCategory"
+              value={formData.customerCategory}
+              onChange={(e) => setFormData({ ...formData, customerCategory: e.target.value })}
+              className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
+              disabled={loadingCategories}
+            >
+              <option value="">Select Customer Category (Optional)</option>
+              {customerCategories.map((category) => (
+                <option key={category._id} value={category._id}>
+                  {category.title}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Status Checkboxes */}

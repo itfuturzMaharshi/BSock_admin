@@ -174,6 +174,9 @@ const SellerTable: React.FC = () => {
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Approve Status
                 </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                  Seller Category
+                </th>
                 <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Actions
                 </th>
@@ -182,7 +185,7 @@ const SellerTable: React.FC = () => {
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="p-12 text-center">
+                  <td colSpan={7} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
                       Loading Sellers...
@@ -191,7 +194,7 @@ const SellerTable: React.FC = () => {
                 </tr>
               ) : sellers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-12 text-center">
+                  <td colSpan={7} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       No sellers found
                     </div>
@@ -248,6 +251,11 @@ const SellerTable: React.FC = () => {
                           Pending
                         </span>
                       )}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      {typeof seller.sellerCategory === 'object' && seller.sellerCategory !== null
+                        ? seller.sellerCategory.title
+                        : seller.sellerCategory || '-'}
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
                       <div className="flex items-center justify-center gap-3">

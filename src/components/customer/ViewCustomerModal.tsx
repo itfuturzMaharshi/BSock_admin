@@ -220,6 +220,17 @@ const ViewCustomerModal: React.FC<ViewCustomerModalProps> = ({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Customer Category
+                </label>
+                <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                  {typeof customer.customerCategory === 'object' && customer.customerCategory !== null
+                    ? customer.customerCategory.title
+                    : customer.customerCategory || "N/A"}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Created At
                 </label>
                 <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
