@@ -40,6 +40,8 @@ import Color from "./pages/Color/Color";
 import Ram from "./pages/Ram/Ram";
 import Storage from "./pages/Storage/Storage";
 import ConditionCategory from "./pages/ConditionCategory/ConditionCategory";
+import CustomerCategory from "./pages/CustomerCategory/CustomerCategory";
+import SellerCategory from "./pages/SellerCategory/SellerCategory";
 
 export default function App() {
   return (
@@ -83,6 +85,8 @@ export default function App() {
             <Route path="/masters/ram" element={<Ram />} />
             <Route path="/masters/storage" element={<Storage />} />
             <Route path="/masters/condition-category" element={<ConditionCategory />} />
+            <Route path="/masters/customer-category" element={<CustomerCategory />} />
+            <Route path="/masters/seller-category" element={<SellerCategory />} />
 
             {/* Forms */}
             <Route path="/form-elements" element={<FormElements />} />

@@ -65,6 +65,8 @@ const navItems: NavItem[] = [
       { name: "RAM", path: "/masters/ram" },
       { name: "Storage", path: "/masters/storage" },
       { name: "Conditions", path: "/masters/condition-category" },
+      { name: "Customer Category", path: "/masters/customer-category" },
+      { name: "Seller Category", path: "/masters/seller-category" },
     ],
   },
   {
