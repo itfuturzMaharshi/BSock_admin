@@ -634,11 +634,35 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
   };
 
   const formatPrice = (price: number | string): string => {
+    if (price === null || price === undefined) return "-";
     if (typeof price === "string") {
       const num = parseFloat(price);
       return isNaN(num) ? "0.00" : num.toFixed(2);
     }
     return price.toFixed(2);
+  };
+
+  const getCountryPrice = (product: Product, country: "Hongkong" | "Dubai"): string => {
+    // Prefer structured countryDeliverables if present
+    if (Array.isArray(product.countryDeliverables) && product.countryDeliverables.length > 0) {
+      const entry = product.countryDeliverables.find((cd) => cd.country === country);
+      if (entry) {
+        const usd = entry.usd ?? entry.price;
+        if (usd !== undefined && usd !== null) {
+          return `$${formatPrice(usd)}`;
+        }
+      }
+    }
+
+    // Fallback to legacy fields for backward compatibility
+    if (country === "Hongkong" && product.country === "Hongkong") {
+      return `$${formatPrice(product.price)}`;
+    }
+    if (country === "Dubai" && product.country === "Dubai") {
+      return `$${formatPrice(product.price)}`;
+    }
+
+    return "-";
   };
 
   const formatExpiryTime = (expiryTime: string): string => {
@@ -882,10 +906,10 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                   Sub Sku Name
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Price
+                  HK Price (USD)
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Country
+                  Dubai Price (USD)
                 </th>
                 <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Status
@@ -952,10 +976,10 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                       {getSubSkuFamilyText(item.subSkuFamilyId)}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      ${formatPrice(item.price)}
+                      {getCountryPrice(item, "Hongkong")}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.country}
+                      {getCountryPrice(item, "Dubai")}
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
                       {getStatusBadge(item)}

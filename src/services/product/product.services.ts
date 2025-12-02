@@ -31,6 +31,19 @@ export interface Product {
   canApprove?: boolean;
   sequence?: number | null;
   isShowTimer?: boolean;
+  // Optional per-country delivery pricing details (e.g. Hongkong, Dubai)
+  countryDeliverables?: Array<{
+    country: string;
+    // For backward compatibility, backend may send either price or usd/local
+    price?: number;
+    usd?: number;
+    xe?: number;
+    local?: number;
+    charges?: Array<{
+      name: string;
+      value: number;
+    }>;
+  }>;
 }
 
 export interface ListResponse {

@@ -30,6 +30,7 @@ import Orders from "./pages/Orders/Orders";
 import CurrencyConversion from "./pages/CurrencyConversion/CurrencyConversion";
 import Activities from "./pages/Activities/Activities";
 import Customers from "./pages/Customers/Customers";
+import Sellers from "./pages/Sellers/Sellers";
 import BidProducts from "./pages/BidProducts/BidProducts";
 import BidTracking from "./pages/BidProducts/BidTracking";
 import Brand from "./pages/Brand/Brand";
@@ -59,6 +60,7 @@ export default function App() {
             <Route path="/blank" element={<Blank />} />
             <Route path="/admin" element={<Admins />} />
             <Route path="/customers" element={<Customers />} />
+            <Route path="/sellers" element={<Sellers />} />
             <Route path="/currency-conversion" element={<CurrencyConversion />} />
             <Route path="/business-requests" element={<BusinessRequests />} />
             <Route path="/sku-family" element={<SkuFamily />} />
