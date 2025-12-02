@@ -7,6 +7,8 @@ interface FormData {
   title: string;
   description: string;
   sequence?: number;
+  marginType?: 'fixed' | 'percentage' | '';
+  margin?: number | null;
 }
 
 interface BrandModalProps {
@@ -28,6 +30,8 @@ const BrandModal: React.FC<BrandModalProps> = ({
     title: "",
     description: "",
     sequence: 1,
+    marginType: "",
+    margin: null,
   });
   const [errors, setErrors] = useState<Partial<FormData>>({});
 
@@ -39,6 +43,8 @@ const BrandModal: React.FC<BrandModalProps> = ({
         title: editItem.title || "",
         description: editItem.description || "",
         sequence: editItem.sequence ?? 1,
+        marginType: (editItem as any).marginType || "",
+        margin: (editItem as any).margin ?? null,
       });
     } else {
       setFormData({
@@ -47,6 +53,8 @@ const BrandModal: React.FC<BrandModalProps> = ({
         title: "",
         description: "",
         sequence: 1,
+        marginType: "",
+        margin: null,
       });
     }
     setErrors({});
@@ -175,6 +183,44 @@ const BrandModal: React.FC<BrandModalProps> = ({
             />
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
               Lower numbers appear first in lists
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Margin Type
+            </label>
+            <select
+              value={formData.marginType || ""}
+              onChange={(e) =>
+                setFormData({ ...formData, marginType: e.target.value as 'fixed' | 'percentage' | '' })
+              }
+              className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+            >
+              <option value="">Select margin type (optional)</option>
+              <option value="fixed">Fixed</option>
+              <option value="percentage">Percentage</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Margin
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.margin ?? ''}
+              onChange={(e) => {
+                const value = e.target.value;
+                setFormData({ ...formData, margin: value === '' ? null : parseFloat(value) || 0 });
+              }}
+              className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+              placeholder="Enter margin value (optional)"
+            />
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Enter margin value based on selected margin type
             </p>
           </div>
 

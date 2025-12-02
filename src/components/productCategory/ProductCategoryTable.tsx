@@ -245,6 +245,12 @@ const ProductCategoryTable: React.FC = () => {
                 <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Sequence
                 </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                  Margin Type
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                  Margin
+                </th>
                 <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Actions
                 </th>
@@ -253,7 +259,7 @@ const ProductCategoryTable: React.FC = () => {
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="p-12 text-center">
+                  <td colSpan={8} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
                       Loading Product Categories...
@@ -262,7 +268,7 @@ const ProductCategoryTable: React.FC = () => {
                 </tr>
               ) : categoriesData.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-12 text-center">
+                  <td colSpan={8} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       No product categories found
                     </div>
@@ -340,6 +346,16 @@ const ProductCategoryTable: React.FC = () => {
                           </button>
                         )}
                       </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      {(item as any).marginType || "-"}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      {(item as any).margin !== undefined && (item as any).margin !== null 
+                        ? (item as any).marginType === 'percentage' 
+                          ? `${(item as any).margin}%` 
+                          : (item as any).margin
+                        : "-"}
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
                       <div className="inline-flex items-center gap-3">
