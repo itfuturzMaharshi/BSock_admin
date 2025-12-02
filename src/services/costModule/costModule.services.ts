@@ -4,10 +4,12 @@ import api from '../api/api';
 interface CostModule {
   _id?: string;
   name: string;
+  name2?: string;
   countries: string[];
   remark: string;
   costType: 'Percentage' | 'Fixed';
-  costField: string;
+  costField: 'product' | 'delivery';
+  costUnit?: 'pc' | 'kg' | 'moq' | 'order amount';
   value: number;
   minValue?: number;
   maxValue?: number;

@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from "react";
 import toastHelper from "../../utils/toastHelper";
 import Select from "react-select";
-import CreatableSelect from "react-select/creatable";
 
 // Define the interface for CostModule data
 interface CostModule {
   _id?: string;
   name: string;
+  name2?: string;
   countries: string[];
   remark: string;
   costType: "Percentage" | "Fixed";
-  costField: string;
+  costField: "product" | "delivery";
+  costUnit?: "pc" | "kg" | "moq" | "order amount";
   value: number;
   minValue?: number;
   maxValue?: number;
@@ -20,10 +21,12 @@ interface CostModule {
 // Define the interface for form data
 interface FormData {
   name: string;
+  name2: string;
   countries: string[];
   remark: string;
   costType: "Percentage" | "Fixed";
-  costField: string;
+  costField: "product" | "delivery" | "";
+  costUnit: "pc" | "kg" | "moq" | "order amount" | "";
   value: string;
   minValue: string;
   maxValue: string;
@@ -32,10 +35,12 @@ interface FormData {
 
 interface ValidationErrors {
   name?: string;
+  name2?: string;
   countries?: string;
   remark?: string;
   costType?: string;
   costField?: string;
+  costUnit?: string;
   value?: string;
   minValue?: string;
   maxValue?: string;
@@ -44,10 +49,12 @@ interface ValidationErrors {
 
 interface TouchedFields {
   name: boolean;
+  name2: boolean;
   countries: boolean;
   remark: boolean;
   costType: boolean;
   costField: boolean;
+  costUnit: boolean;
   value: boolean;
   minValue: boolean;
   maxValue: boolean;
@@ -69,10 +76,12 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
 }) => {
   const [formData, setFormData] = useState<FormData>({
     name: "",
+    name2: "",
     countries: [],
     remark: "",
     costType: "Percentage",
-    costField: "price",
+    costField: "",
+    costUnit: "",
     value: "",
     minValue: "",
     maxValue: "",
@@ -84,18 +93,33 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
   );
   const [touched, setTouched] = useState<TouchedFields>({
     name: false,
+    name2: false,
     countries: false,
     remark: false,
     costType: false,
     costField: false,
+    costUnit: false,
     value: false,
     minValue: false,
     maxValue: false,
     isDeleted: false,
   });
 
-  // Default options for costField
-  const [costFieldOptions, setCostFieldOptions] = useState<string[]>(["price", "quantity", "logistic"]);
+  // Cost unit options based on costField
+  const getCostUnitOptions = (): Array<{ value: string; label: string }> => {
+    if (formData.costField === "product") {
+      return [
+        { value: "pc", label: "PC" },
+        { value: "kg", label: "KG" },
+        { value: "moq", label: "MOQ" },
+      ];
+    } else if (formData.costField === "delivery") {
+      return [
+        { value: "order amount", label: "Order Amount" },
+      ];
+    }
+    return [];
+  };
 
   // Static countries list
   const countriesList = ["Hongkong", "Dubai", "Singapore"];
@@ -106,10 +130,12 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
       if (editItem) {
         setFormData({
           name: editItem.name || "",
+          name2: editItem.name2 || "",
           countries: editItem.countries || [],
           remark: editItem.remark || "",
           costType: editItem.costType,
-          costField: editItem.costField || "price",
+          costField: editItem.costField || "",
+          costUnit: editItem.costUnit || "",
           value: editItem.value.toString(),
           minValue: editItem.minValue?.toString() || "",
           maxValue: editItem.maxValue?.toString() || "",
@@ -118,10 +144,12 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
       } else {
         setFormData({
           name: "",
+          name2: "",
           countries: [],
           remark: "",
           costType: "Percentage",
-          costField: "price",
+          costField: "",
+          costUnit: "",
           value: "",
           minValue: "",
           maxValue: "",
@@ -131,17 +159,16 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
     }
   }, [isOpen, editItem]);
 
-  // Add custom costField to options when editItem changes
+  // Reset costUnit when costField changes
   useEffect(() => {
-    if (editItem && editItem.costField) {
-      setCostFieldOptions((prev) => {
-        if (!prev.includes(editItem.costField)) {
-          return [...prev, editItem.costField];
-        }
-        return prev;
-      });
+    if (formData.costField === "") {
+      setFormData((prev) => ({ ...prev, costUnit: "" }));
+    } else if (formData.costField === "product" && formData.costUnit === "order amount") {
+      setFormData((prev) => ({ ...prev, costUnit: "" }));
+    } else if (formData.costField === "delivery" && !["order amount"].includes(formData.costUnit)) {
+      setFormData((prev) => ({ ...prev, costUnit: "" }));
     }
-  }, [editItem]);
+  }, [formData.costField]);
 
   // Handle input changes for regular inputs and select elements
   const handleInputChange = (
@@ -178,8 +205,26 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
     switch (name) {
       case "name":
         return !value || value.trim() === "" ? "Name is required" : undefined;
+      case "name2":
+        return undefined; // Optional field
       case "costField":
-        return !value ? "Cost Field is required" : undefined;
+        if (!value) return "Cost Field is required";
+        if (value !== "product" && value !== "delivery") {
+          return "Cost Field must be either product or delivery";
+        }
+        return undefined;
+      case "costUnit":
+        if (!value) return "Cost Unit is required";
+        if (formData.costField === "product") {
+          if (!["pc", "kg", "moq"].includes(value)) {
+            return "Cost Unit must be pc, kg, or moq for product";
+          }
+        } else if (formData.costField === "delivery") {
+          if (value !== "order amount") {
+            return "Cost Unit must be order amount for delivery";
+          }
+        }
+        return undefined;
       case "countries":
         return (!value || (Array.isArray(value) && value.length === 0))
           ? "At least one country is required"
@@ -228,6 +273,7 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
       "remark",
       "costType",
       "costField",
+      "costUnit",
       "value",
     ];
 
@@ -296,10 +342,12 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
     // Mark all fields as touched
     setTouched({
       name: true,
+      name2: true,
       countries: true,
       remark: true,
       costType: true,
       costField: true,
+      costUnit: true,
       value: true,
       minValue: true,
       maxValue: true,
@@ -314,10 +362,12 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
     setIsSubmitting(true);
     const newItem: CostModule = {
       name: formData.name,
+      name2: formData.name2 || undefined,
       countries: formData.countries,
       remark: formData.remark,
       costType: formData.costType,
-      costField: formData.costField,
+      costField: formData.costField as "product" | "delivery",
+      costUnit: formData.costUnit as "pc" | "kg" | "moq" | "order amount" | undefined,
       value: parseFloat(formData.value) || 0,
       minValue: formData.minValue ? parseFloat(formData.minValue) : undefined,
       maxValue: formData.maxValue ? parseFloat(formData.maxValue) : undefined,
@@ -499,44 +549,65 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
               )}
             </div>
 
+            {/* Name2 Field */}
+            <div>
+              <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                Name2
+              </label>
+              <input
+                type="text"
+                name="name2"
+                value={formData.name2}
+                onChange={handleInputChange}
+                onBlur={handleBlur}
+                className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm ${
+                  touched.name2 && validationErrors.name2
+                    ? "border-red-500 focus:ring-red-500"
+                    : "border-gray-200 dark:border-gray-700"
+                }`}
+                placeholder="Enter name2 (optional)"
+                disabled={isSubmitting}
+              />
+              {touched.name2 && validationErrors.name2 && (
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                  {validationErrors.name2}
+                </p>
+              )}
+            </div>
+
             {/* Cost Field, Cost Type Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                   Cost Field <span className="text-red-500">*</span>
                 </label>
-                <CreatableSelect
-                  value={{ value: formData.costField, label: formData.costField }}
-                  onChange={(newValue: any) => {
-                    const value = newValue?.value || "";
-                    setFormData((prev) => ({ ...prev, costField: value }));
-                    if (value && !costFieldOptions.includes(value)) {
-                      setCostFieldOptions([...costFieldOptions, value]);
-                    }
-                    if (touched.costField) {
-                      const error = validateField("costField", value);
-                      setValidationErrors((prev) => ({ ...prev, costField: error }));
-                    }
-                  }}
-                  onBlur={() => {
-                    setTouched((prev) => ({ ...prev, costField: true }));
-                    const error = validateField("costField", formData.costField);
-                    setValidationErrors((prev) => ({ ...prev, costField: error }));
-                  }}
-                  options={costFieldOptions.map((opt) => ({ value: opt, label: opt }))}
-                  placeholder="Select or create cost field"
-                  isDisabled={isSubmitting}
-                  styles={customStyles}
-                  isClearable
-                  isSearchable
-                  classNamePrefix="react-select"
-                  formatCreateLabel={(inputValue) => (
-                    <div className="flex items-center gap-2">
-                      <i className="fas fa-plus text-blue-500"></i>
-                      <span>Add "{inputValue}"</span>
-                    </div>
-                  )}
-                />
+                <div className="relative">
+                  <select
+                    name="costField"
+                    value={formData.costField}
+                    onChange={(e) => {
+                      const value = e.target.value as "product" | "delivery" | "";
+                      setFormData((prev) => ({ ...prev, costField: value, costUnit: "" }));
+                      if (touched.costField) {
+                        const error = validateField("costField", value);
+                        setValidationErrors((prev) => ({ ...prev, costField: error }));
+                      }
+                    }}
+                    onBlur={handleBlur}
+                    className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
+                      touched.costField && validationErrors.costField
+                        ? "border-red-500 focus:ring-red-500"
+                        : "border-gray-200 dark:border-gray-700"
+                    }`}
+                    required
+                    disabled={isSubmitting}
+                  >
+                    <option value="">Select Cost Field</option>
+                    <option value="product">Product</option>
+                    <option value="delivery">Delivery</option>
+                  </select>
+                  <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+                </div>
                 {touched.costField && validationErrors.costField && (
                   <p className="mt-1 text-xs text-red-600 dark:text-red-400">
                     {validationErrors.costField}
@@ -573,6 +644,43 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
                 )}
               </div>
             </div>
+
+            {/* Cost Unit Field */}
+            {formData.costField && (
+              <div>
+                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                  Cost Unit <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <select
+                    name="costUnit"
+                    value={formData.costUnit}
+                    onChange={handleInputChange}
+                    onBlur={handleBlur}
+                    className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
+                      touched.costUnit && validationErrors.costUnit
+                        ? "border-red-500 focus:ring-red-500"
+                        : "border-gray-200 dark:border-gray-700"
+                    }`}
+                    required
+                    disabled={isSubmitting || !formData.costField}
+                  >
+                    <option value="">Select Cost Unit</option>
+                    {getCostUnitOptions().map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+                </div>
+                {touched.costUnit && validationErrors.costUnit && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {validationErrors.costUnit}
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Countries Field */}
             <div>
