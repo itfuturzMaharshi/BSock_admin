@@ -7,7 +7,6 @@ interface ValidationErrors {
   skuFamilyCode?: string;
   name?: string;
   code?: string;
-  brand?: string;
   description?: string;
   colorVariant?: string;
   country?: string;
@@ -21,7 +20,6 @@ interface TouchedFields {
   skuFamilyCode: boolean;
   name: boolean;
   code: boolean;
-  brand: boolean;
   description: boolean;
   colorVariant: boolean;
   country: boolean;
@@ -50,7 +48,6 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
     skuFamilyCode: "",
     name: "",
     code: "",
-    brand: "",
     description: "",
     colorVariant: "",
     country: "",
@@ -73,7 +70,6 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
     skuFamilyCode: false,
     name: false,
     code: false,
-    brand: false,
     description: false,
     colorVariant: false,
     country: false,
@@ -172,7 +168,6 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
           skuFamilyCode: skuFamilyCode,
           name: editItem.name || "",
           code: editItem.code || "",
-          brand: editItem.brand || "",
           description: editItem.description || "",
           colorVariant: cleanArrayData(editItem.colorVariant),
           country: cleanArrayData(editItem.country), // Country is not an array
@@ -195,7 +190,6 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
           skuFamilyCode: "",
           name: "",
           code: "",
-          brand: "",
           description: "",
           colorVariant: "",
           country: "",
@@ -212,7 +206,6 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
         skuFamilyCode: "",
         name: "",
         code: "",
-        brand: "",
         description: "",
         colorVariant: "",
         country: "",
@@ -351,8 +344,6 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
         return !value || value.trim() === "" ? "Name is required" : undefined;
       case "code":
         return !value || value.trim() === "" ? "Code is required" : undefined;
-      case "brand":
-        return !value || value.trim() === "" ? "Brand is required" : undefined;
       case "description":
         return !value || value.trim() === ""
           ? "Description is required"
@@ -381,7 +372,6 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
       "skuFamilyCode",
       "name",
       "code",
-      "brand",
       "description",
       "colorVariant",
       "country",
@@ -425,7 +415,6 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
       skuFamilyCode: true,
       name: true,
       code: true,
-      brand: true,
       description: true,
       colorVariant: true,
       country: true,
@@ -451,7 +440,6 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
       formDataToSend.append("skuFamilyCode", formData.skuFamilyCode.trim());
       formDataToSend.append("name", formData.name.trim());
       formDataToSend.append("code", formData.code.trim());
-      formDataToSend.append("brand", formData.brand.trim());
       formDataToSend.append("description", formData.description.trim());
       // Handle array fields - convert comma-separated strings to arrays
       const colorVariantArray = formData.colorVariant ? formData.colorVariant.split(',').map(item => item.trim()).filter(item => item) : [];
@@ -561,8 +549,8 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
               )}
             </div>
 
-            {/* ID, Name, Code, and Brand Row */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* ID, Name, Code Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                   ID
@@ -634,31 +622,6 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
                 {touched.code && validationErrors.code && (
                   <p className="mt-1 text-xs text-red-600 dark:text-red-400">
                     {validationErrors.code}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                  Brand
-                </label>
-                <input
-                  type="text"
-                  name="brand"
-                  value={formData.brand}
-                  onChange={handleInputChange}
-                  onBlur={handleBlur}
-                  className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm ${
-                    touched.brand && validationErrors.brand
-                      ? "border-red-500 focus:ring-red-500"
-                      : "border-gray-200 dark:border-gray-700"
-                  }`}
-                  placeholder="Enter Brand"
-                  required
-                  disabled={isLoading || viewMode}
-                />
-                {touched.brand && validationErrors.brand && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {validationErrors.brand}
                   </p>
                 )}
               </div>

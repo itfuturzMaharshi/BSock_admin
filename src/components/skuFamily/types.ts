@@ -4,6 +4,7 @@ export interface SkuFamily {
   code: string;
   name: string;
   brand: string;
+  productcategoriesId?: string | { _id?: string; title?: string; code?: string };
   description: string;
   images: string[];
   colorVariant: string | string[];
