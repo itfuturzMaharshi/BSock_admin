@@ -15,6 +15,8 @@ interface CostModule {
   value: number;
   minValue?: number;
   maxValue?: number;
+  groupId?: string;
+  isExpressDelivery?: boolean;
   isDeleted: boolean;
 }
 
@@ -30,6 +32,8 @@ interface FormData {
   value: string;
   minValue: string;
   maxValue: string;
+  groupId: string;
+  isExpressDelivery: boolean;
   isDeleted: boolean;
 }
 
@@ -44,6 +48,8 @@ interface ValidationErrors {
   value?: string;
   minValue?: string;
   maxValue?: string;
+  groupId?: string;
+  isExpressDelivery?: string;
   isDeleted?: string;
 }
 
@@ -58,6 +64,8 @@ interface TouchedFields {
   value: boolean;
   minValue: boolean;
   maxValue: boolean;
+  groupId: boolean;
+  isExpressDelivery: boolean;
   isDeleted: boolean;
 }
 
@@ -85,6 +93,8 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
     value: "",
     minValue: "",
     maxValue: "",
+    groupId: "",
+    isExpressDelivery: false,
     isDeleted: false,
   });
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -102,6 +112,8 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
     value: false,
     minValue: false,
     maxValue: false,
+    groupId: false,
+    isExpressDelivery: false,
     isDeleted: false,
   });
 
@@ -139,6 +151,8 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
           value: editItem.value.toString(),
           minValue: editItem.minValue?.toString() || "",
           maxValue: editItem.maxValue?.toString() || "",
+          groupId: editItem.groupId || "",
+          isExpressDelivery: editItem.isExpressDelivery || false,
           isDeleted: editItem.isDeleted,
         });
       } else {
@@ -153,6 +167,8 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
           value: "",
           minValue: "",
           maxValue: "",
+          groupId: "",
+          isExpressDelivery: false,
           isDeleted: false,
         });
       }
@@ -351,6 +367,8 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
       value: true,
       minValue: true,
       maxValue: true,
+      groupId: true,
+      isExpressDelivery: true,
       isDeleted: true,
     });
 
@@ -371,6 +389,8 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
       value: parseFloat(formData.value) || 0,
       minValue: formData.minValue ? parseFloat(formData.minValue) : undefined,
       maxValue: formData.maxValue ? parseFloat(formData.maxValue) : undefined,
+      groupId: formData.groupId.trim() || undefined,
+      isExpressDelivery: formData.isExpressDelivery,
       isDeleted: formData.isDeleted,
     };
     try {
@@ -735,6 +755,58 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
               )}
             </div>
 
+            {/* Group ID Field */}
+            <div>
+              <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                Group ID
+                <span className="text-gray-500 text-xs ml-1">(Optional - Costs with same Group ID will apply together)</span>
+              </label>
+              <input
+                type="text"
+                name="groupId"
+                value={formData.groupId}
+                onChange={handleInputChange}
+                onBlur={handleBlur}
+                className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm ${
+                  touched.groupId && validationErrors.groupId
+                    ? "border-red-500 focus:ring-red-500"
+                    : "border-gray-200 dark:border-gray-700"
+                }`}
+                placeholder="Enter Group ID (e.g., SHIPPING_GROUP, TAX_GROUP)"
+                disabled={isSubmitting}
+              />
+              {touched.groupId && validationErrors.groupId && (
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                  {validationErrors.groupId}
+                </p>
+              )}
+            </div>
+
+            {/* Is Express Delivery Checkbox */}
+            <div>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="isExpressDelivery"
+                  checked={formData.isExpressDelivery}
+                  onChange={(e) => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      isExpressDelivery: e.target.checked,
+                    }));
+                  }}
+                  className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                  disabled={isSubmitting}
+                />
+                <span className="text-sm font-medium text-gray-950 dark:text-gray-200">
+                  Is Express Delivery
+                </span>
+              </label>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 ml-8">
+                Check this if this cost applies to express delivery orders
+              </p>
+            </div>
+
             {/* Value, Min Value, Max Value */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
@@ -872,3 +944,4 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
 };
 
 export default CostModuleModal;
+
