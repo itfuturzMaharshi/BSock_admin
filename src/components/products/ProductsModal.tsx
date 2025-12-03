@@ -3,8 +3,6 @@ import {
   ProductService,
   Product,
 } from "../../services/product/product.services";
-import { ProductCategoryService } from "../../services/productCategory/productCategory.services";
-import { BrandService } from "../../services/brand/brand.services";
 import { GradeService } from "../../services/grade/grade.services";
 import { CostModuleService } from "../../services/costModule/costModule.services";
 import DatePicker from "react-datepicker";
@@ -23,8 +21,6 @@ interface CountryDeliverable {
 interface FormData {
   skuFamilyId: string;
   subSkuFamilyId: string;
-  productcategoriesId: string;
-  brandId: string;
   gradeId: string;
   simType: string;
   color: string;
@@ -47,8 +43,6 @@ interface FormData {
 interface ValidationErrors {
   skuFamilyId?: string;
   subSkuFamilyId?: string;
-  productcategoriesId?: string;
-  brandId?: string;
   gradeId?: string;
   simType?: string;
   color?: string;
@@ -102,8 +96,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
   const [formData, setFormData] = useState<FormData>({
     skuFamilyId: "",
     subSkuFamilyId: "",
-    productcategoriesId: "",
-    brandId: "",
     gradeId: "",
     simType: "",
     color: "",
@@ -129,19 +121,11 @@ const ProductModal: React.FC<ProductModalProps> = ({
   const [subSkuFamilies, setSubSkuFamilies] = useState<
     { _id: string; name: string }[]
   >([]);
-  const [productCategories, setProductCategories] = useState<
-    { _id?: string; title: string }[]
-  >([]);
-  const [brands, setBrands] = useState<
-    { _id?: string; title: string }[]
-  >([]);
   const [grades, setGrades] = useState<
     { _id?: string; title: string; brand?: string | { _id?: string; title: string; code?: string } }[]
   >([]);
   const [skuLoading, setSkuLoading] = useState<boolean>(false);
   const [subSkuLoading, setSubSkuLoading] = useState<boolean>(false);
-  const [productCategoryLoading, setProductCategoryLoading] = useState<boolean>(false);
-  const [brandLoading, setBrandLoading] = useState<boolean>(false);
   const [gradeLoading, setGradeLoading] = useState<boolean>(false);
   const [skuError, setSkuError] = useState<string | null>(null);
   const [subSkuError, setSubSkuError] = useState<string | null>(null);
@@ -310,32 +294,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
         }
       };
 
-      const fetchProductCategories = async () => {
-        try {
-          setProductCategoryLoading(true);
-          const response = await ProductCategoryService.getProductCategoryList(1, 1000);
-          const categories = (response.data.docs || []).filter((cat: any) => cat && cat._id && cat.title && typeof cat.title === 'string');
-          setProductCategories(categories);
-        } catch (error: any) {
-          console.error("Failed to load Product Categories:", error);
-        } finally {
-          setProductCategoryLoading(false);
-        }
-      };
-
-      const fetchBrands = async () => {
-        try {
-          setBrandLoading(true);
-          const response = await BrandService.getBrandList(1, 1000);
-          const brandsList = (response.data.docs || []).filter((brand: any) => brand && brand._id && brand.title && typeof brand.title === 'string');
-          setBrands(brandsList);
-        } catch (error: any) {
-          console.error("Failed to load Brands:", error);
-        } finally {
-          setBrandLoading(false);
-        }
-      };
-
       const fetchGrades = async () => {
         try {
           setGradeLoading(true);
@@ -350,8 +308,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
       };
 
       fetchSkuFamilies();
-      fetchProductCategories();
-      fetchBrands();
       fetchGrades();
     }
   }, [isOpen]);
@@ -367,14 +323,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
           typeof editItem.subSkuFamilyId === "object"
             ? editItem.subSkuFamilyId._id || ""
             : editItem.subSkuFamilyId || "";
-        const productCategoryId =
-          typeof (editItem as any).productcategoriesId === "object"
-            ? (editItem as any).productcategoriesId?._id || ""
-            : (editItem as any).productcategoriesId || "";
-        const brandId =
-          typeof (editItem as any).brandId === "object"
-            ? (editItem as any).brandId?._id || ""
-            : (editItem as any).brandId || "";
         const gradeId =
           typeof (editItem as any).gradeId === "object"
             ? (editItem as any).gradeId?._id || ""
@@ -382,8 +330,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
         setFormData({
           skuFamilyId: skuId,
           subSkuFamilyId: subSkuId,
-          productcategoriesId: productCategoryId,
-          brandId: brandId,
           gradeId: gradeId,
           simType: editItem.simType,
           color: editItem.color,
@@ -411,8 +357,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
         setFormData({
           skuFamilyId: "",
           subSkuFamilyId: "",
-          productcategoriesId: "",
-          brandId: "",
           gradeId: "",
           simType: "",
           color: "",
@@ -1069,84 +1013,8 @@ const ProductModal: React.FC<ProductModalProps> = ({
               </div>
             </div>
 
-            {/* Product Category, Brand, and Grade Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                  Product Category
-                </label>
-                <Select
-                  options={productCategories
-                    .filter(cat => cat && cat._id && cat.title && typeof cat.title === 'string')
-                    .map(cat => ({ 
-                      value: cat._id || '', 
-                      label: cat.title 
-                    }))}
-                  value={(() => {
-                    if (!formData.productcategoriesId) return null;
-                    const found = productCategories.find(cat => cat && cat._id === formData.productcategoriesId);
-                    if (!found || !found._id || !found.title || typeof found.title !== 'string') return null;
-                    return { 
-                      value: found._id, 
-                      label: found.title 
-                    };
-                  })()}
-                  onChange={(selectedOption: any) => {
-                    const value = selectedOption?.value || '';
-                    setFormData(prev => ({ ...prev, productcategoriesId: value }));
-                  }}
-                  onBlur={() => {
-                    setTouched((prev) => ({ ...prev, productcategoriesId: true }));
-                  }}
-                  isDisabled={productCategoryLoading}
-                  placeholder={productCategoryLoading ? "Loading..." : "Select Product Category"}
-                  isSearchable={true}
-                  isLoading={productCategoryLoading}
-                  styles={customSelectStyles}
-                  className="basic-select"
-                  classNamePrefix="select"
-                  isClearable
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                  Brand
-                </label>
-                <Select
-                  options={brands
-                    .filter(brand => brand && brand._id && brand.title && typeof brand.title === 'string')
-                    .map(brand => ({ 
-                      value: brand._id || '', 
-                      label: brand.title 
-                    }))}
-                  value={(() => {
-                    if (!formData.brandId) return null;
-                    const found = brands.find(brand => brand && brand._id === formData.brandId);
-                    if (!found || !found._id || !found.title || typeof found.title !== 'string') return null;
-                    return { 
-                      value: found._id, 
-                      label: found.title 
-                    };
-                  })()}
-                  onChange={(selectedOption: any) => {
-                    const value = selectedOption?.value || '';
-                    setFormData(prev => ({ ...prev, brandId: value }));
-                  }}
-                  onBlur={() => {
-                    setTouched((prev) => ({ ...prev, brandId: true }));
-                  }}
-                  isDisabled={brandLoading}
-                  placeholder={brandLoading ? "Loading..." : "Select Brand"}
-                  isSearchable={true}
-                  isLoading={brandLoading}
-                  styles={customSelectStyles}
-                  className="basic-select"
-                  classNamePrefix="select"
-                  isClearable
-                />
-              </div>
-              
+            {/* Grade Row */}
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                   Grade

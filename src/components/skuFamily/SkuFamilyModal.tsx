@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from "react";
 import toastHelper from "../../utils/toastHelper";
 import { SkuFamily } from "./types";
+import { ProductCategoryService } from "../../services/productCategory/productCategory.services";
+import Select from 'react-select';
 
 interface ValidationErrors {
   id?: string;
   name?: string;
   code?: string;
   brand?: string;
+  productcategoriesId?: string;
   description?: string;
   colorVariant?: string;
   country?: string;
@@ -20,6 +23,7 @@ interface TouchedFields {
   name: boolean;
   code: boolean;
   brand: boolean;
+  productcategoriesId: boolean;
   description: boolean;
   colorVariant: boolean;
   country: boolean;
@@ -46,6 +50,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
     code: "",
     name: "",
     brand: "",
+    productcategoriesId: "",
     description: "",
     colorVariant: [] as string[],
     country: [] as string[],
@@ -53,6 +58,10 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
     networkBands: [] as string[],
     sequence: 1 as number | undefined,
   });
+  const [productCategories, setProductCategories] = useState<
+    { _id?: string; title: string }[]
+  >([]);
+  const [productCategoryLoading, setProductCategoryLoading] = useState<boolean>(false);
   const [newImages, setNewImages] = useState<File[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
   // const [isDragging, setIsDragging] = useState<boolean>(false);
@@ -67,6 +76,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
     name: false,
     code: false,
     brand: false,
+    productcategoriesId: false,
     description: false,
     colorVariant: false,
     country: false,
@@ -136,6 +146,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
         name: false,
         code: false,
         brand: false,
+        productcategoriesId: false,
         description: false,
         colorVariant: false,
         country: false,
@@ -152,6 +163,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
         code: "",
         name: "",
         brand: "",
+        productcategoriesId: "",
         description: "",
         colorVariant: [],
         country: [],
@@ -196,11 +208,16 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
       });
 
       // Set form data
+      const productCategoryId = typeof (editItem as any).productcategoriesId === "object"
+        ? (editItem as any).productcategoriesId?._id || ""
+        : (editItem as any).productcategoriesId || "";
+      
       setFormData({
         id: editItem.id || "",
         code: editItem.code || "",
         name: editItem.name || "",
         brand: editItem.brand || "",
+        productcategoriesId: productCategoryId,
         description: editItem.description || "",
         colorVariant,
         country,
@@ -223,6 +240,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
         code: "",
         name: "",
         brand: "",
+        productcategoriesId: "",
         description: "",
         colorVariant: [],
         country: [],
@@ -233,6 +251,23 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
       setExistingImages([]);
     }
   }, [isOpen, editItem]);
+
+  // Fetch product categories on mount
+  useEffect(() => {
+    const fetchProductCategories = async () => {
+      try {
+        setProductCategoryLoading(true);
+        const response = await ProductCategoryService.getProductCategoryList(1, 1000);
+        const categoriesList = (response.data.docs || []).filter((cat: any) => cat && cat._id && cat.title && typeof cat.title === 'string');
+        setProductCategories(categoriesList);
+      } catch (error) {
+        console.error("Failed to load Product Categories:", error);
+      } finally {
+        setProductCategoryLoading(false);
+      }
+    };
+    fetchProductCategories();
+  }, []);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -379,6 +414,7 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
       name: true,
       code: true,
       brand: true,
+      productcategoriesId: true,
       description: true,
       colorVariant: true,
       country: true,
@@ -402,6 +438,9 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
       formDataToSend.append("code", formData.code.trim());
       formDataToSend.append("name", formData.name.trim());
       formDataToSend.append("brand", formData.brand.trim());
+      if (formData.productcategoriesId) {
+        formDataToSend.append("productcategoriesId", formData.productcategoriesId);
+      }
       formDataToSend.append("description", formData.description.trim());
       formDataToSend.append("colorVariant", formData.colorVariant.join(", "));
       formDataToSend.append("country", formData.country.join(", "));
@@ -731,8 +770,8 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
               </div>
             </div>
 
-            {/* Brand and Sequence Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Brand, Product Category and Sequence Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                   Brand <span className="text-red-500">*</span>
@@ -755,6 +794,45 @@ const SkuFamilyModal: React.FC<SkuFamilyModalProps> = ({
                 {touched.brand && validationErrors.brand && (
                   <p className="mt-1 text-xs text-red-600 dark:text-red-400">
                     {validationErrors.brand}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                  Product Category
+                </label>
+                <Select
+                  options={productCategories
+                    .filter(cat => cat && cat._id && cat.title && typeof cat.title === 'string')
+                    .map(cat => ({ 
+                      value: cat._id || '', 
+                      label: cat.title 
+                    }))}
+                  value={
+                    !formData.productcategoriesId ? null :
+                    (() => {
+                      const found = productCategories.find(cat => cat && cat._id === formData.productcategoriesId);
+                      return found ? { value: found._id || '', label: found.title } : null;
+                    })()
+                  }
+                  onChange={(selectedOption) => {
+                    const value = selectedOption ? selectedOption.value : "";
+                    setFormData(prev => ({ ...prev, productcategoriesId: value }));
+                    setTouched((prev) => ({ ...prev, productcategoriesId: true }));
+                  }}
+                  onBlur={() => {
+                    setTouched((prev) => ({ ...prev, productcategoriesId: true }));
+                  }}
+                  isDisabled={productCategoryLoading}
+                  placeholder={productCategoryLoading ? "Loading..." : "Select Product Category"}
+                  isLoading={productCategoryLoading}
+                  className="react-select-container"
+                  classNamePrefix="react-select"
+                  isClearable
+                />
+                {touched.productcategoriesId && validationErrors.productcategoriesId && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {validationErrors.productcategoriesId}
                   </p>
                 )}
               </div>
