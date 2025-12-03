@@ -23,6 +23,7 @@ export interface Customer {
   _id: string;
   name: string;
   email: string;
+  code?: string;
   whatsappNumber?: string;
   whatsappCountryCode?: string;
   mobileNumber?: string;

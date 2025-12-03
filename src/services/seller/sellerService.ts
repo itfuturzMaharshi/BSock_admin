@@ -22,6 +22,7 @@ export interface Seller {
   _id: string;
   name: string;
   email: string;
+  code?: string;
   mobileNumber?: string;
   isActive?: boolean;
   isEmailVerified?: boolean;
