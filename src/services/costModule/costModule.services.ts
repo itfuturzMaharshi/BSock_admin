@@ -13,6 +13,8 @@ interface CostModule {
   value: number;
   minValue?: number;
   maxValue?: number;
+  groupId?: string;
+  isExpressDelivery?: boolean;
   isDeleted: boolean;
   createdAt?: string;
   updatedAt?: string;
