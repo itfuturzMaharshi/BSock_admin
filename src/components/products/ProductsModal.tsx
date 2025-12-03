@@ -5,6 +5,7 @@ import {
 } from "../../services/product/product.services";
 import { GradeService } from "../../services/grade/grade.services";
 import { CostModuleService } from "../../services/costModule/costModule.services";
+import { SellerService } from "../../services/seller/sellerService";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import Select from 'react-select';
@@ -22,10 +23,12 @@ interface FormData {
   skuFamilyId: string;
   subSkuFamilyId: string;
   gradeId: string;
+  sellerId: string;
   simType: string;
   color: string;
   ram: string;
   storage: string;
+  weight: number | string;
   condition: string;
   price: number | string;
   stock: number | string;
@@ -44,10 +47,12 @@ interface ValidationErrors {
   skuFamilyId?: string;
   subSkuFamilyId?: string;
   gradeId?: string;
+  sellerId?: string;
   simType?: string;
   color?: string;
   ram?: string;
   storage?: string;
+  weight?: string;
   condition?: string;
   price?: string;
   stock?: string;
@@ -68,6 +73,7 @@ interface TouchedFields {
   color: boolean;
   ram: boolean;
   storage: boolean;
+  weight: boolean;
   condition: boolean;
   price: boolean;
   stock: boolean;
@@ -97,10 +103,12 @@ const ProductModal: React.FC<ProductModalProps> = ({
     skuFamilyId: "",
     subSkuFamilyId: "",
     gradeId: "",
+    sellerId: "",
     simType: "",
     color: "",
     ram: "",
     storage: "",
+    weight: "",
     condition: "",
     price: 0,
     stock: 0,
@@ -124,9 +132,13 @@ const ProductModal: React.FC<ProductModalProps> = ({
   const [grades, setGrades] = useState<
     { _id?: string; title: string; brand?: string | { _id?: string; title: string; code?: string } }[]
   >([]);
+  const [sellers, setSellers] = useState<
+    { _id?: string; name: string; code?: string }[]
+  >([]);
   const [skuLoading, setSkuLoading] = useState<boolean>(false);
   const [subSkuLoading, setSubSkuLoading] = useState<boolean>(false);
   const [gradeLoading, setGradeLoading] = useState<boolean>(false);
+  const [sellerLoading, setSellerLoading] = useState<boolean>(false);
   const [skuError, setSkuError] = useState<string | null>(null);
   const [subSkuError, setSubSkuError] = useState<string | null>(null);
   const [dateError, setDateError] = useState<string | null>(null);
@@ -142,6 +154,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
     color: false,
     ram: false,
     storage: false,
+    weight: false,
     condition: false,
     price: false,
     stock: false,
@@ -307,8 +320,22 @@ const ProductModal: React.FC<ProductModalProps> = ({
         }
       };
 
+      const fetchSellers = async () => {
+        try {
+          setSellerLoading(true);
+          const sellersList = await SellerService.getAllSellers();
+          const filteredSellers = sellersList.filter((seller: any) => seller && seller._id && seller.name && typeof seller.name === 'string');
+          setSellers(filteredSellers);
+        } catch (error: any) {
+          console.error("Failed to load Sellers:", error);
+        } finally {
+          setSellerLoading(false);
+        }
+      };
+
       fetchSkuFamilies();
       fetchGrades();
+      fetchSellers();
     }
   }, [isOpen]);
 
@@ -327,14 +354,20 @@ const ProductModal: React.FC<ProductModalProps> = ({
           typeof (editItem as any).gradeId === "object"
             ? (editItem as any).gradeId?._id || ""
             : (editItem as any).gradeId || "";
+        const sellerId =
+          typeof (editItem as any).sellerId === "object"
+            ? (editItem as any).sellerId?._id || ""
+            : (editItem as any).sellerId || "";
         setFormData({
           skuFamilyId: skuId,
           subSkuFamilyId: subSkuId,
           gradeId: gradeId,
+          sellerId: sellerId,
           simType: editItem.simType,
           color: editItem.color,
           ram: editItem.ram,
           storage: editItem.storage,
+          weight: (editItem as any).weight || "",
           condition: editItem.condition,
           price: editItem.price,
           stock: editItem.stock,
@@ -358,10 +391,12 @@ const ProductModal: React.FC<ProductModalProps> = ({
           skuFamilyId: "",
           subSkuFamilyId: "",
           gradeId: "",
+          sellerId: "",
           simType: "",
           color: "",
           ram: "",
           storage: "",
+          weight: "",
           condition: "",
           price: 0,
           stock: 0,
@@ -635,6 +670,13 @@ const ProductModal: React.FC<ProductModalProps> = ({
         return !value ? "RAM is required" : undefined;
       case "storage":
         return !value ? "Storage is required" : undefined;
+      case "weight":
+        if (!value) return undefined; // Weight is optional
+        const weightNum = parseFloat(value as string);
+        if (isNaN(weightNum) || weightNum < 0) {
+          return "Weight must be a valid number >= 0";
+        }
+        return undefined;
       case "condition":
         return !value ? "Condition is required" : undefined;
       case "price":
@@ -1013,8 +1055,8 @@ const ProductModal: React.FC<ProductModalProps> = ({
               </div>
             </div>
 
-            {/* Grade Row */}
-            <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+            {/* Grade and Seller Code Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                   Grade
@@ -1056,6 +1098,51 @@ const ProductModal: React.FC<ProductModalProps> = ({
                   placeholder={gradeLoading ? "Loading..." : "Select Grade"}
                   isSearchable={true}
                   isLoading={gradeLoading}
+                  styles={customSelectStyles}
+                  className="basic-select"
+                  classNamePrefix="select"
+                  isClearable
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                  Seller Code
+                </label>
+                <Select
+                  options={sellers
+                    .filter(seller => seller && seller._id && seller.name && typeof seller.name === 'string')
+                    .map(seller => {
+                      const label = seller.code 
+                        ? `${seller.name} (${seller.code})` 
+                        : seller.name;
+                      return { 
+                        value: seller._id || '', 
+                        label: label
+                      };
+                    })}
+                  value={(() => {
+                    if (!formData.sellerId) return null;
+                    const found = sellers.find(seller => seller && seller._id === formData.sellerId);
+                    if (!found || !found._id || !found.name || typeof found.name !== 'string') return null;
+                    const label = found.code 
+                      ? `${found.name} (${found.code})` 
+                      : found.name;
+                    return { 
+                      value: found._id, 
+                      label: label
+                    };
+                  })()}
+                  onChange={(selectedOption: any) => {
+                    const value = selectedOption?.value || '';
+                    setFormData(prev => ({ ...prev, sellerId: value }));
+                  }}
+                  onBlur={() => {
+                    setTouched((prev) => ({ ...prev, sellerId: true }));
+                  }}
+                  isDisabled={sellerLoading}
+                  placeholder={sellerLoading ? "Loading..." : "Select Seller Code"}
+                  isSearchable={true}
+                  isLoading={sellerLoading}
                   styles={customSelectStyles}
                   className="basic-select"
                   classNamePrefix="select"
@@ -1174,8 +1261,8 @@ const ProductModal: React.FC<ProductModalProps> = ({
               </div>
             </div>
 
-            {/* Storage, Condition, and Price Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Storage, Weight, Condition, and Price Row */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                   Storage
@@ -1207,6 +1294,31 @@ const ProductModal: React.FC<ProductModalProps> = ({
                 {touched.storage && validationErrors.storage && (
                   <p className="mt-1 text-xs text-red-600 dark:text-red-400">
                     {validationErrors.storage}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                  Weight (kg)
+                </label>
+                <input
+                  type="number"
+                  name="weight"
+                  value={formData.weight}
+                  onChange={handleInputChange}
+                  onBlur={handleBlur}
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  className={`w-full px-3 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm ${
+                    touched.weight && validationErrors.weight
+                      ? "border-red-500 focus:ring-red-500"
+                      : "border-gray-200 dark:border-gray-700"
+                  }`}
+                />
+                {touched.weight && validationErrors.weight && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {validationErrors.weight}
                   </p>
                 )}
               </div>
