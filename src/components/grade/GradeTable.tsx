@@ -16,8 +16,6 @@ const GradeTable: React.FC = () => {
   const itemsPerPage = 10;
   const [totalDocs, setTotalDocs] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(false);
-  const [editingSequenceId, setEditingSequenceId] = useState<string | null>(null);
-  const [editingSequenceValue, setEditingSequenceValue] = useState<string>("");
 
   useEffect(() => {
     fetchGrades();
@@ -100,51 +98,6 @@ const GradeTable: React.FC = () => {
     if (!brand) return '-';
     if (typeof brand === 'string') return brand;
     return brand?.title || '-';
-  };
-
-  const handleSequenceClick = (item: Grade) => {
-    if (!item._id) return;
-    setEditingSequenceId(item._id);
-    setEditingSequenceValue((item.sequence ?? 0).toString());
-  };
-
-  const handleSequenceCancel = () => {
-    setEditingSequenceId(null);
-    setEditingSequenceValue("");
-  };
-
-  const handleSequenceSave = async (item: Grade) => {
-    if (!item._id) return;
-    
-    if (editingSequenceValue === "" || editingSequenceValue === null) {
-      handleSequenceCancel();
-      return;
-    }
-    
-    const newSequence = parseInt(editingSequenceValue, 10);
-    if (isNaN(newSequence) || newSequence < 0) {
-      toastHelper.showTost("Please enter a valid sequence number (0 or higher)", "error");
-      return;
-    }
-
-    const currentSequence = item.sequence ?? 0;
-    
-    // If the new sequence is the same as current, just cancel editing
-    if (newSequence === currentSequence) {
-      handleSequenceCancel();
-      return;
-    }
-
-    try {
-      await GradeService.updateSequence(item._id, newSequence);
-      setEditingSequenceId(null);
-      setEditingSequenceValue("");
-      await fetchGrades();
-    } catch (error: any) {
-      console.error("Failed to update sequence:", error);
-      const errorMessage = error?.message || "Failed to update sequence";
-      toastHelper.showTost(errorMessage, "error");
-    }
   };
 
   return (
@@ -235,9 +188,6 @@ const GradeTable: React.FC = () => {
             <thead className="bg-gray-100 dark:bg-gray-900">
               <tr>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  ID
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Code
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
@@ -250,15 +200,6 @@ const GradeTable: React.FC = () => {
                   Description
                 </th>
                 <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Sequence
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Margin Type
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Margin
-                </th>
-                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Actions
                 </th>
               </tr>
@@ -266,7 +207,7 @@ const GradeTable: React.FC = () => {
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="p-12 text-center">
+                  <td colSpan={5} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
                       Loading Grades...
@@ -275,7 +216,7 @@ const GradeTable: React.FC = () => {
                 </tr>
               ) : gradesData.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="p-12 text-center">
+                  <td colSpan={5} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       No grades found
                     </div>
@@ -287,9 +228,6 @@ const GradeTable: React.FC = () => {
                     key={item._id || index}
                     className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                   >
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.id || "-"}
-                    </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                       {item.code || "-"}
                     </td>
@@ -303,69 +241,6 @@ const GradeTable: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                       {item.description || "-"}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <input
-                          type="number"
-                          min="0"
-                          value={editingSequenceId === item._id ? editingSequenceValue : (item.sequence ?? 0)}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            if (editingSequenceId !== item._id) {
-                              handleSequenceClick(item);
-                            }
-                            // Allow empty or valid numbers
-                            if (value === "" || /^\d+$/.test(value)) {
-                              setEditingSequenceValue(value);
-                            }
-                          }}
-                          onBlur={() => {
-                            if (editingSequenceId === item._id && editingSequenceValue !== "") {
-                              handleSequenceSave(item);
-                            } else if (editingSequenceId === item._id) {
-                              handleSequenceCancel();
-                            }
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              if (editingSequenceId === item._id) {
-                                handleSequenceSave(item);
-                              } else {
-                                handleSequenceClick(item);
-                              }
-                            } else if (e.key === "Escape" && editingSequenceId === item._id) {
-                              handleSequenceCancel();
-                            }
-                          }}
-                          onFocus={() => {
-                            if (editingSequenceId !== item._id) {
-                              handleSequenceClick(item);
-                            }
-                          }}
-                          className="w-20 px-2 py-1 text-center border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-sm"
-                          placeholder="0"
-                        />
-                        {editingSequenceId === item._id && (
-                          <button
-                            onClick={() => handleSequenceSave(item)}
-                            className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300"
-                            title="Save Sequence"
-                          >
-                            <i className="fas fa-check text-xs"></i>
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {(item as any).marginType || "-"}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {(item as any).margin !== undefined && (item as any).margin !== null 
-                        ? (item as any).marginType === 'percentage' 
-                          ? `${(item as any).margin}%` 
-                          : (item as any).margin
-                        : "-"}
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
                       <div className="inline-flex items-center gap-3">

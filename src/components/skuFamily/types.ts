@@ -1,17 +1,16 @@
 export interface SkuFamily {
   _id?: string;
-  id?: string;
   code: string;
   name: string;
-  brand: string;
+  brand?: string | { _id?: string; title?: string; code?: string };
   productcategoriesId?: string | { _id?: string; title?: string; code?: string };
+  conditionCategoryId?: string | { _id?: string; title?: string; code?: string };
+  subModel?: string;
+  storageId?: string | { _id?: string; title?: string; code?: string };
+  ramId?: string | { _id?: string; title?: string; code?: string };
+  colorId?: string | { _id?: string; title?: string; code?: string };
   description: string;
   images: string[];
-  colorVariant: string | string[];
-  country: string | string[];
-  simType: string | string[];
-  networkBands: string | string[];
-  countryVariant?: string;
   sequence?: number;
   isApproved?: boolean;
   isDeleted?: boolean;

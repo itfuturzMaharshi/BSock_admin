@@ -3,11 +3,9 @@ import api from '../api/api';
 
 export interface Storage {
   _id?: string;
-  id?: string;
   code?: string;
   title: string;
   description?: string;
-  sequence?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -112,21 +110,6 @@ export class StorageService {
     }
   };
 
-  static updateSequence = async (id: string, sequence: number): Promise<any> => {
-    const baseUrl = import.meta.env.VITE_BASE_URL;
-    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
-    const url = `${baseUrl}/api/${adminRoute}/storage/update-sequence`;
-
-    try {
-      const res = await api.post(url, { id, sequence });
-      toastHelper.showTost(res.data.message || 'Sequence updated successfully!', 'success');
-      return res.data;
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || 'Failed to update sequence';
-      toastHelper.showTost(errorMessage, 'error');
-      throw new Error(errorMessage);
-    }
-  };
 }
 
 

@@ -6,7 +6,6 @@ interface FormData {
   code?: string;
   title: string;
   description: string;
-  sequence?: number;
 }
 
 interface StorageModalProps {
@@ -27,26 +26,21 @@ const StorageModal: React.FC<StorageModalProps> = ({
     code: "",
     title: "",
     description: "",
-    sequence: 1,
   });
   const [errors, setErrors] = useState<Partial<FormData>>({});
 
   useEffect(() => {
     if (editItem) {
       setFormData({
-        id: editItem.id || "",
         code: editItem.code || "",
         title: editItem.title || "",
         description: editItem.description || "",
-        sequence: editItem.sequence ?? 1,
       });
     } else {
       setFormData({
-        id: "",
         code: "",
         title: "",
         description: "",
-        sequence: 1,
       });
     }
     setErrors({});
@@ -95,21 +89,6 @@ const StorageModal: React.FC<StorageModalProps> = ({
         <form onSubmit={handleSubmit} className="p-4 sm:p-5 md:p-6 space-y-3 sm:space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              ID
-            </label>
-            <input
-              type="text"
-              value={formData.id}
-              onChange={(e) =>
-                setFormData({ ...formData, id: e.target.value })
-              }
-              className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
-              placeholder="Enter storage ID"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Code
             </label>
             <input
@@ -156,26 +135,6 @@ const StorageModal: React.FC<StorageModalProps> = ({
               className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white resize-y"
               placeholder="Enter storage description"
             />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Sequence
-            </label>
-            <input
-              type="number"
-              value={formData.sequence || ''}
-              onChange={(e) => {
-                const value = e.target.value;
-                setFormData({ ...formData, sequence: value === '' ? undefined : parseInt(value) || 1 });
-              }}
-              min="1"
-              className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
-              placeholder="Enter sequence number (optional)"
-            />
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Lower numbers appear first in lists
-            </p>
           </div>
 
           <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-4 sm:pt-6">
