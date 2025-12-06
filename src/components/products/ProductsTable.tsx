@@ -3,6 +3,7 @@ import Swal from "sweetalert2";
 import { format } from "date-fns";
 import toastHelper from "../../utils/toastHelper";
 import ProductModal from "./ProductsModal";
+import ProductListingModal from "./ProductListingModal";
 import UploadExcelModal from "./UploadExcelModal";
 import ProductHistoryModal from "./ProductHistoryModal";
 import {
@@ -29,6 +30,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
   const [productFilter, setProductFilter] = useState<string>("all"); // "all" | "moveToTop" | "expiredOnly" | "soldOut" | "showTimer"
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [isListingModalOpen, setIsListingModalOpen] = useState<boolean>(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState<boolean>(false);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
@@ -555,14 +557,6 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
     return String(skuFamilyId);
   };
 
-  const getSubSkuFamilyText = (subSkuFamilyId: any): string => {
-    if (subSkuFamilyId == null) return "";
-    if (typeof subSkuFamilyId === "string") return subSkuFamilyId;
-    if (typeof subSkuFamilyId === "object") {
-      return subSkuFamilyId.name || subSkuFamilyId.code || subSkuFamilyId._id || "";
-    }
-    return String(subSkuFamilyId);
-  };
 
   const buildImageUrl = (relativeOrAbsolute: string): string => {
     if (!relativeOrAbsolute)
@@ -577,15 +571,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
 
   const getProductImageSrc = (product: Product): string => {
     try {
-      // First, try to get image from subSkuFamilyId
-      const subSku = product?.subSkuFamilyId as any;
-      const subSkuFirst =
-        Array.isArray(subSku?.images) && subSku.images.length > 0
-          ? subSku.images[0]
-          : "";
-      if (subSkuFirst) return buildImageUrl(subSkuFirst);
-      
-      // If no subSkuFamilyId image, try skuFamilyId
+      // Get image from skuFamilyId
       const sku = product?.skuFamilyId as any;
       const first =
         Array.isArray(sku?.images) && sku.images.length > 0
@@ -865,7 +851,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                     className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
                     onClick={() => {
                       setEditProduct(null);
-                      setIsModalOpen(true);
+                      setIsListingModalOpen(true);
                     }}
                   >
                     <i className="fas fa-plus text-xs"></i>
@@ -903,7 +889,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                   Name
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Sub Sku Name
+                  SKU Family
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   HK Price (USD)
@@ -973,7 +959,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                       {renderProductBadges(item)}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {getSubSkuFamilyText(item.subSkuFamilyId)}
+                      {getSkuFamilyText(item.skuFamilyId)}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                       {getCountryPrice(item, "Hongkong")}
@@ -1176,6 +1162,13 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
         </div>
       </div>
 
+      <ProductListingModal
+        isOpen={isListingModalOpen}
+        onClose={() => {
+          setIsListingModalOpen(false);
+        }}
+        onSuccess={fetchProducts}
+      />
       <ProductModal
         isOpen={isModalOpen}
         onClose={() => {
@@ -1260,10 +1253,10 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Sub SKU Family
+                      SKU Family
                     </label>
                     <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
-                      {getSubSkuFamilyText(selectedProduct.subSkuFamilyId)}
+                      {getSkuFamilyText(selectedProduct.skuFamilyId)}
                     </p>
                   </div>
 

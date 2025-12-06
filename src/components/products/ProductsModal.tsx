@@ -21,7 +21,6 @@ interface CountryDeliverable {
 
 interface FormData {
   skuFamilyId: string;
-  subSkuFamilyId: string;
   gradeId: string;
   sellerId: string;
   simType: string;
@@ -45,7 +44,6 @@ interface FormData {
 
 interface ValidationErrors {
   skuFamilyId?: string;
-  subSkuFamilyId?: string;
   gradeId?: string;
   sellerId?: string;
   simType?: string;
@@ -68,7 +66,6 @@ interface ValidationErrors {
 
 interface TouchedFields {
   skuFamilyId: boolean;
-  subSkuFamilyId: boolean;
   simType: boolean;
   color: boolean;
   ram: boolean;
@@ -101,7 +98,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
 }) => {
   const [formData, setFormData] = useState<FormData>({
     skuFamilyId: "",
-    subSkuFamilyId: "",
     gradeId: "",
     sellerId: "",
     simType: "",
@@ -124,10 +120,16 @@ const ProductModal: React.FC<ProductModalProps> = ({
   });
   const [costsByCountry, setCostsByCountry] = useState<Record<string, Array<{ _id: string; name: string; costType: string; value: number }>>>({});
   const [skuFamilies, setSkuFamilies] = useState<
-    { _id: string; name: string }[]
-  >([]);
-  const [subSkuFamilies, setSubSkuFamilies] = useState<
-    { _id: string; name: string }[]
+    { 
+      _id: string; 
+      name: string;
+      brand?: { _id: string; title: string };
+      subModel?: string;
+      storageId?: { _id: string; title: string };
+      ramId?: { _id: string; title: string };
+      colorId?: { _id: string; title: string };
+      images?: string[];
+    }[]
   >([]);
   const [grades, setGrades] = useState<
     { _id?: string; title: string; brand?: string | { _id?: string; title: string; code?: string } }[]
@@ -136,11 +138,9 @@ const ProductModal: React.FC<ProductModalProps> = ({
     { _id?: string; name: string; code?: string }[]
   >([]);
   const [skuLoading, setSkuLoading] = useState<boolean>(false);
-  const [subSkuLoading, setSubSkuLoading] = useState<boolean>(false);
   const [gradeLoading, setGradeLoading] = useState<boolean>(false);
   const [sellerLoading, setSellerLoading] = useState<boolean>(false);
   const [skuError, setSkuError] = useState<string | null>(null);
-  const [subSkuError, setSubSkuError] = useState<string | null>(null);
   const [dateError, setDateError] = useState<string | null>(null);
   const [moqError, setMoqError] = useState<string | null>(null);
   const [priceError, setPriceError] = useState<string | null>(null);
@@ -149,7 +149,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
   );
   const [touched, setTouched] = useState<TouchedFields>({
     skuFamilyId: false,
-    subSkuFamilyId: false,
     simType: false,
     color: false,
     ram: false,
@@ -192,49 +191,18 @@ const ProductModal: React.FC<ProductModalProps> = ({
   const storageOptions = ["128GB", "256GB", "512GB", "1TB"];
   const conditionOptions = ["AAA", "A+", "Mixed"];
 
-  // Function to parse Sub SKU Family response and extract values
-  const parseSubSkuFamilyResponse = (response: string) => {
+  // Function to extract data from SKU Family
+  const extractSkuFamilyData = (skuFamily: any) => {
     try {
-      const parts = response.split('_');
-      
-      if (parts.length < 6) {
-        console.warn('Unexpected Sub SKU Family format:', response);
-        return null;
-      }
-
-      const firstName = parts[0];
-      const color = parts[2];
-      const simTypeRaw = parts[3];
-      const country = parts[5];
-      
-      const simTypeMatch = simTypeRaw.match(/\["([^"]+)"\]/);
-      const simType = simTypeMatch ? simTypeMatch[1] : simTypeRaw;
-
       return {
-        displayName: firstName,
-        color: color,
-        simType: simType,
-        country: country
+        color: skuFamily.colorId?.title || '',
+        storage: skuFamily.storageId?.title || '',
+        ram: skuFamily.ramId?.title || '',
+        subModel: skuFamily.subModel || '',
       };
     } catch (error) {
-      console.error('Error parsing Sub SKU Family response:', error);
+      console.error('Error extracting SKU Family data:', error);
       return null;
-    }
-  };
-
-  const fetchSubSkuFamiliesBySkuFamilyId = async (skuFamilyId: string) => {
-    try {
-      setSubSkuLoading(true);
-      setSubSkuError(null);
-      console.log("Fetching Sub SKU Families for SKU Family ID:", skuFamilyId);
-      const list = await ProductService.getSubSkuFamilyListByName(skuFamilyId);
-      console.log("Received Sub SKU Families:", list);
-      setSubSkuFamilies(list);
-    } catch (error: any) {
-      console.error("Error fetching Sub SKU Families:", error);
-      setSubSkuError(error.message || "Failed to load Sub SKU Families");
-    } finally {
-      setSubSkuLoading(false);
     }
   };
 
@@ -244,14 +212,19 @@ const ProductModal: React.FC<ProductModalProps> = ({
     setFormData(prev => {
       const next = { ...prev, skuFamilyId: value } as FormData;
       
-      // Clear Sub SKU Family selection when SKU Family changes
-      next.subSkuFamilyId = "";
-      next.color = "";
-      next.simType = "";
-      next.country = "";
-      
-      if (value) {
-        fetchSubSkuFamiliesBySkuFamilyId(value);
+      // Extract data from selected SKU Family
+      if (value && selectedOption?.data) {
+        const skuData = extractSkuFamilyData(selectedOption.data);
+        if (skuData) {
+          if (skuData.color) next.color = skuData.color;
+          if (skuData.storage) next.storage = skuData.storage;
+          if (skuData.ram) next.ram = skuData.ram;
+        }
+      } else {
+        // Clear fields when SKU Family is cleared
+        next.color = "";
+        next.storage = "";
+        next.ram = "";
       }
       
       return next;
@@ -261,34 +234,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
     if (touched.skuFamilyId) {
       const error = validateField("skuFamilyId", value);
       setValidationErrors(prev => ({ ...prev, skuFamilyId: error }));
-    }
-  };
-
-  // Handle Sub SKU Family selection for react-select
-  const handleSubSkuFamilyChange = (selectedOption: any) => {
-    const value = selectedOption?.value || '';
-    setFormData(prev => {
-      const next = { ...prev, subSkuFamilyId: value } as FormData;
-      
-      if (value) {
-        const selectedSubSku = subSkuFamilies.find(subSku => subSku._id === value);
-        if (selectedSubSku) {
-          const parsedData = parseSubSkuFamilyResponse(selectedSubSku.name);
-          if (parsedData) {
-            next.color = parsedData.color;
-            next.simType = parsedData.simType;
-            next.country = parsedData.country;
-          }
-        }
-      }
-      
-      return next;
-    });
-    
-    // Validate
-    if (touched.subSkuFamilyId) {
-      const error = validateField("subSkuFamilyId", value);
-      setValidationErrors(prev => ({ ...prev, subSkuFamilyId: error }));
     }
   };
 
@@ -346,10 +291,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
           typeof editItem.skuFamilyId === "object"
             ? editItem.skuFamilyId._id || ""
             : editItem.skuFamilyId || "";
-        const subSkuId =
-          typeof editItem.subSkuFamilyId === "object"
-            ? editItem.subSkuFamilyId._id || ""
-            : editItem.subSkuFamilyId || "";
         const gradeId =
           typeof (editItem as any).gradeId === "object"
             ? (editItem as any).gradeId?._id || ""
@@ -360,7 +301,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
             : (editItem as any).sellerId || "";
         setFormData({
           skuFamilyId: skuId,
-          subSkuFamilyId: subSkuId,
           gradeId: gradeId,
           sellerId: sellerId,
           simType: editItem.simType,
@@ -381,15 +321,9 @@ const ProductModal: React.FC<ProductModalProps> = ({
           groupCode: (editItem as any).groupCode || "",
           countryDeliverables: (editItem as any).countryDeliverables || [],
         });
-        
-        // If editing, fetch sub SKUs if SKU family is selected
-        if (skuId) {
-          fetchSubSkuFamiliesBySkuFamilyId(skuId);
-        }
       } else {
         setFormData({
           skuFamilyId: "",
-          subSkuFamilyId: "",
           gradeId: "",
           sellerId: "",
           simType: "",
@@ -660,8 +594,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
     switch (name) {
       case "skuFamilyId":
         return !value ? "SKU Family is required" : undefined;
-      case "subSkuFamilyId":
-        return !value ? "Sub SKU Family is required" : undefined;
       case "simType":
         return !value ? "SIM Type is required" : undefined;
       case "color":
@@ -725,7 +657,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
 
     const requiredFields: (keyof FormData)[] = [
       "skuFamilyId",
-      "subSkuFamilyId",
       "simType",
       "color",
       "ram",
@@ -788,7 +719,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
 
     setTouched({
       skuFamilyId: true,
-      subSkuFamilyId: true,
       simType: true,
       color: true,
       ram: true,
@@ -822,22 +752,15 @@ const ProductModal: React.FC<ProductModalProps> = ({
   if (!isOpen) return null;
 
   const title = editItem ? "Edit Product" : "Create Product";
-  const lockDerivedFields = Boolean(formData.subSkuFamilyId);
+  const lockDerivedFields = Boolean(formData.skuFamilyId);
 
   const skuFamilyOptions = skuFamilies.map(sku => ({ 
     value: sku._id, 
-    label: sku.name 
+    label: sku.name,
+    data: sku // Include full SKU family data for extraction
   }));
 
   const selectedSkuFamily = skuFamilyOptions.find(option => option.value === formData.skuFamilyId);
-  
-  const subSkuFamilyOptions = subSkuFamilies.map(subSku => {
-    const parsedData = parseSubSkuFamilyResponse(subSku.name);
-    const displayName = parsedData ? parsedData.displayName : subSku.name;
-    return { value: subSku._id, label: displayName };
-  });
-
-  const selectedSubSkuFamily = subSkuFamilyOptions.find(option => option.value === formData.subSkuFamilyId);
 
   // Custom styles for react-select to match existing design
   const customSelectStyles = {
@@ -952,8 +875,8 @@ const ProductModal: React.FC<ProductModalProps> = ({
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-6">
           <form id="product-form" onSubmit={handleSubmit} className="space-y-6">
-            {/* SKU Family ID, Sub SKU Family, and RAM Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* SKU Family ID and RAM Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                   SKU Family ID
@@ -983,39 +906,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
                 {skuError && (
                   <p className="mt-1 text-xs text-red-600 dark:text-red-400">
                     {skuError}
-                  </p>
-                )}
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                  Sub SKU Family
-                </label>
-                <Select
-                  options={subSkuFamilyOptions}
-                  value={selectedSubSkuFamily}
-                  onChange={handleSubSkuFamilyChange}
-                  onBlur={() => {
-                    setTouched((prev) => ({ ...prev, subSkuFamilyId: true }));
-                    const error = validateField("subSkuFamilyId", formData.subSkuFamilyId);
-                    setValidationErrors((prev) => ({ ...prev, subSkuFamilyId: error }));
-                  }}
-                  isDisabled={subSkuLoading || subSkuError !== null || !formData.skuFamilyId}
-                  placeholder={subSkuLoading ? "Loading Sub SKU Families..." : subSkuError ? "Error loading Sub SKU Families" : formData.skuFamilyId ? "Select Sub SKU Family" : "Select SKU Family first"}
-                  isSearchable={true}
-                  isLoading={subSkuLoading}
-                  styles={customSelectStyles}
-                  className="basic-select"
-                  classNamePrefix="select"
-                />
-                {touched.subSkuFamilyId && validationErrors.subSkuFamilyId && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {validationErrors.subSkuFamilyId}
-                  </p>
-                )}
-                {subSkuError && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {subSkuError}
                   </p>
                 )}
               </div>
@@ -1786,12 +1676,10 @@ const ProductModal: React.FC<ProductModalProps> = ({
               className="min-w-[160px] px-4 py-2 bg-[#0071E0] text-white rounded-lg hover:bg-blue-600 transition duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
               disabled={
                 skuLoading ||
-                skuError !== null ||
-                subSkuLoading ||
-                subSkuError !== null
+                skuError !== null
               }
             >
-              {skuLoading || subSkuLoading ? (
+              {skuLoading ? (
                 <svg
                   className="animate-spin h-4 w-4 text-white mr-2"
                   xmlns="http://www.w3.org/2000/svg"

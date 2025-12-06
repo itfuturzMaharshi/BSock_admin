@@ -4,7 +4,6 @@ import api from '../api/api';
 export interface Product {
   _id?: string;
   skuFamilyId: string | { _id: string; name: string; images?: string[] };
-  subSkuFamilyId?: string | { _id: string; name: string; images?: string[] };
   specification: string;
   simType: string;
   color: string;
@@ -293,7 +292,16 @@ export class ProductService {
   };
 
   // Get SKU Family list by name
-  static getSkuFamilyListByName = async (): Promise<{ _id: string; name: string }[]> => {
+  static getSkuFamilyListByName = async (): Promise<{ 
+    _id: string; 
+    name: string;
+    brand?: { _id: string; title: string };
+    subModel?: string;
+    storageId?: { _id: string; title: string };
+    ramId?: { _id: string; title: string };
+    colorId?: { _id: string; title: string };
+    images?: string[];
+  }[]> => {
     const baseUrl = import.meta.env.VITE_BASE_URL;
     const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
     const url = `${baseUrl}/api/${adminRoute}/skuFamily/listByName`;
