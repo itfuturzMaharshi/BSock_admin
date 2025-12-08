@@ -28,6 +28,7 @@ interface FormData {
   name2: string;
   countries: string[];
   remark: string;
+  message: string;
   costType: "Percentage" | "Fixed";
   costField: "product" | "delivery" | "";
   costUnit: "pc" | "kg" | "moq" | "order amount" | "cart quantity" | "";
@@ -45,6 +46,7 @@ interface ValidationErrors {
   name2?: string;
   countries?: string;
   remark?: string;
+  message?: string;
   costType?: string;
   costField?: string;
   costUnit?: string;
@@ -62,6 +64,7 @@ interface TouchedFields {
   name2: boolean;
   countries: boolean;
   remark: boolean;
+  message: boolean;
   costType: boolean;
   costField: boolean;
   costUnit: boolean;
@@ -92,6 +95,7 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
     name2: "",
     countries: [],
     remark: "",
+    message: "",
     costType: "Percentage",
     costField: "",
     costUnit: "",
@@ -112,6 +116,7 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
     name2: false,
     countries: false,
     remark: false,
+    message: false,
     costType: false,
     costField: false,
     costUnit: false,
@@ -170,6 +175,7 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
           name2: editItem.name2 || "",
           countries: editItem.countries || [],
           remark: editItem.remark || "",
+          message: editItem.message || "",
           costType: editItem.costType,
           costField: editItem.costField || "",
           costUnit: editItem.costUnit || "",
@@ -417,6 +423,7 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
       name2: formData.name2 || undefined,
       countries: formData.countries,
       remark: formData.remark,
+      message: formData.message || undefined,
       costType: formData.costType,
       costField: formData.costField as "product" | "delivery",
       costUnit: formData.costUnit as "pc" | "kg" | "moq" | "order amount" | "cart quantity" | undefined,
@@ -786,6 +793,33 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
               {touched.remark && validationErrors.remark && (
                 <p className="mt-1 text-xs text-red-600 dark:text-red-400">
                   {validationErrors.remark}
+                </p>
+              )}
+            </div>
+
+            {/* Message Field */}
+            <div>
+              <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                Message
+                <span className="text-gray-500 text-xs ml-1">(Optional)</span>
+              </label>
+              <textarea
+                name="message"
+                value={formData.message}
+                onChange={handleInputChange}
+                onBlur={handleBlur}
+                className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm ${
+                  touched.message && validationErrors.message
+                    ? "border-red-500 focus:ring-red-500"
+                    : "border-gray-200 dark:border-gray-700"
+                }`}
+                placeholder="Enter message"
+                rows={4}
+                disabled={isSubmitting}
+              />
+              {touched.message && validationErrors.message && (
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                  {validationErrors.message}
                 </p>
               )}
             </div>
