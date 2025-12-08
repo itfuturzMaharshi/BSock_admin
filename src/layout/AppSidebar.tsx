@@ -117,7 +117,7 @@ const AppSidebar: React.FC = () => {
     {}
   );
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const [permissions, setPermissions] = useState<MyPermissions | null>(null);
+  const [_permissions, setPermissions] = useState<MyPermissions | null>(null);
   const [filteredNavItems, setFilteredNavItems] = useState<NavItem[]>(navItems);
 
   const isActive = useCallback(

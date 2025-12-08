@@ -5,7 +5,6 @@ import Select from 'react-select';
 import { VariantOption } from './CascadingVariantSelector';
 import { GradeService } from '../../services/grade/grade.services';
 import { SellerService } from '../../services/seller/sellerService';
-import { CostModuleService } from '../../services/costModule/costModule.services';
 
 export interface ProductRowData {
   // Product Detail Group
@@ -81,7 +80,6 @@ const ComprehensiveProductForm: React.FC<ComprehensiveProductFormProps> = ({
   const [rows, setRows] = useState<ProductRowData[]>([]);
   const [grades, setGrades] = useState<any[]>([]);
   const [sellers, setSellers] = useState<any[]>([]);
-  const [costsByCountry, setCostsByCountry] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(false);
 
   // Initialize rows based on variant type
@@ -202,11 +200,11 @@ const ComprehensiveProductForm: React.FC<ComprehensiveProductFormProps> = ({
         const sellersList = await SellerService.getAllSellers();
         setSellers(sellersList || []);
         
-        // Fetch costs by country
-        const costResponse = await CostModuleService.getCostsByCountry();
-        if (costResponse.status === 200 && costResponse.data) {
-          setCostsByCountry(costResponse.data);
-        }
+        // Fetch costs by country (stored for potential future use)
+        // const costResponse = await CostModuleService.getCostsByCountry();
+        // if (costResponse.status === 200 && costResponse.data) {
+        //   // Costs can be used for product cost calculations if needed
+        // }
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -288,7 +286,7 @@ const ComprehensiveProductForm: React.FC<ComprehensiveProductFormProps> = ({
     onSave(rowsWithListingNos);
   };
 
-  const countryOptions = ['Hong Kong', 'Dubai', 'Singapore'];
+  const countryOptions = ['Hong Kong', 'Dubai'];
   const simOptions = ['Dual SIM', 'E-SIM', 'Physical Sim'];
   const statusOptions = ['Active', 'Non Active', 'pre owned'];
   const lockUnlockOptions = [

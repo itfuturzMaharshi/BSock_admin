@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import toastHelper from "../../utils/toastHelper";
 import { SkuFamily } from "./types";
 import { ProductCategoryService } from "../../services/productCategory/productCategory.services";
 import { BrandService } from "../../services/brand/brand.services";
 import { ConditionCategoryService } from "../../services/conditionCategory/conditionCategory.services";
-import Select from 'react-select';
 import SubSkuFamilyModal from "./SubSkuFamilyModal";
 import { SkuFamilyService } from "../../services/skuFamily/skuFamily.services";
 

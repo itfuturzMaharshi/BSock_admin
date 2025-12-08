@@ -12,6 +12,7 @@ interface CostModule {
   name2?: string;
   countries: string[];
   remark: string;
+  message?: string;
   costType: "Percentage" | "Fixed";
   costField: "product" | "delivery";
   costUnit?: "pc" | "kg" | "moq" | "order amount" | "cart quantity";

@@ -28,10 +28,10 @@ interface FormData {
   ram: string;
   storage: string;
   weight: number | string;
-  condition: string;
+  condition: string | null;
   price: number | string;
   stock: number | string;
-  country: string;
+  country: string | null;
   moq: number | string;
   purchaseType: string; // 'full' | 'partial'
   isNegotiable: boolean;
@@ -167,7 +167,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
   });
 
   const colorOptions = ["Graphite", "Silver", "Gold", "Sierra Blue", "Mixed"];
-  const countryOptions = ["Hongkong", "Dubai", "Singapore"];
+  const countryOptions = ["Hongkong", "Dubai"];
   const simOptions = ["E-Sim", "Physical Sim"];
 
   // Fetch costs by country when modal opens
@@ -308,10 +308,10 @@ const ProductModal: React.FC<ProductModalProps> = ({
           ram: editItem.ram,
           storage: editItem.storage,
           weight: (editItem as any).weight || "",
-          condition: editItem.condition,
+          condition: editItem.condition || null,
           price: editItem.price,
           stock: editItem.stock,
-          country: editItem.country,
+          country: editItem.country || null,
           moq: editItem.moq,
           purchaseType: (editItem as any).purchaseType || "partial",
           isNegotiable: editItem.isNegotiable,
@@ -733,6 +733,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
       expiryTime: true,
       isNegotiable: true,
       isFlashDeal: true,
+      weight: true,
     });
 
     const isValid = validateForm();
@@ -1120,7 +1121,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
                 <div className="relative">
                   <select
                     name="country"
-                    value={formData.country}
+                    value={formData.country || ''}
                     onChange={handleInputChange}
                     onBlur={handleBlur}
                     disabled={lockDerivedFields}
@@ -1219,7 +1220,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
                 <div className="relative">
                   <select
                     name="condition"
-                    value={formData.condition}
+                    value={formData.condition || ''}
                     onChange={handleInputChange}
                     onBlur={handleBlur}
                     className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${

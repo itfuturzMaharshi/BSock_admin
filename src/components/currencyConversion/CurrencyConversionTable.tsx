@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import Swal from 'sweetalert2';
 import { CurrencyConversionService, CurrencyConversion } from '../../services/currencyConversion/currencyConversion.services';
 import toastHelper from '../../utils/toastHelper';
 import CurrencyConversionModal from './CurrencyConversionModal.tsx';
@@ -106,37 +105,6 @@ const CurrencyConversionTable: React.FC = () => {
     }, 50);
   };
 
-  const handleDelete = async (id: string) => {
-    const confirmed = await Swal.fire({
-      title: "Are you sure?",
-      text: "This will delete the Currency Conversion!",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Yes, delete!",
-      cancelButtonText: "No, cancel!",
-    });
-
-    if (confirmed.isConfirmed) {
-      try {
-        await CurrencyConversionService.deleteCurrencyConversion({ id });
-        fetchData();
-      } catch (err: any) {
-        console.error("Error deleting currency conversion:", err);
-        
-        // Error message is already shown by the service, but we can add additional handling if needed
-        if (err.message?.includes('Authentication required')) {
-          toastHelper.showTost("Please login to delete currency conversions", "error");
-        } else if (err.message?.includes('API endpoint not found')) {
-          toastHelper.showTost("Currency conversion feature is not available. Please contact administrator.", "error");
-        } else if (err.message) {
-          // Service already shows the error toast, so we don't need to show it again
-          // Just log it for debugging
-        } else {
-          toastHelper.showTost("Failed to delete currency conversion", "error");
-        }
-      }
-    }
-  };
 
   const totalPages = Math.ceil(totalDocs / itemsPerPage);
 
