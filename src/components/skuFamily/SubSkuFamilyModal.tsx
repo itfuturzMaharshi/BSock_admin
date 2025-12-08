@@ -86,6 +86,16 @@ const SubSkuFamilyModal: React.FC<SubSkuFamilyModalProps> = ({
       : `${base}${path.startsWith("/") ? "" : "/"}${path}`;
   };
 
+  const getVideoUrl = (path: string): string => {
+    if (!path) return "";
+    const isAbsolute = /^https?:\/\//i.test(path);
+    return isAbsolute
+      ? path
+      : `${base}${path.startsWith("/") ? "" : "/"}${path}`;
+  };
+
+  const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
+
   // Helper function to capitalize
   const capitalize = (str: string): string => {
     if (!str) return str;
@@ -933,45 +943,99 @@ const SubSkuFamilyModal: React.FC<SubSkuFamilyModalProps> = ({
                 />
                 {existingVideos.length + newVideos.length > 0 ? (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                    {existingVideos.map((url, index) => (
-                      <div
-                        key={`existing-video-${index}`}
-                        className="relative group"
-                      >
-                        <div className="aspect-square rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                          <i className="fas fa-video text-3xl text-gray-400"></i>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemoveExistingVideo(index);
-                          }}
-                          className="absolute -top-2 -right-2 bg-red-500 text-white w-7 h-7 flex items-center justify-center rounded-full hover:bg-red-600 transition-colors shadow-lg opacity-0 group-hover:opacity-100"
-                          disabled={isLoading}
+                    {existingVideos.map((url, index) => {
+                      const videoUrl = getVideoUrl(url);
+                      return (
+                        <div
+                          key={`existing-video-${index}`}
+                          className="relative group"
                         >
-                          <i className="fas fa-times text-xs"></i>
-                        </button>
-                      </div>
-                    ))}
-                    {newVideos.map((video, index) => (
-                      <div key={`new-video-${index}`} className="relative group">
-                        <div className="aspect-square rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                          <i className="fas fa-video text-3xl text-gray-400"></i>
+                          <div className="aspect-square rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 relative">
+                            <video
+                              src={videoUrl}
+                              className="w-full h-full object-cover"
+                              preload="metadata"
+                              muted
+                              onError={(e) => {
+                                // If video fails to load, show icon
+                                const target = e.currentTarget;
+                                target.style.display = 'none';
+                                const parent = target.parentElement;
+                                if (parent && !parent.querySelector('.video-fallback')) {
+                                  const fallback = document.createElement('div');
+                                  fallback.className = 'video-fallback absolute inset-0 flex items-center justify-center';
+                                  fallback.innerHTML = '<i class="fas fa-video text-3xl text-gray-400"></i>';
+                                  parent.appendChild(fallback);
+                                }
+                              }}
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-colors">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedVideo(videoUrl);
+                                }}
+                                className="bg-white/90 hover:bg-white text-gray-800 rounded-full w-12 h-12 flex items-center justify-center shadow-lg transition-all hover:scale-110"
+                                disabled={isLoading}
+                              >
+                                <i className="fas fa-play text-lg ml-1"></i>
+                              </button>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveExistingVideo(index);
+                            }}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white w-7 h-7 flex items-center justify-center rounded-full hover:bg-red-600 transition-colors shadow-lg opacity-0 group-hover:opacity-100 z-10"
+                            disabled={isLoading}
+                          >
+                            <i className="fas fa-times text-xs"></i>
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemoveNewVideo(index);
-                          }}
-                          className="absolute -top-2 -right-2 bg-red-500 text-white w-7 h-7 flex items-center justify-center rounded-full hover:bg-red-600 transition-colors shadow-lg opacity-0 group-hover:opacity-100"
-                          disabled={isLoading}
-                        >
-                          <i className="fas fa-times text-xs"></i>
-                        </button>
-                      </div>
-                    ))}
+                      );
+                    })}
+                    {newVideos.map((video, index) => {
+                      const videoUrl = URL.createObjectURL(video);
+                      return (
+                        <div key={`new-video-${index}`} className="relative group">
+                          <div className="aspect-square rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 relative">
+                            <video
+                              src={videoUrl}
+                              className="w-full h-full object-cover"
+                              preload="metadata"
+                              muted
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-colors">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedVideo(videoUrl);
+                                }}
+                                className="bg-white/90 hover:bg-white text-gray-800 rounded-full w-12 h-12 flex items-center justify-center shadow-lg transition-all hover:scale-110"
+                                disabled={isLoading}
+                              >
+                                <i className="fas fa-play text-lg ml-1"></i>
+                              </button>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveNewVideo(index);
+                            }}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white w-7 h-7 flex items-center justify-center rounded-full hover:bg-red-600 transition-colors shadow-lg opacity-0 group-hover:opacity-100 z-10"
+                            disabled={isLoading}
+                          >
+                            <i className="fas fa-times text-xs"></i>
+                          </button>
+                        </div>
+                      );
+                    })}
                     {existingVideos.length + newVideos.length < MAX_VIDEOS && (
                       <div
                         className="aspect-square rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex flex-col items-center justify-center hover:border-blue-400 dark:hover:border-blue-500 transition-colors cursor-pointer bg-gray-50 dark:bg-gray-700/50"
@@ -1041,6 +1105,45 @@ const SubSkuFamilyModal: React.FC<SubSkuFamilyModalProps> = ({
             )}
           </form>
         </div>
+
+        {/* Video Viewer Modal */}
+        {selectedVideo && (
+          <div
+            className="fixed inset-0 bg-black/80 z-[9999] flex items-center justify-center p-4"
+            onClick={() => setSelectedVideo(null)}
+          >
+            <div
+              className="bg-white dark:bg-gray-900 rounded-lg max-w-5xl w-full max-h-[90vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Video Player
+                </h3>
+                <button
+                  onClick={() => setSelectedVideo(null)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                >
+                  <i className="fas fa-times text-xl"></i>
+                </button>
+              </div>
+              <div className="flex-1 p-4 overflow-auto">
+                <video
+                  src={selectedVideo}
+                  controls
+                  autoPlay
+                  className="w-full h-auto max-h-[70vh] rounded-lg"
+                  onError={(e) => {
+                    console.error('Video playback error:', e);
+                    toastHelper.showTost('Failed to load video', 'error');
+                  }}
+                >
+                  Your browser does not support the video tag.
+                </video>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="sticky bottom-0 bg-white dark:bg-gray-900 p-6 pt-4 border-t border-gray-200 dark:border-gray-700 rounded-b-xl">

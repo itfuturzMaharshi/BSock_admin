@@ -32,7 +32,18 @@ const SkuFamilyTable: React.FC = () => {
   const [selectedSkuFamilyForSub, setSelectedSkuFamilyForSub] = useState<string | null>(null);
   const [editingSubSkuFamilyId, setEditingSubSkuFamilyId] = useState<string | null>(null);
   const [editingSubSkuFamily, setEditingSubSkuFamily] = useState<any>(null);
+  const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
   const itemsPerPage = 10;
+
+  // Helper function to get video URL
+  const getVideoUrl = (path: string): string => {
+    if (!path) return "";
+    const base = (import.meta as any).env?.VITE_BASE_URL || "";
+    const isAbsolute = /^https?:\/\//i.test(path);
+    return isAbsolute
+      ? path
+      : `${base}${path.startsWith("/") ? "" : "/"}${path}`;
+  };
 
   useEffect(() => {
     fetchData();
@@ -980,7 +991,51 @@ const SkuFamilyTable: React.FC = () => {
                         )}
                         {subSku.videos && subSku.videos.length > 0 && (
                           <div className="mt-3">
-                            <label className="text-sm text-gray-600 dark:text-gray-400">Videos ({subSku.videos.length})</label>
+                            <label className="text-sm text-gray-600 dark:text-gray-400 mb-2 block">
+                              Videos ({subSku.videos.length})
+                            </label>
+                            <div className="grid grid-cols-4 gap-2 mt-2">
+                              {subSku.videos.slice(0, 4).map((video: string, videoIndex: number) => {
+                                const videoUrl = getVideoUrl(video);
+                                return (
+                                  <div
+                                    key={videoIndex}
+                                    className="relative group aspect-video rounded border border-gray-200 dark:border-gray-600 overflow-hidden bg-gray-100 dark:bg-gray-700 cursor-pointer"
+                                    onClick={() => setSelectedVideo(videoUrl)}
+                                  >
+                                    <video
+                                      src={videoUrl}
+                                      className="w-full h-full object-cover"
+                                      preload="metadata"
+                                      muted
+                                      onError={(e) => {
+                                        const target = e.currentTarget;
+                                        target.style.display = 'none';
+                                        const parent = target.parentElement;
+                                        if (parent && !parent.querySelector('.video-fallback')) {
+                                          const fallback = document.createElement('div');
+                                          fallback.className = 'video-fallback absolute inset-0 flex items-center justify-center';
+                                          fallback.innerHTML = '<i class="fas fa-video text-xl text-gray-400"></i>';
+                                          parent.appendChild(fallback);
+                                        }
+                                      }}
+                                    />
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-colors">
+                                      <div className="bg-white/90 hover:bg-white text-gray-800 rounded-full w-10 h-10 flex items-center justify-center shadow-lg transition-all group-hover:scale-110">
+                                        <i className="fas fa-play text-sm ml-0.5"></i>
+                                      </div>
+                                    </div>
+                                    {videoIndex === 3 && subSku.videos.length > 4 && (
+                                      <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                                        <span className="text-white text-xs font-semibold">
+                                          +{subSku.videos.length - 4} more
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -988,6 +1043,45 @@ const SkuFamilyTable: React.FC = () => {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Video Viewer Modal */}
+      {selectedVideo && (
+        <div
+          className="fixed inset-0 bg-black/80 z-[9999] flex items-center justify-center p-4"
+          onClick={() => setSelectedVideo(null)}
+        >
+          <div
+            className="bg-white dark:bg-gray-900 rounded-lg max-w-5xl w-full max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Video Player
+              </h3>
+              <button
+                onClick={() => setSelectedVideo(null)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              >
+                <i className="fas fa-times text-xl"></i>
+              </button>
+            </div>
+            <div className="flex-1 p-4 overflow-auto">
+              <video
+                src={selectedVideo}
+                controls
+                autoPlay
+                className="w-full h-auto max-h-[70vh] rounded-lg"
+                onError={(e) => {
+                  console.error('Video playback error:', e);
+                  toastHelper.showTost('Failed to load video', 'error');
+                }}
+              >
+                Your browser does not support the video tag.
+              </video>
             </div>
           </div>
         </div>
