@@ -354,4 +354,71 @@ export class SkuFamilyService {
       throw new Error(errorMessage);
     }
   };
+
+  static addSubSkuFamily = async (skuFamilyId: string, data: FormData): Promise<any> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/skuFamily/add-sub-sku-family`;
+
+    try {
+      data.append('skuFamilyId', skuFamilyId);
+      const res = await api.post(url, data);
+      toastHelper.showTost(res.data.message || 'Sub SKU Family added successfully!', 'success');
+      return res.data;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to add Sub SKU Family';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
+
+  static updateSubSkuFamily = async (skuFamilyId: string, subSkuFamilyId: string, data: FormData): Promise<any> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/skuFamily/update-sub-sku-family`;
+
+    try {
+      data.append('skuFamilyId', skuFamilyId);
+      data.append('subSkuFamilyId', subSkuFamilyId);
+      const res = await api.post(url, data);
+      toastHelper.showTost(res.data.message || 'Sub SKU Family updated successfully!', 'success');
+      return res.data;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to update Sub SKU Family';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
+
+  static deleteSubSkuFamily = async (skuFamilyId: string, subSkuFamilyId: string): Promise<any> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/skuFamily/delete-sub-sku-family`;
+
+    try {
+      const res = await api.post(url, { skuFamilyId, subSkuFamilyId });
+      toastHelper.showTost(res.data.message || 'Sub SKU Family deleted successfully!', 'success');
+      return res.data;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to delete Sub SKU Family';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
+
+  static updateSubSkuFamilySequence = async (skuFamilyId: string, subSkuFamilyId: string, subSkuSequence: number): Promise<any> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/skuFamily/update-sub-sku-family-sequence`;
+
+    try {
+      const res = await api.post(url, { skuFamilyId, subSkuFamilyId, subSkuSequence });
+      toastHelper.showTost(res.data.message || 'Sub SKU Sequence updated successfully!', 'success');
+      return res.data;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to update Sub SKU Sequence';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
 }

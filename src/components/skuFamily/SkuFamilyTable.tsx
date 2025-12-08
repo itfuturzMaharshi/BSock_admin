@@ -4,6 +4,7 @@ import Swal from "sweetalert2";
 import { SkuFamilyService } from "../../services/skuFamily/skuFamily.services";
 import toastHelper from "../../utils/toastHelper";
 import SkuFamilyModal from "./SkuFamilyModal";
+import SubSkuFamilyModal from "./SubSkuFamilyModal";
 import placeholderImage from "../../../public/images/product/noimage.jpg";
 import { SkuFamily } from "./types";
 import { useDebounce } from "../../hooks/useDebounce";
@@ -24,6 +25,13 @@ const SkuFamilyTable: React.FC = () => {
   );
   const [editingSequenceId, setEditingSequenceId] = useState<string | null>(null);
   const [editingSequenceValue, setEditingSequenceValue] = useState<string>("");
+  const [editingSubSequenceId, setEditingSubSequenceId] = useState<string | null>(null);
+  const [editingSubSequenceValue, setEditingSubSequenceValue] = useState<string>("");
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [subSkuFamilyModalOpen, setSubSkuFamilyModalOpen] = useState<boolean>(false);
+  const [selectedSkuFamilyForSub, setSelectedSkuFamilyForSub] = useState<string | null>(null);
+  const [editingSubSkuFamilyId, setEditingSubSkuFamilyId] = useState<string | null>(null);
+  const [editingSubSkuFamily, setEditingSubSkuFamily] = useState<any>(null);
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -88,17 +96,20 @@ const SkuFamilyTable: React.FC = () => {
 
   const handleSave = async (formData: FormData) => {
     try {
+      let response;
       if (editId) {
-        await SkuFamilyService.updateSkuFamily(editId, formData);
+        response = await SkuFamilyService.updateSkuFamily(editId, formData);
       } else {
-        await SkuFamilyService.createSkuFamily(formData);
+        response = await SkuFamilyService.createSkuFamily(formData);
       }
       fetchData();
       setIsModalOpen(false);
       setEditId(null);
+      return response; // Return response so modal can get the created ID
     } catch (err: any) {
       console.error("Error saving SKU family:", err);
       toastHelper.showTost("Failed to save SKU family", "error");
+      throw err; // Re-throw to let modal handle it
     }
   };
 
@@ -165,6 +176,82 @@ const SkuFamilyTable: React.FC = () => {
   const handleView = (skuFamily: SkuFamily) => {
     setSelectedSkuFamily(skuFamily);
     setOpenDropdownId(null);
+  };
+
+  const handleAddSubSkuFamily = (skuFamilyId: string) => {
+    setSelectedSkuFamilyForSub(skuFamilyId);
+    setEditingSubSkuFamilyId(null);
+    setEditingSubSkuFamily(null);
+    setSubSkuFamilyModalOpen(true);
+  };
+
+  const handleEditSubSkuFamily = (skuFamilyId: string, subSkuFamily: any) => {
+    setSelectedSkuFamilyForSub(skuFamilyId);
+    setEditingSubSkuFamilyId(subSkuFamily._id);
+    setEditingSubSkuFamily(subSkuFamily);
+    setSubSkuFamilyModalOpen(true);
+  };
+
+  const handleSaveSubSkuFamily = async (formData: FormData) => {
+    try {
+      if (!selectedSkuFamilyForSub) return;
+      
+      if (editingSubSkuFamilyId && editingSubSkuFamily) {
+        await SkuFamilyService.updateSubSkuFamily(selectedSkuFamilyForSub, editingSubSkuFamilyId, formData);
+      } else {
+        await SkuFamilyService.addSubSkuFamily(selectedSkuFamilyForSub, formData);
+      }
+      fetchData();
+      setSubSkuFamilyModalOpen(false);
+      setSelectedSkuFamilyForSub(null);
+      setEditingSubSkuFamilyId(null);
+      setEditingSubSkuFamily(null);
+    } catch (err: any) {
+      console.error("Error saving Sub SKU family:", err);
+      toastHelper.showTost("Failed to save Sub SKU family", "error");
+      throw err; // Re-throw to let modal handle it
+    }
+  };
+
+  const handleDeleteSubSkuFamily = async (skuFamilyId: string, subSkuFamilyId: string) => {
+    const confirmed = await Swal.fire({
+      title: "Are you sure?",
+      text: "This will delete the Sub SKU Family!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, delete it!",
+      cancelButtonText: "No, cancel!",
+    });
+
+    if (confirmed.isConfirmed) {
+      try {
+        await SkuFamilyService.deleteSubSkuFamily(skuFamilyId, subSkuFamilyId);
+        fetchData();
+      } catch (err: any) {
+        console.error("Error deleting Sub SKU family:", err);
+        toastHelper.showTost("Failed to delete Sub SKU family", "error");
+      }
+    }
+  };
+
+  const handleSubSequenceSave = async (skuFamilyId: string, subSkuFamilyId: string, sequence: number) => {
+    if (!skuFamilyId || !subSkuFamilyId) return;
+    if (isNaN(sequence) || sequence < 1) {
+      toastHelper.showTost("Sequence must be a valid number (1 or higher)", "error");
+      setEditingSubSequenceId(null);
+      setEditingSubSequenceValue("");
+      return;
+    }
+    try {
+      await SkuFamilyService.updateSubSkuFamilySequence(skuFamilyId, subSkuFamilyId, sequence);
+      setEditingSubSequenceId(null);
+      setEditingSubSequenceValue("");
+      fetchData();
+    } catch (err: any) {
+      console.error("Error updating sub sequence:", err);
+      setEditingSubSequenceId(null);
+      setEditingSubSequenceValue("");
+    }
   };
 
   const totalPages = Math.ceil(totalDocs / itemsPerPage);
@@ -260,41 +347,38 @@ const SkuFamilyTable: React.FC = () => {
         </div>
         <div className="w-full overflow-hidden">
           <table className="w-full table-fixed">
-            <thead className="bg-gray-100 dark:bg-gray-900">
+            <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
               <tr>
-                <th className="w-12 px-2 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                <th className="w-12 px-3 py-3 text-center text-xs font-semibold text-gray-700 dark:text-gray-300">
                   <i className="fas fa-expand-arrows-alt text-gray-500"></i>
                 </th>
-                <th className="w-24 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">
                   Code
                 </th>
-                <th className="w-32 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">
                   Name
                 </th>
-                <th className="w-24 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">
                   Brand
                 </th>
-                <th className="w-28 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">
                   Category
                 </th>
-                <th className="w-24 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Sub Model
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">
+                  Condition Category
                 </th>
-                <th className="w-20 px-2 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Color
-                </th>
-                <th className="w-24 px-2 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 dark:text-gray-300">
                   Sequence
                 </th>
-                <th className="w-20 px-2 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 dark:text-gray-300">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="p-12 text-center">
+                  <td colSpan={7} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
                       Loading SKU Families...
@@ -303,7 +387,7 @@ const SkuFamilyTable: React.FC = () => {
                 </tr>
               ) : !skuFamilyData || skuFamilyData.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="p-16 text-center">
+                  <td colSpan={7} className="p-16 text-center">
                     <div className="flex flex-col items-center justify-center space-y-4">
                       <div className="w-24 h-24 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
                         <i className="fas fa-box-open text-4xl text-gray-400 dark:text-gray-500"></i>
@@ -334,106 +418,316 @@ const SkuFamilyTable: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                skuFamilyData.map((item: SkuFamily, index: number) => (
-                  <React.Fragment key={item._id || index}>
-                    {/* Main Row */}
-                    <tr
-                      className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                    >
-                      <td className="w-12 px-2 py-4 text-center">
+                skuFamilyData.map((item: SkuFamily, index: number) => {
+                  const isExpanded = expandedRows.has(item._id || '');
+                  return (
+                    <React.Fragment key={item._id || index}>
+                      {/* Main Row */}
+                      <tr
+                        className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors cursor-pointer border-b border-gray-200 dark:border-gray-700"
+                        onClick={() => {
+                          if (item._id) {
+                            const newExpanded = new Set(expandedRows);
+                            if (newExpanded.has(item._id)) {
+                              newExpanded.delete(item._id);
+                            } else {
+                              newExpanded.add(item._id);
+                            }
+                            setExpandedRows(newExpanded);
+                          }
+                        }}
+                      >
+                        <td className="w-12 px-3 py-3 text-center">
+                          <i className={`fas fa-chevron-${isExpanded ? 'down' : 'right'} text-gray-500 text-sm`}></i>
+                        </td>
+                        <td className="px-4 py-3 text-xs font-semibold text-gray-900 dark:text-white">
+                          {item.code || "-"}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-gray-900 dark:text-white">
+                          {item.name || "N/A"}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400">
+                          {typeof item.brand === 'object' ? item.brand?.title || "N/A" : item.brand || "N/A"}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400">
+                          {typeof item.productcategoriesId === 'object' ? item.productcategoriesId?.title || "N/A" : item.productcategoriesId || "N/A"}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400">
+                          {typeof item.conditionCategoryId === 'object' ? item.conditionCategoryId?.title || "N/A" : item.conditionCategoryId || "N/A"}
+                        </td>
+                      <td className="px-4 py-3 text-center">
+                        <input
+                          type="number"
+                          min="1"
+                          value={editingSequenceId === item._id ? editingSequenceValue : (item.sequence ?? 1)}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (editingSequenceId !== item._id) {
+                              setEditingSequenceId(item._id || null);
+                            }
+                            if (value === "" || /^\d+$/.test(value)) {
+                              setEditingSequenceValue(value);
+                            }
+                          }}
+                          onBlur={() => {
+                            if (editingSequenceId === item._id && editingSequenceValue !== "") {
+                              handleSequenceSave(item);
+                            } else if (editingSequenceId === item._id) {
+                              setEditingSequenceId(null);
+                              setEditingSequenceValue("");
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && editingSequenceId === item._id) {
+                              handleSequenceSave(item);
+                            } else if (e.key === "Escape" && editingSequenceId === item._id) {
+                              setEditingSequenceId(null);
+                              setEditingSequenceValue("");
+                            }
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-12 px-2 py-1 text-center border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-xs"
+                          placeholder="1"
+                        />
                       </td>
-                      <td className="w-24 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
-                        {item.code || "-"}
-                      </td>
-                      <td className="w-32 px-2 py-4 text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
-                        {item.name || "N/A"}
-                      </td>
-                      <td className="w-24 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
-                        {typeof item.brand === 'object' ? item.brand?.title || "N/A" : item.brand || "N/A"}
-                      </td>
-                      <td className="w-28 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
-                        {typeof item.productcategoriesId === 'object' ? item.productcategoriesId?.title || "N/A" : item.productcategoriesId || "N/A"}
-                      </td>
-                      <td className="w-24 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
-                        {item.subModel || "N/A"}
-                      </td>
-                      <td className="w-20 px-2 py-4 text-sm text-gray-600 dark:text-gray-400 truncate">
-                        {typeof item.colorId === 'object' ? item.colorId?.title || "N/A" : item.colorId || "N/A"}
-                      </td>
-                      <td className="w-24 px-2 py-4 text-sm text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <input
-                            type="number"
-                            min="1"
-                            value={editingSequenceId === item._id ? editingSequenceValue : (item.sequence ?? 1)}
-                            onChange={(e) => {
-                              const value = e.target.value;
-                              if (editingSequenceId !== item._id) {
-                                setEditingSequenceId(item._id || null);
-                              }
-                              if (value === "" || /^\d+$/.test(value)) {
-                                setEditingSequenceValue(value);
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex items-center justify-center gap-2" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (item._id) {
+                                handleAddSubSkuFamily(item._id);
                               }
                             }}
-                            onBlur={() => {
-                              if (editingSequenceId === item._id && editingSequenceValue !== "") {
-                                handleSequenceSave(item);
-                              } else if (editingSequenceId === item._id) {
-                                setEditingSequenceId(null);
-                                setEditingSequenceValue("");
-                              }
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" && editingSequenceId === item._id) {
-                                handleSequenceSave(item);
-                              } else if (e.key === "Escape" && editingSequenceId === item._id) {
-                                setEditingSequenceId(null);
-                                setEditingSequenceValue("");
-                              }
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                            className="w-20 px-2 py-1 text-center border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-sm"
-                            placeholder="0"
-                          />
-                        </div>
-                      </td>
-                      <td className="w-20 px-2 py-4 text-sm text-center relative">
-                        <div className="inline-flex items-center justify-center gap-3">
+                            className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors p-1"
+                            title="Add Sub SKU Family"
+                          >
+                            <i className="fas fa-plus text-sm"></i>
+                          </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               handleView(item);
                             }}
-                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                            className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors p-1"
                             title="View"
                           >
-                            <i className="fas fa-eye"></i>
+                            <i className="fas fa-eye text-sm"></i>
                           </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               item._id && handleEdit(item._id);
                             }}
-                            className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors"
+                            className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 transition-colors p-1"
                             title="Edit"
                           >
-                            <i className="fas fa-edit"></i>
+                            <i className="fas fa-edit text-sm"></i>
                           </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               item._id && handleDelete(item._id);
                             }}
-                            className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                            className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors p-1"
                             title="Delete"
                           >
-                            <i className="fas fa-trash"></i>
+                            <i className="fas fa-trash text-sm"></i>
                           </button>
                         </div>
                       </td>
                     </tr>
+                    {/* Expanded Sub SKU Families Row */}
+                    {isExpanded && item.subSkuFamilies && item.subSkuFamilies.length > 0 && (
+                      <tr className="bg-gray-50/50 dark:bg-gray-800/20">
+                        <td colSpan={8} className="px-0 py-0">
+                          <div className="px-6 py-4">
+                            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                              <table className="w-full text-sm">
+                                <thead className="bg-gray-50 dark:bg-gray-900/30 border-b border-gray-200 dark:border-gray-700">
+                                  <tr>
+                                    <th className="w-10 px-3 py-2.5 text-center text-xs font-medium text-gray-500 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700">
+                                      <i className="fas fa-grip-vertical text-gray-400"></i>
+                                    </th>
+                                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">Code</th>
+                                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">Name</th>
+                                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">Storage</th>
+                                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">RAM</th>
+                                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">Color</th>
+                                    <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-700 dark:text-gray-300">Sequence</th>
+                                    <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-700 dark:text-gray-300">Actions</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                  {item.subSkuFamilies
+                                    .sort((a: any, b: any) => (a.subSkuSequence || 1) - (b.subSkuSequence || 1))
+                                    .map((subSku: any, subIndex: number) => {
+                                      const subSkuImage = subSku.images && subSku.images.length > 0 ? subSku.images[0] : null;
+                                      const getImageUrl = (path: string): string => {
+                                        if (!path) return placeholderImage;
+                                        const base = (import.meta as any).env?.VITE_BASE_URL || "";
+                                        const isAbsolute = /^https?:\/\//i.test(path);
+                                        return isAbsolute
+                                          ? path
+                                          : `${base}${path.startsWith("/") ? "" : "/"}${path}`;
+                                      };
+                                      
+                                      return (
+                                        <tr 
+                                          key={subSku._id || subIndex} 
+                                          className="hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors"
+                                        >
+                                          <td className="w-10 px-3 py-3 text-center border-r border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/20">
+                                            <div className="flex items-center justify-center h-full">
+                                              <div className="w-0.5 h-8 bg-gray-300 dark:bg-gray-600"></div>
+                                            </div>
+                                          </td>
+                                          <td className="px-4 py-3">
+                                            <span className="font-semibold text-blue-600 dark:text-blue-400 text-xs">
+                                              {subSku.subSkuCode || "Auto-generating..."}
+                                            </span>
+                                          </td>
+                                          <td className="px-4 py-3">
+                                            <div className="flex items-center gap-3">
+                                              {subSkuImage ? (
+                                                <img
+                                                  src={getImageUrl(subSkuImage)}
+                                                  alt={subSku.subName || "Sub SKU"}
+                                                  className="w-10 h-10 object-cover rounded border border-gray-200 dark:border-gray-600 flex-shrink-0"
+                                                  onError={(e) => {
+                                                    (e.currentTarget as HTMLImageElement).src = placeholderImage;
+                                                  }}
+                                                />
+                                              ) : (
+                                                <div className="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600 flex items-center justify-center flex-shrink-0">
+                                                  <i className="fas fa-image text-gray-400 text-xs"></i>
+                                                </div>
+                                              )}
+                                              <span className="font-medium text-gray-800 dark:text-gray-200 text-xs">
+                                                {subSku.subName || "N/A"}
+                                              </span>
+                                            </div>
+                                          </td>
+                                          <td className="px-4 py-3 text-gray-600 dark:text-gray-400 text-xs">
+                                            {typeof subSku.storageId === 'object' ? subSku.storageId?.title || "N/A" : "N/A"}
+                                          </td>
+                                          <td className="px-4 py-3 text-gray-600 dark:text-gray-400 text-xs">
+                                            {typeof subSku.ramId === 'object' ? subSku.ramId?.title || "N/A" : "N/A"}
+                                          </td>
+                                          <td className="px-4 py-3 text-gray-600 dark:text-gray-400 text-xs">
+                                            {typeof subSku.colorId === 'object' ? subSku.colorId?.title || "N/A" : "N/A"}
+                                          </td>
+                                          <td className="px-4 py-3 text-center">
+                                            <input
+                                              type="number"
+                                              min="1"
+                                              value={editingSubSequenceId === subSku._id ? editingSubSequenceValue : (subSku.subSkuSequence ?? 1)}
+                                              onChange={(e) => {
+                                                const value = e.target.value;
+                                                if (editingSubSequenceId !== subSku._id) {
+                                                  setEditingSubSequenceId(subSku._id || null);
+                                                }
+                                                if (value === "" || /^\d+$/.test(value)) {
+                                                  setEditingSubSequenceValue(value);
+                                                }
+                                              }}
+                                              onBlur={() => {
+                                                if (editingSubSequenceId === subSku._id && editingSubSequenceValue !== "") {
+                                                  const sequence = parseInt(editingSubSequenceValue);
+                                                  if (item._id && subSku._id) {
+                                                    handleSubSequenceSave(item._id, subSku._id, sequence);
+                                                  } else {
+                                                    setEditingSubSequenceId(null);
+                                                    setEditingSubSequenceValue("");
+                                                  }
+                                                } else if (editingSubSequenceId === subSku._id) {
+                                                  setEditingSubSequenceId(null);
+                                                  setEditingSubSequenceValue("");
+                                                }
+                                              }}
+                                              onKeyDown={(e) => {
+                                                if (e.key === "Enter" && editingSubSequenceId === subSku._id) {
+                                                  const sequence = parseInt(editingSubSequenceValue);
+                                                  if (item._id && subSku._id) {
+                                                    handleSubSequenceSave(item._id, subSku._id, sequence);
+                                                  }
+                                                } else if (e.key === "Escape" && editingSubSequenceId === subSku._id) {
+                                                  setEditingSubSequenceId(null);
+                                                  setEditingSubSequenceValue("");
+                                                }
+                                              }}
+                                              onClick={(e) => e.stopPropagation()}
+                                              className="w-12 px-2 py-1 text-center border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-xs"
+                                              placeholder="1"
+                                            />
+                                          </td>
+                                          <td className="px-4 py-3 text-center">
+                                            <div className="flex items-center justify-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  if (item._id && subSku._id) {
+                                                    handleEditSubSkuFamily(item._id, subSku);
+                                                  }
+                                                }}
+                                                className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 transition-colors p-1"
+                                                title="Edit"
+                                              >
+                                                <i className="fas fa-edit text-sm"></i>
+                                              </button>
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  if (item._id && subSku._id) {
+                                                    handleDeleteSubSkuFamily(item._id, subSku._id);
+                                                  }
+                                                }}
+                                                className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors p-1"
+                                                title="Delete"
+                                              >
+                                                <i className="fas fa-trash text-sm"></i>
+                                              </button>
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    {isExpanded && (!item.subSkuFamilies || item.subSkuFamilies.length === 0) && (
+                      <tr>
+                        <td colSpan={7} className="px-4 py-8 bg-gray-50 dark:bg-gray-800/50">
+                          <div className="flex flex-col items-center justify-center text-center">
+                            <div className="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center mb-3">
+                              <i className="fas fa-box-open text-2xl text-gray-400"></i>
+                            </div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+                              No Sub SKU Families found
+                            </p>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (item._id) {
+                                  handleAddSubSkuFamily(item._id);
+                                }
+                              }}
+                              className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
+                            >
+                              <i className="fas fa-plus"></i>
+                              Add Sub SKU Family
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
                   </React.Fragment>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -493,6 +787,18 @@ const SkuFamilyTable: React.FC = () => {
           editId ? skuFamilyData.find((item) => item._id === editId) : undefined
         }
       />
+      <SubSkuFamilyModal
+        isOpen={subSkuFamilyModalOpen}
+        onClose={() => {
+          setSubSkuFamilyModalOpen(false);
+          setSelectedSkuFamilyForSub(null);
+          setEditingSubSkuFamilyId(null);
+          setEditingSubSkuFamily(null);
+        }}
+        onSave={handleSaveSubSkuFamily}
+        skuFamilyId={selectedSkuFamilyForSub || ""}
+        editItem={editingSubSkuFamily}
+      />
       {selectedSkuFamily && (
         <div
           className="fixed inset-0 flex items-center justify-center bg-black/60 z-50 transition-opacity duration-300"
@@ -504,27 +810,9 @@ const SkuFamilyTable: React.FC = () => {
           >
             <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
               <div className="flex items-center space-x-4">
-                <img
-                  src={(function () {
-                    const base = (import.meta as any).env?.VITE_BASE_URL || "";
-                    const first =
-                      Array.isArray(selectedSkuFamily.images) &&
-                      selectedSkuFamily.images.length > 0
-                        ? selectedSkuFamily.images[0]
-                        : "";
-                    if (!first) return placeholderImage;
-                    const isAbsolute = /^https?:\/\//i.test(first);
-                    return isAbsolute
-                      ? first
-                      : `${base}${first.startsWith("/") ? "" : "/"}${first}`;
-                  })()}
-                  alt={selectedSkuFamily.name || "SKU Family"}
-                  className="w-16 h-16 object-cover rounded-lg border border-gray-200 dark:border-gray-600 flex-shrink-0"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src =
-                      placeholderImage;
-                  }}
-                />
+                <div className="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex-shrink-0 flex items-center justify-center">
+                  <i className="fas fa-box text-2xl text-gray-400"></i>
+                </div>
                 <div>
                   <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                     {selectedSkuFamily.name || "N/A"}
@@ -577,96 +865,129 @@ const SkuFamilyTable: React.FC = () => {
                     </p>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Description
-                    </label>
-                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
-                      {selectedSkuFamily.description || "N/A"}
-                    </p>
-                  </div>
                 </div>
 
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                    Specifications
+                    Additional Information
                   </h3>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Sub Model
+                      Condition Category
                     </label>
                     <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
-                      {selectedSkuFamily.subModel || "N/A"}
+                      {typeof selectedSkuFamily.conditionCategoryId === 'object' ? selectedSkuFamily.conditionCategoryId?.title || "N/A" : selectedSkuFamily.conditionCategoryId || "N/A"}
                     </p>
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Storage
+                      Sequence
                     </label>
                     <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
-                      {typeof selectedSkuFamily.storageId === 'object' ? selectedSkuFamily.storageId?.title || "N/A" : selectedSkuFamily.storageId || "N/A"}
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      RAM
-                    </label>
-                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
-                      {typeof selectedSkuFamily.ramId === 'object' ? selectedSkuFamily.ramId?.title || "N/A" : selectedSkuFamily.ramId || "N/A"}
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Color
-                    </label>
-                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
-                      {typeof selectedSkuFamily.colorId === 'object' ? selectedSkuFamily.colorId?.title || "N/A" : selectedSkuFamily.colorId || "N/A"}
+                      {selectedSkuFamily.sequence || "N/A"}
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-6">
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                  Images
-                </h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {selectedSkuFamily.images &&
-                  selectedSkuFamily.images.length > 0 ? (
-                    selectedSkuFamily.images.map((image, index) => (
-                      <div key={index} className="relative">
-                        <img
-                          src={(function () {
-                            const base =
-                              (import.meta as any).env?.VITE_BASE_URL || "";
-                            const isAbsolute = /^https?:\/\//i.test(image);
-                            return isAbsolute
-                              ? image
-                              : `${base}${
-                                  image.startsWith("/") ? "" : "/"
-                                }${image}`;
-                          })()}
-                          alt={`${selectedSkuFamily.name} - Image ${index + 1}`}
-                          className="w-full h-32 object-cover rounded-lg border border-gray-200 dark:border-gray-600"
-                          onError={(e) => {
-                            (e.currentTarget as HTMLImageElement).src =
-                              placeholderImage;
-                          }}
-                        />
+              {selectedSkuFamily.subSkuFamilies && selectedSkuFamily.subSkuFamilies.length > 0 && (
+                <div className="mt-6">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                    Sub SKU Families ({selectedSkuFamily.subSkuFamilies.length})
+                  </h3>
+                  <div className="space-y-4">
+                    {selectedSkuFamily.subSkuFamilies.map((subSku: any, index: number) => (
+                      <div key={subSku._id || index} className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 p-5 rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm">
+                        <div className="flex items-start justify-between mb-4">
+                          <div>
+                            <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Sub SKU Code</div>
+                            <h4 className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                              {subSku.subSkuCode || "Auto-generating..."}
+                            </h4>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 text-xs font-medium">
+                              {subSku.subSkuSequence || 1}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="text-sm font-semibold text-gray-800 dark:text-white mb-4">
+                          {subSku.subName || `Sub SKU ${index + 1}`}
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-4">
+                          <div className="bg-white dark:bg-gray-700/50 p-3 rounded-lg border border-gray-200 dark:border-gray-600">
+                            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Sub SKU Code</label>
+                            <p className="text-base font-semibold text-blue-600 dark:text-blue-400 mt-1">
+                              {subSku.subSkuCode || "Auto-generating..."}
+                            </p>
+                          </div>
+                          <div className="bg-white dark:bg-gray-700/50 p-3 rounded-lg border border-gray-200 dark:border-gray-600">
+                            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Sub Name</label>
+                            <p className="text-base font-medium text-gray-900 dark:text-white mt-1">
+                              {subSku.subName || "N/A"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                          <div>
+                            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Storage</label>
+                            <p className="text-sm text-gray-900 dark:text-white mt-1">
+                              {typeof subSku.storageId === 'object' ? subSku.storageId?.title || "N/A" : "N/A"}
+                            </p>
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">RAM</label>
+                            <p className="text-sm text-gray-900 dark:text-white mt-1">
+                              {typeof subSku.ramId === 'object' ? subSku.ramId?.title || "N/A" : "N/A"}
+                            </p>
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Color</label>
+                            <p className="text-sm text-gray-900 dark:text-white mt-1">
+                              {typeof subSku.colorId === 'object' ? subSku.colorId?.title || "N/A" : "N/A"}
+                            </p>
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Sequence</label>
+                            <p className="text-sm text-gray-900 dark:text-white mt-1">
+                              {subSku.subSkuSequence || 1}
+                            </p>
+                          </div>
+                        </div>
+                        {subSku.images && subSku.images.length > 0 && (
+                          <div className="mt-3">
+                            <label className="text-sm text-gray-600 dark:text-gray-400">Images ({subSku.images.length}):</label>
+                            <div className="grid grid-cols-4 gap-2 mt-2">
+                              {subSku.images.slice(0, 4).map((img: string, imgIndex: number) => (
+                                <img
+                                  key={imgIndex}
+                                  src={(function () {
+                                    const base = (import.meta as any).env?.VITE_BASE_URL || "";
+                                    const isAbsolute = /^https?:\/\//i.test(img);
+                                    return isAbsolute ? img : `${base}${img.startsWith("/") ? "" : "/"}${img}`;
+                                  })()}
+                                  alt={`${subSku.subName} - Image ${imgIndex + 1}`}
+                                  className="w-full h-20 object-cover rounded border border-gray-200 dark:border-gray-600"
+                                  onError={(e) => {
+                                    (e.currentTarget as HTMLImageElement).src = placeholderImage;
+                                  }}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {subSku.videos && subSku.videos.length > 0 && (
+                          <div className="mt-3">
+                            <label className="text-sm text-gray-600 dark:text-gray-400">Videos ({subSku.videos.length})</label>
+                          </div>
+                        )}
                       </div>
-                    ))
-                  ) : (
-                    <div className="col-span-full text-center py-8 text-gray-500 dark:text-gray-400">
-                      <i className="fas fa-image text-4xl mb-2"></i>
-                      <p>No images available</p>
-                    </div>
-                  )}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
