@@ -21,7 +21,6 @@ const PermissionManagementModal: React.FC<PermissionManagementModalProps> = ({
 }) => {
   const [modules, setModules] = useState<Module[]>([]);
   const [permissions, setPermissions] = useState<ModulePermissions>({});
-  const [initialPermissions, setInitialPermissions] = useState<ModulePermissions>({});
   const [selectedRole, setSelectedRole] = useState<string>(adminRole);
   const [availableRoles, setAvailableRoles] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -142,7 +141,6 @@ const PermissionManagementModal: React.FC<PermissionManagementModalProps> = ({
         }
       }
       setPermissions(fetchedPermissions);
-      setInitialPermissions(JSON.parse(JSON.stringify(fetchedPermissions))); // Deep copy for comparison
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {

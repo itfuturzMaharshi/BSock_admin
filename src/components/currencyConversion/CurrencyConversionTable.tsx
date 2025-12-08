@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+// import Swal from 'sweetalert2';
 import { CurrencyConversionService, CurrencyConversion } from '../../services/currencyConversion/currencyConversion.services';
 import toastHelper from '../../utils/toastHelper';
 import CurrencyConversionModal from './CurrencyConversionModal.tsx';
@@ -105,6 +106,8 @@ const CurrencyConversionTable: React.FC = () => {
     }, 50);
   };
 
+  // Note: Currency conversions cannot be deleted according to the service
+  // Delete functionality has been removed from the service
 
   const totalPages = Math.ceil(totalDocs / itemsPerPage);
 
@@ -211,22 +214,13 @@ const CurrencyConversionTable: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
                       {canWrite ? (
-                        <div className="flex items-center justify-center gap-3">
-                          <button
-                            onClick={() => handleEdit(conversion._id!)}
-                            className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors"
-                            title="Edit Currency Conversion"
-                          >
-                            <i className="fas fa-edit"></i>
-                          </button>
-                          <button
-                            onClick={() => handleDelete(conversion._id!)}
-                            className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
-                            title="Delete Currency Conversion"
-                          >
-                            <i className="fas fa-trash"></i>
-                          </button>
-                        </div>
+                        <button
+                          onClick={() => handleEdit(conversion._id!)}
+                          className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors"
+                          title="Edit Currency Conversion"
+                        >
+                          <i className="fas fa-edit"></i>
+                        </button>
                       ) : (
                         <span className="text-gray-400 dark:text-gray-500 text-sm">View Only</span>
                       )}

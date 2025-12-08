@@ -20,7 +20,7 @@ interface BusinessRequest {
 }
 
 const BusinessRequestsTable: React.FC = () => {
-  const { canWrite, canVerifyApprove } = useModulePermissions('/business-requests');
+  const { canVerifyApprove } = useModulePermissions('/business-requests');
   const [businessRequests, setBusinessRequests] = useState<BusinessRequest[]>(
     []
   );
