@@ -8,8 +8,10 @@ import SubSkuFamilyModal from "./SubSkuFamilyModal";
 import placeholderImage from "../../../public/images/product/noimage.jpg";
 import { SkuFamily } from "./types";
 import { useDebounce } from "../../hooks/useDebounce";
+import { useModulePermissions } from "../../hooks/useModulePermissions";
 
 const SkuFamilyTable: React.FC = () => {
+  const { canWrite } = useModulePermissions('/sku-family');
   const [skuFamilyData, setSkuFamilyData] = useState<SkuFamily[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const debouncedSearchTerm = useDebounce(searchTerm, 1000);
@@ -323,37 +325,41 @@ const SkuFamilyTable: React.FC = () => {
               <i className="fas fa-file-export text-xs"></i>
               Export
             </button>
-            <label className="inline-flex items-center gap-1 rounded-lg bg-orange-600 text-white px-4 py-2 text-sm font-medium hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600 transition-colors cursor-pointer">
-              <i className="fas fa-file-import text-xs"></i>
-              Import
-              <input
-                type="file"
-                accept=".xlsx,.xls"
-                className="hidden"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    try {
-                      await SkuFamilyService.importFromExcel(file);
-                      fetchData();
-                    } catch (error) {
-                      console.error('Failed to import:', error);
-                    }
-                  }
-                  e.target.value = '';
-                }}
-              />
-            </label>
-            <button
-              className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
-              onClick={() => {
-                setEditId(null);
-                setIsModalOpen(true);
-              }}
-            >
-              <i className="fas fa-plus text-xs"></i>
-              Add SKU Family
-            </button>
+            {canWrite && (
+              <>
+                <label className="inline-flex items-center gap-1 rounded-lg bg-orange-600 text-white px-4 py-2 text-sm font-medium hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600 transition-colors cursor-pointer">
+                  <i className="fas fa-file-import text-xs"></i>
+                  Import
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        try {
+                          await SkuFamilyService.importFromExcel(file);
+                          fetchData();
+                        } catch (error) {
+                          console.error('Failed to import:', error);
+                        }
+                      }
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
+                <button
+                  className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
+                  onClick={() => {
+                    setEditId(null);
+                    setIsModalOpen(true);
+                  }}
+                >
+                  <i className="fas fa-plus text-xs"></i>
+                  Add SKU Family
+                </button>
+              </>
+            )}
           </div>
         </div>
         <div className="w-full overflow-hidden">
@@ -410,10 +416,12 @@ const SkuFamilyTable: React.FC = () => {
                         <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md">
                           {searchTerm.trim() 
                             ? `No SKU families match your search "${searchTerm}". Try adjusting your search terms.`
-                            : "There are no SKU families available at the moment. Click the 'Add SKU Family' button to create your first SKU family."}
+                            : canWrite
+                            ? "There are no SKU families available at the moment. Click the 'Add SKU Family' button to create your first SKU family."
+                            : "There are no SKU families available at the moment."}
                         </p>
                       </div>
-                      {!searchTerm.trim() && (
+                      {!searchTerm.trim() && canWrite && (
                         <button
                           onClick={() => {
                             setEditId(null);
@@ -467,54 +475,62 @@ const SkuFamilyTable: React.FC = () => {
                           {typeof item.conditionCategoryId === 'object' ? item.conditionCategoryId?.title || "N/A" : item.conditionCategoryId || "N/A"}
                         </td>
                       <td className="px-4 py-3 text-center">
-                        <input
-                          type="number"
-                          min="1"
-                          value={editingSequenceId === item._id ? editingSequenceValue : (item.sequence ?? 1)}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            if (editingSequenceId !== item._id) {
-                              setEditingSequenceId(item._id || null);
-                            }
-                            if (value === "" || /^\d+$/.test(value)) {
-                              setEditingSequenceValue(value);
-                            }
-                          }}
-                          onBlur={() => {
-                            if (editingSequenceId === item._id && editingSequenceValue !== "") {
-                              handleSequenceSave(item);
-                            } else if (editingSequenceId === item._id) {
-                              setEditingSequenceId(null);
-                              setEditingSequenceValue("");
-                            }
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" && editingSequenceId === item._id) {
-                              handleSequenceSave(item);
-                            } else if (e.key === "Escape" && editingSequenceId === item._id) {
-                              setEditingSequenceId(null);
-                              setEditingSequenceValue("");
-                            }
-                          }}
-                          onClick={(e) => e.stopPropagation()}
-                          className="w-12 px-2 py-1 text-center border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-xs"
-                          placeholder="1"
-                        />
+                        {canWrite ? (
+                          <input
+                            type="number"
+                            min="1"
+                            value={editingSequenceId === item._id ? editingSequenceValue : (item.sequence ?? 1)}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              if (editingSequenceId !== item._id) {
+                                setEditingSequenceId(item._id || null);
+                              }
+                              if (value === "" || /^\d+$/.test(value)) {
+                                setEditingSequenceValue(value);
+                              }
+                            }}
+                            onBlur={() => {
+                              if (editingSequenceId === item._id && editingSequenceValue !== "") {
+                                handleSequenceSave(item);
+                              } else if (editingSequenceId === item._id) {
+                                setEditingSequenceId(null);
+                                setEditingSequenceValue("");
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && editingSequenceId === item._id) {
+                                handleSequenceSave(item);
+                              } else if (e.key === "Escape" && editingSequenceId === item._id) {
+                                setEditingSequenceId(null);
+                                setEditingSequenceValue("");
+                              }
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-12 px-2 py-1 text-center border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-xs"
+                            placeholder="1"
+                          />
+                        ) : (
+                          <span className="text-gray-600 dark:text-gray-400 text-xs">
+                            {item.sequence ?? 1}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <div className="flex items-center justify-center gap-2" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (item._id) {
-                                handleAddSubSkuFamily(item._id);
-                              }
-                            }}
-                            className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors p-1"
-                            title="Add Sub SKU Family"
-                          >
-                            <i className="fas fa-plus text-sm"></i>
-                          </button>
+                          {canWrite && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (item._id) {
+                                  handleAddSubSkuFamily(item._id);
+                                }
+                              }}
+                              className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors p-1"
+                              title="Add Sub SKU Family"
+                            >
+                              <i className="fas fa-plus text-sm"></i>
+                            </button>
+                          )}
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -525,26 +541,34 @@ const SkuFamilyTable: React.FC = () => {
                           >
                             <i className="fas fa-eye text-sm"></i>
                           </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              item._id && handleEdit(item._id);
-                            }}
-                            className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 transition-colors p-1"
-                            title="Edit"
-                          >
-                            <i className="fas fa-edit text-sm"></i>
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              item._id && handleDelete(item._id);
-                            }}
-                            className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors p-1"
-                            title="Delete"
-                          >
-                            <i className="fas fa-trash text-sm"></i>
-                          </button>
+                          {canWrite && (
+                            <>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (item._id) {
+                                    handleEdit(item._id);
+                                  }
+                                }}
+                                className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 transition-colors p-1"
+                                title="Edit"
+                              >
+                                <i className="fas fa-edit text-sm"></i>
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (item._id) {
+                                    handleDelete(item._id);
+                                  }
+                                }}
+                                className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors p-1"
+                                title="Delete"
+                              >
+                                <i className="fas fa-trash text-sm"></i>
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -629,76 +653,86 @@ const SkuFamilyTable: React.FC = () => {
                                             {typeof subSku.colorId === 'object' ? subSku.colorId?.title || "N/A" : "N/A"}
                                           </td>
                                           <td className="px-4 py-3 text-center">
-                                            <input
-                                              type="number"
-                                              min="1"
-                                              value={editingSubSequenceId === subSku._id ? editingSubSequenceValue : (subSku.subSkuSequence ?? 1)}
-                                              onChange={(e) => {
-                                                const value = e.target.value;
-                                                if (editingSubSequenceId !== subSku._id) {
-                                                  setEditingSubSequenceId(subSku._id || null);
-                                                }
-                                                if (value === "" || /^\d+$/.test(value)) {
-                                                  setEditingSubSequenceValue(value);
-                                                }
-                                              }}
-                                              onBlur={() => {
-                                                if (editingSubSequenceId === subSku._id && editingSubSequenceValue !== "") {
-                                                  const sequence = parseInt(editingSubSequenceValue);
-                                                  if (item._id && subSku._id) {
-                                                    handleSubSequenceSave(item._id, subSku._id, sequence);
-                                                  } else {
+                                            {canWrite ? (
+                                              <input
+                                                type="number"
+                                                min="1"
+                                                value={editingSubSequenceId === subSku._id ? editingSubSequenceValue : (subSku.subSkuSequence ?? 1)}
+                                                onChange={(e) => {
+                                                  const value = e.target.value;
+                                                  if (editingSubSequenceId !== subSku._id) {
+                                                    setEditingSubSequenceId(subSku._id || null);
+                                                  }
+                                                  if (value === "" || /^\d+$/.test(value)) {
+                                                    setEditingSubSequenceValue(value);
+                                                  }
+                                                }}
+                                                onBlur={() => {
+                                                  if (editingSubSequenceId === subSku._id && editingSubSequenceValue !== "") {
+                                                    const sequence = parseInt(editingSubSequenceValue);
+                                                    if (item._id && subSku._id) {
+                                                      handleSubSequenceSave(item._id, subSku._id, sequence);
+                                                    } else {
+                                                      setEditingSubSequenceId(null);
+                                                      setEditingSubSequenceValue("");
+                                                    }
+                                                  } else if (editingSubSequenceId === subSku._id) {
                                                     setEditingSubSequenceId(null);
                                                     setEditingSubSequenceValue("");
                                                   }
-                                                } else if (editingSubSequenceId === subSku._id) {
-                                                  setEditingSubSequenceId(null);
-                                                  setEditingSubSequenceValue("");
-                                                }
-                                              }}
-                                              onKeyDown={(e) => {
-                                                if (e.key === "Enter" && editingSubSequenceId === subSku._id) {
-                                                  const sequence = parseInt(editingSubSequenceValue);
-                                                  if (item._id && subSku._id) {
-                                                    handleSubSequenceSave(item._id, subSku._id, sequence);
+                                                }}
+                                                onKeyDown={(e) => {
+                                                  if (e.key === "Enter" && editingSubSequenceId === subSku._id) {
+                                                    const sequence = parseInt(editingSubSequenceValue);
+                                                    if (item._id && subSku._id) {
+                                                      handleSubSequenceSave(item._id, subSku._id, sequence);
+                                                    }
+                                                  } else if (e.key === "Escape" && editingSubSequenceId === subSku._id) {
+                                                    setEditingSubSequenceId(null);
+                                                    setEditingSubSequenceValue("");
                                                   }
-                                                } else if (e.key === "Escape" && editingSubSequenceId === subSku._id) {
-                                                  setEditingSubSequenceId(null);
-                                                  setEditingSubSequenceValue("");
-                                                }
-                                              }}
-                                              onClick={(e) => e.stopPropagation()}
-                                              className="w-12 px-2 py-1 text-center border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-xs"
-                                              placeholder="1"
-                                            />
+                                                }}
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="w-12 px-2 py-1 text-center border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-xs"
+                                                placeholder="1"
+                                              />
+                                            ) : (
+                                              <span className="text-gray-600 dark:text-gray-400 text-xs">
+                                                {subSku.subSkuSequence ?? 1}
+                                              </span>
+                                            )}
                                           </td>
                                           <td className="px-4 py-3 text-center">
-                                            <div className="flex items-center justify-center gap-2" onClick={(e) => e.stopPropagation()}>
-                                              <button
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  if (item._id && subSku._id) {
-                                                    handleEditSubSkuFamily(item._id, subSku);
-                                                  }
-                                                }}
-                                                className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 transition-colors p-1"
-                                                title="Edit"
-                                              >
-                                                <i className="fas fa-edit text-sm"></i>
-                                              </button>
-                                              <button
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  if (item._id && subSku._id) {
-                                                    handleDeleteSubSkuFamily(item._id, subSku._id);
-                                                  }
-                                                }}
-                                                className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors p-1"
-                                                title="Delete"
-                                              >
-                                                <i className="fas fa-trash text-sm"></i>
-                                              </button>
-                                            </div>
+                                            {canWrite ? (
+                                              <div className="flex items-center justify-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                                <button
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (item._id && subSku._id) {
+                                                      handleEditSubSkuFamily(item._id, subSku);
+                                                    }
+                                                  }}
+                                                  className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 transition-colors p-1"
+                                                  title="Edit"
+                                                >
+                                                  <i className="fas fa-edit text-sm"></i>
+                                                </button>
+                                                <button
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (item._id && subSku._id) {
+                                                      handleDeleteSubSkuFamily(item._id, subSku._id);
+                                                    }
+                                                  }}
+                                                  className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors p-1"
+                                                  title="Delete"
+                                                >
+                                                  <i className="fas fa-trash text-sm"></i>
+                                                </button>
+                                              </div>
+                                            ) : (
+                                              <span className="text-gray-400 dark:text-gray-500 text-xs">View Only</span>
+                                            )}
                                           </td>
                                         </tr>
                                       );
@@ -720,18 +754,20 @@ const SkuFamilyTable: React.FC = () => {
                             <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
                               No Sub SKU Families found
                             </p>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (item._id) {
-                                  handleAddSubSkuFamily(item._id);
-                                }
-                              }}
-                              className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
-                            >
-                              <i className="fas fa-plus"></i>
-                              Add Sub SKU Family
-                            </button>
+                            {canWrite && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (item._id) {
+                                    handleAddSubSkuFamily(item._id);
+                                  }
+                                }}
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
+                              >
+                                <i className="fas fa-plus"></i>
+                                Add Sub SKU Family
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>

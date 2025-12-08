@@ -4,8 +4,10 @@ import toastHelper from "../../utils/toastHelper";
 import SellerCategoryModal from "./SellerCategoryModal";
 import { SellerCategoryService, SellerCategory } from "../../services/sellerCategory/sellerCategory.services";
 import { useDebounce } from "../../hooks/useDebounce";
+import { useModulePermissions } from "../../hooks/useModulePermissions";
 
 const SellerCategoryTable: React.FC = () => {
+  const { canWrite } = useModulePermissions('/masters');
   const [categoriesData, setCategoriesData] = useState<SellerCategory[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const debouncedSearchTerm = useDebounce(searchTerm, 1000);
@@ -144,37 +146,41 @@ const SellerCategoryTable: React.FC = () => {
               <i className="fas fa-file-export text-xs"></i>
               Export
             </button>
-            <label className="inline-flex items-center gap-1 rounded-lg bg-orange-600 text-white px-4 py-2 text-sm font-medium hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600 transition-colors cursor-pointer">
-              <i className="fas fa-file-import text-xs"></i>
-              Import
-              <input
-                type="file"
-                accept=".xlsx,.xls"
-                className="hidden"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    try {
-                      await SellerCategoryService.importFromExcel(file);
-                      fetchCategories();
-                    } catch (error) {
-                      console.error('Failed to import:', error);
-                    }
-                  }
-                  e.target.value = '';
-                }}
-              />
-            </label>
-            <button
-              className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
-              onClick={() => {
-                setEditCategory(null);
-                setIsModalOpen(true);
-              }}
-            >
-              <i className="fas fa-plus text-xs"></i>
-              Add Category
-            </button>
+            {canWrite && (
+              <>
+                <label className="inline-flex items-center gap-1 rounded-lg bg-orange-600 text-white px-4 py-2 text-sm font-medium hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600 transition-colors cursor-pointer">
+                  <i className="fas fa-file-import text-xs"></i>
+                  Import
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        try {
+                          await SellerCategoryService.importFromExcel(file);
+                          fetchCategories();
+                        } catch (error) {
+                          console.error('Failed to import:', error);
+                        }
+                      }
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
+                <button
+                  className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
+                  onClick={() => {
+                    setEditCategory(null);
+                    setIsModalOpen(true);
+                  }}
+                >
+                  <i className="fas fa-plus text-xs"></i>
+                  Add Category
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -242,22 +248,26 @@ const SellerCategoryTable: React.FC = () => {
                         : "-"}
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
-                      <div className="inline-flex items-center gap-3">
-                        <button
-                          onClick={() => handleEdit(item)}
-                          className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300"
-                          title="Edit Category"
-                        >
-                          <i className="fas fa-edit"></i>
-                        </button>
-                        <button
-                          onClick={() => handleDelete(item)}
-                          className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
-                          title="Delete Category"
-                        >
-                          <i className="fas fa-trash"></i>
-                        </button>
-                      </div>
+                      {canWrite ? (
+                        <div className="inline-flex items-center gap-3">
+                          <button
+                            onClick={() => handleEdit(item)}
+                            className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300"
+                            title="Edit Category"
+                          >
+                            <i className="fas fa-edit"></i>
+                          </button>
+                          <button
+                            onClick={() => handleDelete(item)}
+                            className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
+                            title="Delete Category"
+                          >
+                            <i className="fas fa-trash"></i>
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 dark:text-gray-500 text-sm">View Only</span>
+                      )}
                     </td>
                   </tr>
                 ))

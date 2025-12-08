@@ -12,6 +12,7 @@ import {
   Customer,
 } from "../../services/customer/customerService";
 import { useDebounce } from "../../hooks/useDebounce";
+import { useModulePermissions } from "../../hooks/useModulePermissions";
 
 // Define the interface for Transaction data
 interface Transaction {
@@ -30,6 +31,7 @@ interface Transaction {
 }
 
 const WalletAmountTable: React.FC = () => {
+  const { canWrite } = useModulePermissions('/wallet-amount');
   const [walletData, setWalletData] = useState<CustomerWalletData[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -401,16 +403,18 @@ const WalletAmountTable: React.FC = () => {
             </div>
           </div>
 
-          <button
-            className="inline-flex items-center whitespace-nowrap gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
-            onClick={() => {
-              setEditIndex(null);
-              setIsModalOpen(true);
-            }}
-          >
-            <i className="fas fa-plus text-xs"></i>
-            Add Transaction
-          </button>
+          {canWrite && (
+            <button
+              className="inline-flex items-center whitespace-nowrap gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
+              onClick={() => {
+                setEditIndex(null);
+                setIsModalOpen(true);
+              }}
+            >
+              <i className="fas fa-plus text-xs"></i>
+              Add Transaction
+            </button>
+          )}
         </div>
 
         {/* Table */}
@@ -505,13 +509,15 @@ const WalletAmountTable: React.FC = () => {
                         >
                           <i className="fas fa-eye"></i>
                         </button>
-                        <button
-                          onClick={() => handleEditCustomer(item)}
-                          className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors"
-                          title="Edit Wallet"
-                        >
-                          <i className="fas fa-edit"></i>
-                        </button>
+                        {canWrite && (
+                          <button
+                            onClick={() => handleEditCustomer(item)}
+                            className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors"
+                            title="Edit Wallet"
+                          >
+                            <i className="fas fa-edit"></i>
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -718,18 +724,20 @@ const WalletAmountTable: React.FC = () => {
               >
                 Close
               </button>
-              <button
-                onClick={() => {
-                  handleEditCustomer(viewingCustomer);
-                  setIsViewDetailsOpen(false);
-                  setViewingCustomer(null);
-                  setSelectedCustomer("all");
-                  setTransactions([]);
-                }}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Edit Wallet
-              </button>
+              {canWrite && (
+                <button
+                  onClick={() => {
+                    handleEditCustomer(viewingCustomer);
+                    setIsViewDetailsOpen(false);
+                    setViewingCustomer(null);
+                    setSelectedCustomer("all");
+                    setTransactions([]);
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Edit Wallet
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -3,6 +3,7 @@ import Swal from "sweetalert2";
 import { BusinessRequestsService } from "../../services/businessRequests/businessRequests.services";
 import { LOCAL_STORAGE_KEYS } from "../../constants/localStorage";
 import { useDebounce } from "../../hooks/useDebounce";
+import { useModulePermissions } from "../../hooks/useModulePermissions";
 
 interface BusinessRequest {
   _id?: string;
@@ -19,6 +20,7 @@ interface BusinessRequest {
 }
 
 const BusinessRequestsTable: React.FC = () => {
+  const { canWrite, canVerifyApprove } = useModulePermissions('/business-requests');
   const [businessRequests, setBusinessRequests] = useState<BusinessRequest[]>(
     []
   );
@@ -403,97 +405,107 @@ const BusinessRequestsTable: React.FC = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm text-center relative">
-                        <div className="dropdown-container relative">
-                          <button
-                            className="text-gray-600 dark:text-gray-400 hover:text-gray-800 p-1 rounded-full hover:bg-gray-100"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (openDropdownId === item._id) {
-                                setOpenDropdownId(null);
-                                setDropdownPosition(null);
-                              } else {
-                                const rect =
-                                  e.currentTarget.getBoundingClientRect();
-                                const dropdownWidth = 192;
-                                const dropdownHeight = 120;
-                                let top = rect.bottom + 8;
-                                let left = rect.right - dropdownWidth;
+                        {canVerifyApprove ? (
+                          <div className="dropdown-container relative">
+                            <button
+                              className="text-gray-600 dark:text-gray-400 hover:text-gray-800 p-1 rounded-full hover:bg-gray-100"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (openDropdownId === item._id) {
+                                  setOpenDropdownId(null);
+                                  setDropdownPosition(null);
+                                } else {
+                                  const rect =
+                                    e.currentTarget.getBoundingClientRect();
+                                  const dropdownWidth = 192;
+                                  const dropdownHeight = 120;
+                                  let top = rect.bottom + 8;
+                                  let left = rect.right - dropdownWidth;
 
-                                if (top + dropdownHeight > window.innerHeight) {
-                                  top = rect.top - dropdownHeight - 8;
-                                }
-                                if (left < 8) {
-                                  left = 8;
-                                }
-                                if (
-                                  left + dropdownWidth >
-                                  window.innerWidth - 8
-                                ) {
-                                  left = window.innerWidth - dropdownWidth - 8;
-                                }
+                                  if (top + dropdownHeight > window.innerHeight) {
+                                    top = rect.top - dropdownHeight - 8;
+                                  }
+                                  if (left < 8) {
+                                    left = 8;
+                                  }
+                                  if (
+                                    left + dropdownWidth >
+                                    window.innerWidth - 8
+                                  ) {
+                                    left = window.innerWidth - dropdownWidth - 8;
+                                  }
 
-                                setDropdownPosition({ top, left });
-                                setOpenDropdownId(item._id || null);
-                              }
-                            }}
-                          >
-                            <i className="fas fa-ellipsis-v"></i>
-                          </button>
-                          {openDropdownId === item._id && dropdownPosition && (
-                            <div
-                              className="fixed w-48 bg-white border rounded-md shadow-lg"
-                              style={{
-                                top: `${dropdownPosition.top}px`,
-                                left: `${dropdownPosition.left}px`,
-                                zIndex: 9999,
+                                  setDropdownPosition({ top, left });
+                                  setOpenDropdownId(item._id || null);
+                                }
                               }}
                             >
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleView(item);
+                              <i className="fas fa-ellipsis-v"></i>
+                            </button>
+                            {openDropdownId === item._id && dropdownPosition && (
+                              <div
+                                className="fixed w-48 bg-white border rounded-md shadow-lg"
+                                style={{
+                                  top: `${dropdownPosition.top}px`,
+                                  left: `${dropdownPosition.left}px`,
+                                  zIndex: 9999,
                                 }}
-                                className="flex items-center w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-blue-600"
                               >
-                                <i className="fas fa-eye mr-2 text-blue-600"></i>{" "}
-                                View
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (item._id)
-                                    handleStatusChange(item._id, "Approved");
-                                }}
-                                className="flex items-center w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-green-600"
-                              >
-                                <i className="fas fa-check mr-2 text-green-600"></i>{" "}
-                                Approved
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (item._id)
-                                    handleStatusChange(item._id, "Pending");
-                                }}
-                                className="flex items-center w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-yellow-600"
-                              >
-                                <i className="fas fa-pause mr-2 text-yellow-600"></i>{" "}
-                                Pending
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (item._id)
-                                    handleStatusChange(item._id, "Rejected");
-                                }}
-                                className="flex items-center w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-red-600"
-                              >
-                                <i className="fas fa-times mr-2 text-red-600"></i>{" "}
-                                Rejected
-                              </button>
-                            </div>
-                          )}
-                        </div>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleView(item);
+                                  }}
+                                  className="flex items-center w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-blue-600"
+                                >
+                                  <i className="fas fa-eye mr-2 text-blue-600"></i>{" "}
+                                  View
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (item._id)
+                                      handleStatusChange(item._id, "Approved");
+                                  }}
+                                  className="flex items-center w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-green-600"
+                                >
+                                  <i className="fas fa-check mr-2 text-green-600"></i>{" "}
+                                  Approved
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (item._id)
+                                      handleStatusChange(item._id, "Pending");
+                                  }}
+                                  className="flex items-center w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-yellow-600"
+                                >
+                                  <i className="fas fa-pause mr-2 text-yellow-600"></i>{" "}
+                                  Pending
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (item._id)
+                                      handleStatusChange(item._id, "Rejected");
+                                  }}
+                                  className="flex items-center w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-red-600"
+                                >
+                                  <i className="fas fa-times mr-2 text-red-600"></i>{" "}
+                                  Rejected
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleView(item)}
+                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                            title="View Business Request"
+                          >
+                            <i className="fas fa-eye"></i>
+                          </button>
+                        )}
                       </td>
                     </tr>
                   )

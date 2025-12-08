@@ -6,8 +6,12 @@ import PermissionManagementModal from "./PermissionManagementModal";
 import { AdminService, Admin, UpdateAdminRequest } from "../../services/admin/admin.services";
 import { LOCAL_STORAGE_KEYS } from "../../constants/localStorage";
 import { useDebounce } from "../../hooks/useDebounce";
+import { usePermissions } from "../../context/PermissionsContext";
 
 const AdminsTable: React.FC = () => {
+  const { hasPermission } = usePermissions();
+  const canWrite = hasPermission('/admin', 'write');
+  const canVerifyApprove = hasPermission('/admin', 'verifyApprove');
   const [adminsData, setAdminsData] = useState<Admin[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const debouncedSearchTerm = useDebounce(searchTerm, 1000);
@@ -218,15 +222,17 @@ const AdminsTable: React.FC = () => {
             </div>
           </div>
 
-          <button
-            className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
-            onClick={() => {
-              setIsModalOpen(true);
-            }}
-          >
-            <i className="fas fa-plus text-xs"></i>
-            Add Admin
-          </button>
+          {canWrite && (
+            <button
+              className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
+              onClick={() => {
+                setIsModalOpen(true);
+              }}
+            >
+              <i className="fas fa-plus text-xs"></i>
+              Add Admin
+            </button>
+          )}
         </div>
 
         {/* Table */}
@@ -288,60 +294,73 @@ const AdminsTable: React.FC = () => {
                       {new Date(item.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 text-sm">
-                      <span 
-                        onClick={() => handleToggleStatus(item)}
-                        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold tracking-wider cursor-pointer transition-all hover:opacity-80 ${getStatusStyles(item.isActive)} ${
-                          togglingStatus === item._id ? 'opacity-50 cursor-wait' : ''
-                        }`}
-                        title={`Click to ${item.isActive ? 'deactivate' : 'activate'}`}
-                      >
-                        {togglingStatus === item._id ? (
-                          <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-current"></div>
-                        ) : (
+                      {canVerifyApprove ? (
+                        <span 
+                          onClick={() => handleToggleStatus(item)}
+                          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold tracking-wider cursor-pointer transition-all hover:opacity-80 ${getStatusStyles(item.isActive)} ${
+                            togglingStatus === item._id ? 'opacity-50 cursor-wait' : ''
+                          }`}
+                          title={`Click to ${item.isActive ? 'deactivate' : 'activate'}`}
+                        >
+                          {togglingStatus === item._id ? (
+                            <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-current"></div>
+                          ) : (
+                            <i className={`fas ${getStatusIcon(item.isActive)} text-xs`}></i>
+                          )}
+                          {item.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      ) : (
+                        <span 
+                          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold tracking-wider ${getStatusStyles(item.isActive)}`}
+                        >
                           <i className={`fas ${getStatusIcon(item.isActive)} text-xs`}></i>
-                        )}
-                        {item.isActive ? 'Active' : 'Inactive'}
-                      </span>
+                          {item.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => handleEdit(item)}
-                          className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors"
-                          title="Edit Admin"
-                        >
-                          <i className="fas fa-edit"></i>
-                        </button>
-                        <button
-                          onClick={() => handleResetPassword(item)}
-                          disabled={resettingPassword === item._id}
-                          className="text-yellow-600 hover:text-yellow-800 dark:text-yellow-400 dark:hover:text-yellow-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Reset Password"
-                        >
-                          {resettingPassword === item._id ? (
-                            <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-yellow-600"></div>
-                          ) : (
-                            <i className="fas fa-key"></i>
-                          )}
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedAdminForPermissions(item);
-                            setPermissionModalOpen(true);
-                          }}
-                          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                          title="Manage Permissions"
-                        >
-                          <i className="fas fa-shield-alt"></i>
-                        </button>
-                        <button
-                          onClick={() => handleDelete(item)}
-                          className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
-                          title="Delete Admin"
-                        >
-                          <i className="fas fa-trash"></i>
-                        </button>
-                      </div>
+                      {canWrite ? (
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => handleEdit(item)}
+                            className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors"
+                            title="Edit Admin"
+                          >
+                            <i className="fas fa-edit"></i>
+                          </button>
+                          <button
+                            onClick={() => handleResetPassword(item)}
+                            disabled={resettingPassword === item._id}
+                            className="text-yellow-600 hover:text-yellow-800 dark:text-yellow-400 dark:hover:text-yellow-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Reset Password"
+                          >
+                            {resettingPassword === item._id ? (
+                              <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-yellow-600"></div>
+                            ) : (
+                              <i className="fas fa-key"></i>
+                            )}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedAdminForPermissions(item);
+                              setPermissionModalOpen(true);
+                            }}
+                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                            title="Manage Permissions"
+                          >
+                            <i className="fas fa-shield-alt"></i>
+                          </button>
+                          <button
+                            onClick={() => handleDelete(item)}
+                            className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                            title="Delete Admin"
+                          >
+                            <i className="fas fa-trash"></i>
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 dark:text-gray-500 text-sm">View Only</span>
+                      )}
                     </td>
                   </tr>
                 ))

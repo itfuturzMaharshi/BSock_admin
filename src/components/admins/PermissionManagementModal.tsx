@@ -21,6 +21,7 @@ const PermissionManagementModal: React.FC<PermissionManagementModalProps> = ({
 }) => {
   const [modules, setModules] = useState<Module[]>([]);
   const [permissions, setPermissions] = useState<ModulePermissions>({});
+  const [initialPermissions, setInitialPermissions] = useState<ModulePermissions>({});
   const [selectedRole, setSelectedRole] = useState<string>(adminRole);
   const [availableRoles, setAvailableRoles] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -44,7 +45,104 @@ const PermissionManagementModal: React.FC<PermissionManagementModalProps> = ({
       setModules(modulesData);
       setAvailableRoles(rolesData);
       setSelectedRole(adminPermissionsData.admin.role);
-      setPermissions(adminPermissionsData.permissions || {});
+      const fetchedPermissions = adminPermissionsData.permissions || {};
+      
+      // Note: Backend schema has been fixed to include sellers module
+      
+      // Initialize permissions for all modules to ensure they exist
+      // This ensures that even if backend doesn't return permissions for a module,
+      // we still have a default permission object for it
+      modulesData.forEach((module) => {
+        // Check if permission exists with current key
+        let modulePermission = fetchedPermissions[module.key];
+        
+        // If not found, try to find by name (case-insensitive) or similar keys
+        if (!modulePermission) {
+          const foundKey = Object.keys(fetchedPermissions).find(
+            key => {
+              const keyLower = key.toLowerCase();
+              const moduleKeyLower = module.key.toLowerCase();
+              const moduleNameLower = module.name.toLowerCase();
+              
+              return keyLower === moduleKeyLower ||
+                     keyLower === moduleNameLower ||
+                     (keyLower.includes('seller') && moduleKeyLower.includes('seller')) ||
+                     (keyLower.includes('seller') && moduleNameLower.includes('seller'));
+            }
+          );
+          if (foundKey) {
+            modulePermission = fetchedPermissions[foundKey];
+            // Copy to the correct key, ensuring proper boolean values
+            fetchedPermissions[module.key] = {
+              read: Boolean(modulePermission.read),
+              write: Boolean(modulePermission.write),
+              ...(typeof modulePermission.verifyApprove !== 'undefined' && modulePermission.verifyApprove !== null && {
+                verifyApprove: Boolean(modulePermission.verifyApprove),
+              }),
+            };
+          }
+        }
+        
+        // Initialize permissions object if it doesn't exist
+        if (!fetchedPermissions[module.key]) {
+          fetchedPermissions[module.key] = {
+            read: false,
+            write: false,
+          };
+        } else {
+          // Ensure read and write are always defined and are proper booleans
+          const perm = fetchedPermissions[module.key];
+          if (typeof perm.read === 'undefined' || perm.read === null) {
+            perm.read = false;
+          } else {
+            perm.read = Boolean(perm.read);
+          }
+          if (typeof perm.write === 'undefined' || perm.write === null) {
+            perm.write = false;
+          } else {
+            perm.write = Boolean(perm.write);
+          }
+          // Ensure verifyApprove is boolean if it exists
+          if (typeof perm.verifyApprove !== 'undefined' && perm.verifyApprove !== null) {
+            perm.verifyApprove = Boolean(perm.verifyApprove);
+          }
+        }
+        
+        
+        // Initialize marginUpdate and marginValue for Master module
+        const isMaster = module.key.toLowerCase() === "master" || 
+                        module.key.toLowerCase() === "masters" ||
+                        module.name.toLowerCase() === "master" || 
+                        module.name.toLowerCase() === "masters" ||
+                        module.name.toLowerCase().includes("master");
+        
+        if (isMaster) {
+          // Ensure marginUpdate and marginValue are initialized for Master module
+          if (typeof fetchedPermissions[module.key].marginUpdate === 'undefined') {
+            fetchedPermissions[module.key].marginUpdate = false;
+          }
+          if (typeof fetchedPermissions[module.key].marginValue === 'undefined') {
+            fetchedPermissions[module.key].marginValue = 0;
+          }
+        }
+      });
+      
+      // Final check: Ensure seller module has permissions initialized
+      const sellerModule = modulesData.find(m => 
+        m.key.toLowerCase().includes('seller') || 
+        m.name.toLowerCase().includes('seller')
+      );
+      
+      if (sellerModule) {
+        if (!fetchedPermissions[sellerModule.key]) {
+          fetchedPermissions[sellerModule.key] = {
+            read: false,
+            write: false,
+          };
+        }
+      }
+      setPermissions(fetchedPermissions);
+      setInitialPermissions(JSON.parse(JSON.stringify(fetchedPermissions))); // Deep copy for comparison
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -52,14 +150,35 @@ const PermissionManagementModal: React.FC<PermissionManagementModalProps> = ({
     }
   };
 
-  const handlePermissionChange = (moduleKey: string, permissionType: keyof Permission, value: boolean) => {
-    setPermissions((prev) => ({
-      ...prev,
-      [moduleKey]: {
-        ...prev[moduleKey],
-        [permissionType]: value,
-      },
-    }));
+  const handlePermissionChange = (moduleKey: string, permissionType: keyof Permission, value: boolean | number) => {
+    setPermissions((prev) => {
+      // Ensure we have a base permission object
+      const currentPermission = prev[moduleKey] || { read: false, write: false };
+      
+      const updated = {
+        ...prev,
+        [moduleKey]: {
+          ...currentPermission,
+          [permissionType]: value,
+        },
+      };
+      
+      
+      return updated;
+    });
+  };
+
+  const handleMarginValueChange = (moduleKey: string, value: string) => {
+    const numValue = value === "" ? 0 : parseFloat(value);
+    if (!isNaN(numValue)) {
+      setPermissions((prev) => ({
+        ...prev,
+        [moduleKey]: {
+          ...prev[moduleKey],
+          marginValue: numValue,
+        },
+      }));
+    }
   };
 
   const handleRoleChange = async (newRole: string) => {
@@ -68,10 +187,17 @@ const PermissionManagementModal: React.FC<PermissionManagementModalProps> = ({
     if (newRole === "superadmin") {
       const allPermissions: ModulePermissions = {};
       modules.forEach((module) => {
+        const isMaster = isMasterModule(module);
+        const supportsVerifyApprove = moduleSupportsVerifyApprove(module.key, module.name);
+        
         allPermissions[module.key] = {
           read: true,
           write: true,
-          verifyApprove: true,
+          ...(supportsVerifyApprove && { verifyApprove: true }),
+          ...(isMaster && {
+            marginUpdate: true,
+            marginValue: permissions[module.key]?.marginValue ?? 0,
+          }),
         };
       });
       setPermissions(allPermissions);
@@ -88,18 +214,100 @@ const PermissionManagementModal: React.FC<PermissionManagementModalProps> = ({
 
       // Update permissions (only if not superadmin, as superadmin has all permissions)
       if (selectedRole !== "superadmin") {
-        await RoleManagementService.updateAdminPermissions(adminId, permissions);
+        // Filter out marginUpdate and marginValue from permissions before sending to backend
+        // These are handled separately or stored differently
+        const permissionsToSend: ModulePermissions = {};
+        
+        // Only send permissions for modules that exist in the modules list
+        // This ensures we're using the correct module keys
+        modules.forEach((module) => {
+          // Get permission - check both exact key and case-insensitive match
+          let permission = permissions[module.key];
+          
+          // If not found, try to find by case-insensitive key or name match
+          if (!permission) {
+            const foundKey = Object.keys(permissions).find(
+              key => key.toLowerCase() === module.key.toLowerCase() ||
+                     key.toLowerCase() === module.name.toLowerCase()
+            );
+            if (foundKey) {
+              permission = permissions[foundKey];
+            }
+          }
+          
+          // Always create permission object, even if it doesn't exist in state
+          // This ensures all modules are sent to backend
+          const permissionToSend = permission || {
+            read: false,
+            write: false,
+          };
+          
+          permissionsToSend[module.key] = {
+            read: Boolean(permissionToSend.read),
+            write: Boolean(permissionToSend.write),
+            // Only include verifyApprove if module supports it
+            ...(moduleSupportsVerifyApprove(module.key, module.name) && typeof permissionToSend.verifyApprove !== 'undefined' && {
+              verifyApprove: Boolean(permissionToSend.verifyApprove),
+            }),
+            // Exclude marginUpdate and marginValue as backend doesn't recognize them as permissions
+            // These should be handled via a separate endpoint or stored differently
+          };
+          
+        });
+        
+        // Double-check: Ensure seller module is included
+        const sellerModule = modules.find(m => 
+          m.key.toLowerCase().includes('seller') || 
+          m.name.toLowerCase().includes('seller')
+        );
+        
+        if (sellerModule) {
+          // Ensure seller permissions are always included and properly formatted
+          const sellerPerm = permissions[sellerModule.key] || {
+            read: false,
+            write: false,
+          };
+          
+          permissionsToSend[sellerModule.key] = {
+            read: Boolean(sellerPerm.read),
+            write: Boolean(sellerPerm.write),
+            ...(moduleSupportsVerifyApprove(sellerModule.key, sellerModule.name) && 
+                typeof sellerPerm.verifyApprove !== 'undefined' && {
+              verifyApprove: Boolean(sellerPerm.verifyApprove),
+            }),
+          };
+          
+          // Backend now properly supports 'sellers' key, no need for fallback
+        }
+        
+        await RoleManagementService.updateAdminPermissions(adminId, permissionsToSend);
+        
+        // TODO: If marginUpdate and marginValue need to be saved, create a separate API call
+        // For now, we'll store them in the permissions object but not send to backend
+        // You may need to create a separate endpoint like: updateAdminMarginSettings(adminId, marginValue)
       }
 
       toastHelper.showTost("Permissions updated successfully!", "success");
       
-      // Refresh permissions in localStorage
-      const updatedPermissions = await RoleManagementService.getMyPermissions();
-      localStorage.setItem('adminPermissions', JSON.stringify(updatedPermissions));
-      localStorage.setItem('adminRole', updatedPermissions.role);
       
-      // Dispatch custom event to notify other components
+      // Refresh permissions in localStorage for the current admin (not the one being edited)
+      // This ensures the sidebar updates if we're editing our own permissions
+      try {
+        const updatedPermissions = await RoleManagementService.getMyPermissions();
+        localStorage.setItem('adminPermissions', JSON.stringify(updatedPermissions));
+        localStorage.setItem('adminRole', updatedPermissions.role);
+      } catch (error) {
+        console.error('Error refreshing permissions:', error);
+      }
+      
+      // Dispatch custom event to notify other components (like sidebar)
       window.dispatchEvent(new Event('permissionsUpdated'));
+      
+      // Also trigger storage event for cross-tab updates
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'adminPermissions',
+        newValue: localStorage.getItem('adminPermissions'),
+      }));
       
       onUpdate();
       onClose();
@@ -110,13 +318,64 @@ const PermissionManagementModal: React.FC<PermissionManagementModalProps> = ({
     }
   };
 
+  // Check if module supports Verify/Approve permission
+  // Only show Verify/Approve for specific modules: customer, seller, orders, products, skufamily, wallet amounts, business request, admin
+  const moduleSupportsVerifyApprove = (moduleKey: string, moduleName: string): boolean => {
+    // List of modules that support Verify/Approve
+    const modulesWithVerifyApprove = [
+      'customer',
+      'customers',
+      'seller',
+      'sellers',
+      'order',
+      'orders',
+      'product',
+      'products',
+      'skufamily',
+      'sku-family',
+      'wallet',
+      'walletamount',
+      'wallet-amount',
+      'wallet amounts',
+      'business',
+      'businessrequest',
+      'business-request',
+      'business requests',
+      'admin',
+      'admins',
+    ];
+    
+    const keyLower = moduleKey.toLowerCase();
+    const nameLower = moduleName.toLowerCase();
+    
+    // Check if module key or name matches any of the allowed modules
+    return modulesWithVerifyApprove.some(
+      (allowedModule) => keyLower === allowedModule || 
+                         keyLower.includes(allowedModule) ||
+                         nameLower === allowedModule ||
+                         nameLower.includes(allowedModule)
+    );
+  };
+
+  // Check if module is Master module
+  // Check both key and name, and also check for "masters" (plural)
+  const isMasterModule = (module: Module): boolean => {
+    const keyLower = module.key.toLowerCase();
+    const nameLower = module.name.toLowerCase();
+    return keyLower === "master" || 
+           keyLower === "masters" ||
+           nameLower === "master" || 
+           nameLower === "masters" ||
+           nameLower.includes("master");
+  };
+
   const isSuperAdmin = selectedRole === "superadmin";
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 bg-opacity-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <div>
@@ -167,78 +426,163 @@ const PermissionManagementModal: React.FC<PermissionManagementModalProps> = ({
                 )}
               </div>
 
-              {/* Permissions Table */}
+              {/* Permissions Cards */}
               {!isSuperAdmin && (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-gray-200 dark:border-gray-700">
-                        <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">
-                          Module
-                        </th>
-                        <th className="text-center py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">
-                          Read
-                        </th>
-                        <th className="text-center py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">
-                          Write
-                        </th>
-                        <th className="text-center py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">
-                          Verify/Approve
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {modules.map((module) => (
-                        <tr
-                          key={module.key}
-                          className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
-                        >
-                          <td className="py-3 px-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {modules.map((module) => {
+                    // Initialize module permission with defaults
+                    const basePermission = permissions[module.key] || {
+                      read: false,
+                      write: false,
+                    };
+                    
+                    
+                    // Ensure Master module has marginUpdate and marginValue initialized
+                    const isMaster = isMasterModule(module);
+                    const modulePermission: Permission = {
+                      read: Boolean(basePermission.read),
+                      write: Boolean(basePermission.write),
+                      // Include verifyApprove if it exists
+                      ...(typeof basePermission.verifyApprove !== 'undefined' && {
+                        verifyApprove: Boolean(basePermission.verifyApprove),
+                      }),
+                      // Initialize marginUpdate and marginValue for Master module
+                      ...(isMaster && {
+                        marginUpdate: Boolean(basePermission.marginUpdate ?? false),
+                        marginValue: basePermission.marginValue ?? 0,
+                      }),
+                    };
+                    
+                    const supportsVerifyApprove = moduleSupportsVerifyApprove(module.key, module.name);
+
+                    return (
+                      <div
+                        key={module.key}
+                        className="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-sm hover:shadow-md transition-shadow p-5"
+                      >
+                        {/* Module Header */}
+                        <div className="flex items-center gap-3 mb-4 pb-3 border-b border-gray-200 dark:border-gray-600">
+                          <i className={`${module.icon} text-xl text-blue-600 dark:text-blue-400`}></i>
+                          <h3 className="font-semibold text-gray-900 dark:text-white text-lg">
+                            {module.name}
+                          </h3>
+                        </div>
+
+                        {/* Permissions */}
+                        <div className="space-y-3">
+                          {/* Read Permission */}
+                          <label className="flex items-center justify-between cursor-pointer group">
                             <div className="flex items-center gap-2">
-                              <i className={`${module.icon} text-gray-500`}></i>
-                              <span className="font-medium text-gray-900 dark:text-white">
-                                {module.name}
+                              <i className="fas fa-eye text-gray-500 dark:text-gray-400"></i>
+                              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Read
                               </span>
                             </div>
-                          </td>
-                          <td className="py-3 px-4 text-center">
                             <input
                               type="checkbox"
-                              checked={permissions[module.key]?.read || false}
+                              checked={Boolean(modulePermission.read)}
                               onChange={(e) =>
                                 handlePermissionChange(module.key, "read", e.target.checked)
                               }
-                              className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                              className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
                             />
-                          </td>
-                          <td className="py-3 px-4 text-center">
+                          </label>
+
+                          {/* Write Permission */}
+                          <label className="flex items-center justify-between cursor-pointer group">
+                            <div className="flex items-center gap-2">
+                              <i className="fas fa-edit text-gray-500 dark:text-gray-400"></i>
+                              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Write
+                              </span>
+                            </div>
                             <input
                               type="checkbox"
-                              checked={permissions[module.key]?.write || false}
+                              checked={Boolean(modulePermission.write)}
                               onChange={(e) =>
                                 handlePermissionChange(module.key, "write", e.target.checked)
                               }
-                              className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                              className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
                             />
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            <input
-                              type="checkbox"
-                              checked={permissions[module.key]?.verifyApprove || false}
-                              onChange={(e) =>
-                                handlePermissionChange(
-                                  module.key,
-                                  "verifyApprove",
-                                  e.target.checked
-                                )
-                              }
-                              className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                          </label>
+
+                          {/* Verify/Approve Permission - Only show if module supports it */}
+                          {supportsVerifyApprove && (
+                            <label className="flex items-center justify-between cursor-pointer group">
+                              <div className="flex items-center gap-2">
+                                <i className="fas fa-check-circle text-gray-500 dark:text-gray-400"></i>
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                  Verify/Approve
+                                </span>
+                              </div>
+                              <input
+                                type="checkbox"
+                                checked={Boolean(modulePermission.verifyApprove)}
+                                onChange={(e) =>
+                                  handlePermissionChange(
+                                    module.key,
+                                    "verifyApprove",
+                                    e.target.checked
+                                  )
+                                }
+                                className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
+                              />
+                            </label>
+                          )}
+
+                          {/* Margin Update Permission - Only for Master Module */}
+                          {isMaster && (
+                            <>
+                              <label className="flex items-center justify-between cursor-pointer group">
+                                <div className="flex items-center gap-2">
+                                  <i className="fas fa-percent text-gray-500 dark:text-gray-400"></i>
+                                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Margin Update
+                                  </span>
+                                </div>
+                                <input
+                                  type="checkbox"
+                                  checked={modulePermission.marginUpdate || false}
+                                  onChange={(e) =>
+                                    handlePermissionChange(
+                                      module.key,
+                                      "marginUpdate",
+                                      e.target.checked
+                                    )
+                                  }
+                                  className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
+                                />
+                              </label>
+
+                              {/* Margin Value Input - Show only when Margin Update is checked */}
+                              {modulePermission.marginUpdate && (
+                                <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+                                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Margin Value (%)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    step="0.01"
+                                    value={modulePermission.marginValue ?? 0}
+                                    onChange={(e) =>
+                                      handleMarginValueChange(module.key, e.target.value)
+                                    }
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                    placeholder="Enter margin value"
+                                  />
+                                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                    Enter a value between 0 and 100
+                                  </p>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 

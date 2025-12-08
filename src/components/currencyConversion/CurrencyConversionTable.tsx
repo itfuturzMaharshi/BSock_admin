@@ -4,8 +4,10 @@ import { CurrencyConversionService, CurrencyConversion } from '../../services/cu
 import toastHelper from '../../utils/toastHelper';
 import CurrencyConversionModal from './CurrencyConversionModal.tsx';
 import { useDebounce } from '../../hooks/useDebounce';
+import { useModulePermissions } from '../../hooks/useModulePermissions';
 
 const CurrencyConversionTable: React.FC = () => {
+  const { canWrite } = useModulePermissions('/currency-conversion');
   const [currencyConversions, setCurrencyConversions] = useState<CurrencyConversion[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const debouncedSearchTerm = useDebounce(searchTerm, 1000);
@@ -174,13 +176,15 @@ const CurrencyConversionTable: React.FC = () => {
               />
             </div>
           </div>
-          <button
-            className="inline-flex whitespace-nowrap items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
-            onClick={handleCreateNew}
-          >
-            <i className="fas fa-plus text-xs"></i>
-            Add Conversion
-          </button>
+          {canWrite && (
+            <button
+              className="inline-flex whitespace-nowrap items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
+              onClick={handleCreateNew}
+            >
+              <i className="fas fa-plus text-xs"></i>
+              Add Conversion
+            </button>
+          )}
         </div>
 
         {/* Table */}
@@ -238,22 +242,26 @@ const CurrencyConversionTable: React.FC = () => {
                         : '-'}
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
-                      <div className="flex items-center justify-center gap-3">
-                        <button
-                          onClick={() => handleEdit(conversion._id!)}
-                          className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors"
-                          title="Edit Currency Conversion"
-                        >
-                          <i className="fas fa-edit"></i>
-                        </button>
-                        <button
-                          onClick={() => handleDelete(conversion._id!)}
-                          className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
-                          title="Delete Currency Conversion"
-                        >
-                          <i className="fas fa-trash"></i>
-                        </button>
-                      </div>
+                      {canWrite ? (
+                        <div className="flex items-center justify-center gap-3">
+                          <button
+                            onClick={() => handleEdit(conversion._id!)}
+                            className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors"
+                            title="Edit Currency Conversion"
+                          >
+                            <i className="fas fa-edit"></i>
+                          </button>
+                          <button
+                            onClick={() => handleDelete(conversion._id!)}
+                            className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                            title="Delete Currency Conversion"
+                          >
+                            <i className="fas fa-trash"></i>
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 dark:text-gray-500 text-sm">View Only</span>
+                      )}
                     </td>
                   </tr>
                 ))

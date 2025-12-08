@@ -12,7 +12,9 @@ export interface Module {
 export interface Permission {
   read: boolean;
   write: boolean;
-  verifyApprove: boolean;
+  verifyApprove?: boolean; // Optional - only for modules that support it
+  marginUpdate?: boolean; // Only for Master module
+  marginValue?: number; // Margin value when marginUpdate is enabled
 }
 
 export interface ModulePermissions {

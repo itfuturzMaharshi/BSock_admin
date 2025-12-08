@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import toastHelper from "../../utils/toastHelper";
 import { PaymentConfigService } from "../../services/payment/paymentConfig.services";
+import { useModulePermissions } from "../../hooks/useModulePermissions";
 
 // Interface for Payment Config data
 interface SpecificField {
@@ -39,6 +40,7 @@ interface PaymentConfigProps {
 }
 
 const PaymentConfig: React.FC<PaymentConfigProps> = ({ onRenderButtons: _onRenderButtons }) => {
+  const { canWrite } = useModulePermissions('/configuration');
   const [paymentConfig, setPaymentConfig] = useState<PaymentConfig | null>(
     null
   );
@@ -594,13 +596,17 @@ const PaymentConfig: React.FC<PaymentConfigProps> = ({ onRenderButtons: _onRende
                       </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-center">
-                            <button
-                              onClick={() => openModuleEditModal(index)}
-                              className="p-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                              title="Edit Module"
-                            >
-                              <i className="fas fa-edit"></i>
-                            </button>
+                            {canWrite ? (
+                              <button
+                                onClick={() => openModuleEditModal(index)}
+                                className="p-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                title="Edit Module"
+                              >
+                                <i className="fas fa-edit"></i>
+                              </button>
+                            ) : (
+                              <span className="text-gray-400 dark:text-gray-500 text-sm">View Only</span>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -624,13 +630,15 @@ const PaymentConfig: React.FC<PaymentConfigProps> = ({ onRenderButtons: _onRende
                   </h2>
                 </div>
               </div>
-              <button
-                onClick={openSharedFieldsModal}
-                className="p-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                title="Edit Shared Fields"
-              >
-                <i className="fas fa-edit text-sm"></i>
-              </button>
+              {canWrite && (
+                <button
+                  onClick={openSharedFieldsModal}
+                  className="p-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                  title="Edit Shared Fields"
+                >
+                  <i className="fas fa-edit text-sm"></i>
+                </button>
+              )}
             </div>
 
             {paymentConfig.sharedFields.length === 0 ? (
@@ -743,23 +751,27 @@ const PaymentConfig: React.FC<PaymentConfigProps> = ({ onRenderButtons: _onRende
             No Configuration Found
           </h2>
           <p className="text-gray-600 dark:text-gray-400 mb-8">
-            Create your first payment configuration to get started
+            {canWrite 
+              ? "Create your first payment configuration to get started"
+              : "No payment configuration found"}
           </p>
-          <button
-            onClick={() => {
-              setIsEditMode(false);
-              setEditingModuleIndex(null);
-              setFormData({
-                modules: [],
-                sharedFields: []
-              });
-              setIsModalOpen(true);
-            }}
-            className="px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 flex items-center gap-3 mx-auto"
-          >
-            <i className="fas fa-plus text-xl"></i>
-            Create Payment Configuration
-          </button>
+          {canWrite && (
+            <button
+              onClick={() => {
+                setIsEditMode(false);
+                setEditingModuleIndex(null);
+                setFormData({
+                  modules: [],
+                  sharedFields: []
+                });
+                setIsModalOpen(true);
+              }}
+              className="px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 flex items-center gap-3 mx-auto"
+            >
+              <i className="fas fa-plus text-xl"></i>
+              Create Payment Configuration
+            </button>
+          )}
         </div>
       )}
 

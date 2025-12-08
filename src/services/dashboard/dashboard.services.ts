@@ -70,7 +70,9 @@ export const DashboardService = {
 
   getRecentOrders: async (limit: number = 5): Promise<RecentOrder[]> => {
     const response = await api.post('/api/admin/dashboard/recent-orders', { limit });
-    return response.data.data.orders;
+    // Ensure we always return an array, even if the response structure is different
+    const orders = response.data?.data?.orders || response.data?.orders || response.data?.data || [];
+    return Array.isArray(orders) ? orders : [];
   },
 };
 

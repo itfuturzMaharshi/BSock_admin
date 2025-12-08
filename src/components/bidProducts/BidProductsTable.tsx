@@ -11,8 +11,10 @@ import {
   BidProduct,
 } from "../../services/bidProducts/bidProduct.services";
 import { useDebounce } from "../../hooks/useDebounce";
+import { useModulePermissions } from "../../hooks/useModulePermissions";
 
 const BidProductsTable: React.FC = () => {
+  const { canWrite } = useModulePermissions('/bid-products');
   const [productsData, setProductsData] = useState<BidProduct[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const debouncedSearchTerm = useDebounce(searchTerm, 1000);
@@ -187,13 +189,15 @@ const BidProductsTable: React.FC = () => {
               <i className="fas fa-file-excel text-xs"></i>
               Download Sample
             </button>
-            <button
-              className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
-              onClick={() => setIsUploadModalOpen(true)}
-            >
-              <i className="fas fa-upload text-xs"></i>
-              Import
-            </button>
+            {canWrite && (
+              <button
+                className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
+                onClick={() => setIsUploadModalOpen(true)}
+              >
+                <i className="fas fa-upload text-xs"></i>
+                Import
+              </button>
+            )}
             <button
               className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
               onClick={handleExport}
@@ -324,22 +328,26 @@ const BidProductsTable: React.FC = () => {
                           >
                             <i className="fas fa-file-excel"></i>
                           </button>
-                          {item.status === 'closed' && (
-                            <button
-                              onClick={() => handleSendMessage(item)}
-                              className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
-                              title="Send Message to Highest Bidder"
-                            >
-                              <i className="fas fa-envelope"></i>
-                            </button>
+                          {canWrite && (
+                            <>
+                              {item.status === 'closed' && (
+                                <button
+                                  onClick={() => handleSendMessage(item)}
+                                  className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
+                                  title="Send Message to Highest Bidder"
+                                >
+                                  <i className="fas fa-envelope"></i>
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleDelete(item)}
+                                className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                                title="Delete Product"
+                              >
+                                <i className="fas fa-trash"></i>
+                              </button>
+                            </>
                           )}
-                          <button
-                            onClick={() => handleDelete(item)}
-                            className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
-                            title="Delete Product"
-                          >
-                            <i className="fas fa-trash"></i>
-                          </button>
                         </div>
                       </td>
                     </tr>

@@ -23,7 +23,8 @@ export default function RecentOrders() {
     try {
       setLoading(true);
       const data = await DashboardService.getRecentOrders(5);
-      setOrders(data);
+      // Ensure data is always an array, even if API returns undefined or null
+      setOrders(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error fetching recent orders:", error);
       setOrders([]);
@@ -136,7 +137,7 @@ export default function RecentOrders() {
                   Loading orders...
                 </TableCell>
               </TableRow>
-            ) : orders.length === 0 ? (
+            ) : !orders || orders.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={4} className="py-8 text-center text-gray-500 text-theme-sm dark:text-gray-400">
                   No recent orders found
