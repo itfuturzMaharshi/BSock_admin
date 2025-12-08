@@ -1176,12 +1176,7 @@ export const countries: Country[] = [
     "phone_code": "+232",
     "flag": "https://cdn.jsdelivr.net/npm/country-flag-emoji-json@2.0.0/dist/images/SL.svg"
   },
-  {
-    "name": "Singapore",
-    "code": "SG",
-    "phone_code": "+65",
-    "flag": "https://cdn.jsdelivr.net/npm/country-flag-emoji-json@2.0.0/dist/images/SG.svg"
-  },
+
   {
     "name": "Slovakia",
     "code": "SK",

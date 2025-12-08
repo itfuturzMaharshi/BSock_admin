@@ -4,15 +4,16 @@ import api from '../api/api';
 export interface Product {
   _id?: string;
   skuFamilyId: string | { _id: string; name: string; images?: string[] };
+  subSkuFamilyId?: string | { _id: string; name: string } | null;
   specification: string;
   simType: string;
   color: string;
   ram: string;
   storage: string;
-  condition: string;
+  condition: string | null;
   price: number | string;
   stock: number | string;
-  country: string;
+  country: string | null;
   moq: number | string;
   purchaseType?: string; // 'full' | 'partial'
   isNegotiable: boolean;

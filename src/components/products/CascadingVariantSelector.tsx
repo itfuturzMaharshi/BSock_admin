@@ -4,6 +4,7 @@ import { ProductService } from '../../services/product/product.services';
 
 export interface VariantOption {
   skuFamilyId: string;
+  subSkuFamilyId?: string;
   subModelName: string;
   storage: string;
   color: string;

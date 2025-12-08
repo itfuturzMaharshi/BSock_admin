@@ -128,7 +128,7 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
   };
 
   const colorOptions = ["Graphite", "Silver", "Gold", "Sierra Blue", "Mixed"];
-  const countryOptions = ["Hongkong", "Dubai", "Singapore"];
+  const countryOptions = ["Hongkong", "Dubai"];
   const simOptions = ["E-Sim", "Physical Sim"];
   const networkOptions = ["TMobile", "AT&T"];
   const MAX_IMAGES = 5;
@@ -158,7 +158,7 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
 
       if (editItem) {
         console.log("Edit item received:", editItem); // Debug log
-        console.log("Edit item images:", editItem.images); // Debug log
+        // Note: SkuFamily doesn't have images property directly, it's in subSkuFamilies
 
         // Get SKU Family code from editItem if available (it might be populated)
         const skuFamilyCode = (editItem as any).skuFamilyId?.code || (editItem as any).skuFamilyCode || "";
@@ -168,16 +168,17 @@ const SubRowModal: React.FC<SubRowModalProps> = ({
           skuFamilyCode: skuFamilyCode,
           name: editItem.name || "",
           code: editItem.code || "",
-          description: editItem.description || "",
-          colorVariant: cleanArrayData(editItem.colorVariant),
-          country: cleanArrayData(editItem.country), // Country is not an array
-          simType: cleanArrayData(editItem.simType),
-          networkBands: cleanArrayData(editItem.networkBands),
+          description: (editItem as any).description || "",
+          colorVariant: cleanArrayData((editItem as any).colorVariant),
+          country: cleanArrayData((editItem as any).country), // Country is not an array
+          simType: cleanArrayData((editItem as any).simType),
+          networkBands: cleanArrayData((editItem as any).networkBands),
           sequence: (editItem as any).sequence ?? 1,
         });
 
         // Handle existing images properly - ensure it's always an array
-        const images = editItem.images || [];
+        // SkuFamily doesn't have images directly, they're in subSkuFamilies
+        const images: string[] = [];
         console.log("Setting existing images:", images); // Debug log
         const imageArray = Array.isArray(images)
           ? images.filter((img) => img && img.trim() !== "")

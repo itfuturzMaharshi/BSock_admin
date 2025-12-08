@@ -5,7 +5,6 @@ import Select from 'react-select';
 import { VariantOption } from './CascadingVariantSelector';
 import { GradeService } from '../../services/grade/grade.services';
 import { SellerService } from '../../services/seller/sellerService';
-import { CostModuleService } from '../../services/costModule/costModule.services';
 import { ProductService } from '../../services/product/product.services';
 
 export interface ProductRowData {
@@ -83,7 +82,6 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
   const [grades, setGrades] = useState<any[]>([]);
   const [sellers, setSellers] = useState<any[]>([]);
   const [skuFamilies, setSkuFamilies] = useState<any[]>([]);
-  const [costsByCountry, setCostsByCountry] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(false);
   const tableRef = useRef<HTMLDivElement>(null);
   const [focusedCell, setFocusedCell] = useState<{ row: number; col: string } | null>(null);
@@ -160,10 +158,11 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
         setSellers(sellersList || []);
         const skuFamiliesList = await ProductService.getSkuFamilyListByName();
         setSkuFamilies(skuFamiliesList || []);
-        const costResponse = await CostModuleService.getCostsByCountry();
-        if (costResponse.status === 200 && costResponse.data) {
-          setCostsByCountry(costResponse.data);
-        }
+        // Fetch costs by country (stored for potential future use)
+        // const costResponse = await CostModuleService.getCostsByCountry();
+        // if (costResponse.status === 200 && costResponse.data) {
+        //   // Costs can be used for product cost calculations if needed
+        // }
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -378,7 +377,7 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
     { key: 'remark', label: 'REMARK', width: 150, group: 'Other Info' },
   ];
 
-  const countryOptions = ['Hong Kong', 'Dubai', 'Singapore'];
+  const countryOptions = ['Hong Kong', 'Dubai'];
   const simOptions = ['Dual SIM', 'E-SIM', 'Physical Sim'];
   const statusOptions = ['Active', 'Non Active', 'pre owned'];
   const conditionOptions = ['AAA', 'A+', 'Mixed'];
@@ -392,7 +391,6 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
 
   const renderCell = (row: ProductRowData, rowIndex: number, column: typeof columns[0]) => {
     const value = row[column.key as keyof ProductRowData];
-    const isFocused = focusedCell?.row === rowIndex && focusedCell?.col === column.key;
     const cellId = `${rowIndex}-${column.key}`;
 
     switch (column.key) {
@@ -571,7 +569,7 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
             value={value as string}
             onChange={(e) => updateRow(rowIndex, column.key as keyof ProductRowData, e.target.value)}
             className="w-full px-2 py-1 text-xs border-0 bg-transparent focus:outline-none focus:ring-1 focus:ring-blue-500"
-            required={column.key === 'packing' || column.key === 'currentLocation'}
+            required={column.key === 'packing' || (['currentLocation'].includes(column.key) as any)}
             onFocus={() => setFocusedCell({ row: rowIndex, col: column.key })}
           >
             <option value="">Select</option>

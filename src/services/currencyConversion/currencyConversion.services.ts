@@ -28,9 +28,7 @@ export interface ListCurrencyConversionRequest {
   search?: string;
 }
 
-export interface DeleteCurrencyConversionRequest {
-  id: string;
-}
+// DeleteCurrencyConversionRequest interface removed - delete functionality is not available
 
 export interface CurrencyConversionListResponse {
   docs: CurrencyConversion[];
@@ -209,59 +207,10 @@ export class CurrencyConversionService {
     }
   };
 
-  // Delete Currency Conversion
-  static deleteCurrencyConversion = async (requestData: DeleteCurrencyConversionRequest): Promise<ApiResponse<CurrencyConversion>> => {
-    const baseUrl = import.meta.env.VITE_BASE_URL;
-    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
-    const url = `${baseUrl}/api/${adminRoute}/currency-conversion/delete`;
-
-    try {
-      const res = await api.post(url, requestData, {
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      const responseData = res.data;
-
-      // Check if data is 0, which indicates an error condition
-      if (responseData.data === 0) {
-        const errorMessage = responseData.message || 'Currency conversion not found';
-        toastHelper.showTost(errorMessage, 'error');
-        throw new Error(errorMessage);
-      }
-
-      if (res.status === 200) {
-        toastHelper.showTost(responseData.message || 'Currency conversion deleted successfully!', 'success');
-      } else {
-        toastHelper.showTost(responseData.message || 'Failed to delete currency conversion', 'warning');
-      }
-
-      return {
-        status: res.status,
-        message: responseData.message,
-        data: responseData.data,
-      };
-    } catch (err: any) {
-      console.error('Currency conversion delete error:', err);
-      
-      // Handle authentication errors
-      if (err.response?.status === 401) {
-        const errorMessage = 'Authentication required. Please login again.';
-        toastHelper.error(errorMessage);
-        throw new Error(errorMessage);
-      }
-      
-      // Handle 404 errors
-      if (err.response?.status === 404) {
-        const errorMessage = 'Currency conversion API endpoint not found. Please check backend implementation.';
-        toastHelper.error(errorMessage);
-        throw new Error(errorMessage);
-      }
-      
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to delete currency conversion';
-      toastHelper.error(errorMessage);
-      throw new Error(errorMessage);
-    }
-  };
+  // Delete Currency Conversion - REMOVED: Currency conversions cannot be deleted
+  // static deleteCurrencyConversion = async (requestData: DeleteCurrencyConversionRequest): Promise<ApiResponse<CurrencyConversion>> => {
+  //   ...
+  // };
 
   // List Currency Conversions with pagination
   static listCurrencyConversions = async (requestData: ListCurrencyConversionRequest): Promise<ApiResponse<CurrencyConversionListResponse>> => {

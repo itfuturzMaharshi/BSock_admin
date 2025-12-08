@@ -159,7 +159,7 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
   }, [isOpen]);
 
   // Static countries list
-  const countriesList = ["Hongkong", "Dubai", "Singapore"];
+  const countriesList = ["Hongkong", "Dubai"];
 
   // Update form data when modal opens or editItem changes
   useEffect(() => {
@@ -402,6 +402,7 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
       maxValue: true,
       groupId: true,
       isExpressDelivery: true,
+      isSameLocationCharge: true,
       isDeleted: true,
     });
 

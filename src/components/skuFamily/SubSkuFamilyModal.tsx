@@ -4,8 +4,6 @@ import { SubSkuFamily } from "./types";
 import { StorageService } from "../../services/storage/storage.services";
 import { RamService } from "../../services/ram/ram.services";
 import { ColorService } from "../../services/color/color.services";
-import { SkuFamilyService } from "../../services/skuFamily/skuFamily.services";
-import Select from 'react-select';
 import placeholderImage from "../../../public/images/product/noimage.jpg";
 
 interface ValidationErrors {
@@ -30,7 +28,7 @@ const SubSkuFamilyModal: React.FC<SubSkuFamilyModalProps> = ({
   isOpen,
   onClose,
   onSave,
-  skuFamilyId,
+  skuFamilyId: _skuFamilyId,
   editItem,
 }) => {
   const [formData, setFormData] = useState({
@@ -335,7 +333,7 @@ const SubSkuFamilyModal: React.FC<SubSkuFamilyModalProps> = ({
     }
   };
 
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>, type: 'image' | 'video') => {
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>, _type?: 'image' | 'video') => {
     e.preventDefault();
     setIsDragging(true);
   };
@@ -426,19 +424,20 @@ const SubSkuFamilyModal: React.FC<SubSkuFamilyModalProps> = ({
   };
 
   const validateField = (
-    name: keyof typeof formData,
-    value: string | number | undefined
+    _name: keyof typeof formData,
+    _value: string | number | undefined
   ): string | undefined => {
     // subName is now optional - if not provided, SKU Family name will be used
     return undefined;
   };
 
-  const validateForm = (): boolean => {
-    const errors: ValidationErrors = {};
-    // subName is now optional - if not provided, SKU Family name will be used
-    setValidationErrors(errors);
-    return true;
-  };
+  // validateForm function removed - validation is handled inline
+  // const validateForm = (): boolean => {
+  //   const errors: ValidationErrors = {};
+  //   // subName is now optional - if not provided, SKU Family name will be used
+  //   setValidationErrors(errors);
+  //   return true;
+  // };
 
   const handleBlur = (
     e: React.FocusEvent<
