@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import toastHelper from "../../utils/toastHelper";
 import Select from "react-select";
+import { CostModuleService } from "../../services/costModule/costModule.services";
 
 // Define the interface for CostModule data
 interface CostModule {
@@ -11,12 +12,13 @@ interface CostModule {
   remark: string;
   costType: "Percentage" | "Fixed";
   costField: "product" | "delivery";
-  costUnit?: "pc" | "kg" | "moq" | "order amount";
+  costUnit?: "pc" | "kg" | "moq" | "order amount" | "cart quantity";
   value: number;
   minValue?: number;
   maxValue?: number;
   groupId?: string;
   isExpressDelivery?: boolean;
+  isSameLocationCharge?: boolean;
   isDeleted: boolean;
 }
 
@@ -28,12 +30,13 @@ interface FormData {
   remark: string;
   costType: "Percentage" | "Fixed";
   costField: "product" | "delivery" | "";
-  costUnit: "pc" | "kg" | "moq" | "order amount" | "";
+  costUnit: "pc" | "kg" | "moq" | "order amount" | "cart quantity" | "";
   value: string;
   minValue: string;
   maxValue: string;
   groupId: string;
   isExpressDelivery: boolean;
+  isSameLocationCharge: boolean;
   isDeleted: boolean;
 }
 
@@ -50,6 +53,7 @@ interface ValidationErrors {
   maxValue?: string;
   groupId?: string;
   isExpressDelivery?: string;
+  isSameLocationCharge?: string;
   isDeleted?: string;
 }
 
@@ -66,6 +70,7 @@ interface TouchedFields {
   maxValue: boolean;
   groupId: boolean;
   isExpressDelivery: boolean;
+  isSameLocationCharge: boolean;
   isDeleted: boolean;
 }
 
@@ -95,6 +100,7 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
     maxValue: "",
     groupId: "",
     isExpressDelivery: false,
+    isSameLocationCharge: false,
     isDeleted: false,
   });
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -114,8 +120,11 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
     maxValue: false,
     groupId: false,
     isExpressDelivery: false,
+    isSameLocationCharge: false,
     isDeleted: false,
   });
+  const [groupIds, setGroupIds] = useState<Array<{ groupId: string; display: string; names: string[] }>>([]);
+  const [showGroupIdInput, setShowGroupIdInput] = useState<boolean>(false);
 
   // Cost unit options based on costField
   const getCostUnitOptions = (): Array<{ value: string; label: string }> => {
@@ -128,10 +137,26 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
     } else if (formData.costField === "delivery") {
       return [
         { value: "order amount", label: "Order Amount" },
+        { value: "cart quantity", label: "Cart Quantity" },
       ];
     }
     return [];
   };
+
+  // Fetch groupIds when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      const fetchGroupIds = async () => {
+        try {
+          const data = await CostModuleService.getGroupIds();
+          setGroupIds(data);
+        } catch (error) {
+          console.error('Error fetching group IDs:', error);
+        }
+      };
+      fetchGroupIds();
+    }
+  }, [isOpen]);
 
   // Static countries list
   const countriesList = ["Hongkong", "Dubai", "Singapore"];
@@ -153,8 +178,14 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
           maxValue: editItem.maxValue?.toString() || "",
           groupId: editItem.groupId || "",
           isExpressDelivery: editItem.isExpressDelivery || false,
+          isSameLocationCharge: editItem.isSameLocationCharge || false,
           isDeleted: editItem.isDeleted,
         });
+        // Check if groupId exists in the list
+        if (editItem.groupId) {
+          const exists = groupIds.some(g => g.groupId === editItem.groupId);
+          setShowGroupIdInput(!exists);
+        }
       } else {
         setFormData({
           name: "",
@@ -169,8 +200,10 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
           maxValue: "",
           groupId: "",
           isExpressDelivery: false,
+          isSameLocationCharge: false,
           isDeleted: false,
         });
+        setShowGroupIdInput(false);
       }
     }
   }, [isOpen, editItem]);
@@ -181,7 +214,7 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
       setFormData((prev) => ({ ...prev, costUnit: "" }));
     } else if (formData.costField === "product" && formData.costUnit === "order amount") {
       setFormData((prev) => ({ ...prev, costUnit: "" }));
-    } else if (formData.costField === "delivery" && !["order amount"].includes(formData.costUnit)) {
+    } else if (formData.costField === "delivery" && !["order amount", "cart quantity"].includes(formData.costUnit)) {
       setFormData((prev) => ({ ...prev, costUnit: "" }));
     }
   }, [formData.costField]);
@@ -236,8 +269,8 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
             return "Cost Unit must be pc, kg, or moq for product";
           }
         } else if (formData.costField === "delivery") {
-          if (value !== "order amount") {
-            return "Cost Unit must be order amount for delivery";
+          if (!["order amount", "cart quantity"].includes(value)) {
+            return "Cost Unit must be order amount or cart quantity for delivery";
           }
         }
         return undefined;
@@ -385,12 +418,13 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
       remark: formData.remark,
       costType: formData.costType,
       costField: formData.costField as "product" | "delivery",
-      costUnit: formData.costUnit as "pc" | "kg" | "moq" | "order amount" | undefined,
+      costUnit: formData.costUnit as "pc" | "kg" | "moq" | "order amount" | "cart quantity" | undefined,
       value: parseFloat(formData.value) || 0,
       minValue: formData.minValue ? parseFloat(formData.minValue) : undefined,
       maxValue: formData.maxValue ? parseFloat(formData.maxValue) : undefined,
       groupId: formData.groupId.trim() || undefined,
       isExpressDelivery: formData.isExpressDelivery,
+      isSameLocationCharge: formData.isSameLocationCharge,
       isDeleted: formData.isDeleted,
     };
     try {
@@ -761,20 +795,66 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
                 Group ID
                 <span className="text-gray-500 text-xs ml-1">(Optional - Costs with same Group ID will apply together)</span>
               </label>
-              <input
-                type="text"
-                name="groupId"
-                value={formData.groupId}
-                onChange={handleInputChange}
-                onBlur={handleBlur}
-                className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm ${
-                  touched.groupId && validationErrors.groupId
-                    ? "border-red-500 focus:ring-red-500"
-                    : "border-gray-200 dark:border-gray-700"
-                }`}
-                placeholder="Enter Group ID (e.g., SHIPPING_GROUP, TAX_GROUP)"
-                disabled={isSubmitting}
-              />
+              {!showGroupIdInput ? (
+                <div className="relative">
+                  <select
+                    name="groupId"
+                    value={formData.groupId}
+                    onChange={(e) => {
+                      if (e.target.value === '__add_new__') {
+                        setShowGroupIdInput(true);
+                        setFormData(prev => ({ ...prev, groupId: '' }));
+                      } else {
+                        setFormData(prev => ({ ...prev, groupId: e.target.value }));
+                      }
+                    }}
+                    onBlur={handleBlur}
+                    className={`w-full pl-3 pr-8 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm appearance-none cursor-pointer ${
+                      touched.groupId && validationErrors.groupId
+                        ? "border-red-500 focus:ring-red-500"
+                        : "border-gray-200 dark:border-gray-700"
+                    }`}
+                    disabled={isSubmitting}
+                  >
+                    <option value="">Select Group ID (Optional)</option>
+                    <option value="__add_new__">+ Add New</option>
+                    {groupIds.map((group, index) => (
+                      <option key={index} value={group.groupId}>
+                        {group.display}
+                      </option>
+                    ))}
+                  </select>
+                  <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    name="groupId"
+                    value={formData.groupId}
+                    onChange={handleInputChange}
+                    onBlur={handleBlur}
+                    className={`flex-1 p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm ${
+                      touched.groupId && validationErrors.groupId
+                        ? "border-red-500 focus:ring-red-500"
+                        : "border-gray-200 dark:border-gray-700"
+                    }`}
+                    placeholder="Enter Group ID (e.g., 1, SHIPPING_GROUP)"
+                    disabled={isSubmitting}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowGroupIdInput(false);
+                      setFormData(prev => ({ ...prev, groupId: '' }));
+                    }}
+                    className="px-4 py-2.5 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition duration-200 text-sm"
+                    disabled={isSubmitting}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
               {touched.groupId && validationErrors.groupId && (
                 <p className="mt-1 text-xs text-red-600 dark:text-red-400">
                   {validationErrors.groupId}
@@ -782,29 +862,54 @@ const CostModuleModal: React.FC<CostModuleModalProps> = ({
               )}
             </div>
 
-            {/* Is Express Delivery Checkbox */}
-            <div>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  name="isExpressDelivery"
-                  checked={formData.isExpressDelivery}
-                  onChange={(e) => {
-                    setFormData((prev) => ({
-                      ...prev,
-                      isExpressDelivery: e.target.checked,
-                    }));
-                  }}
-                  className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                  disabled={isSubmitting}
-                />
-                <span className="text-sm font-medium text-gray-950 dark:text-gray-200">
-                  Is Express Delivery
-                </span>
-              </label>
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 ml-8">
-                Check this if this cost applies to express delivery orders
-              </p>
+            {/* Is Express Delivery and Is Same Location Charge Checkboxes */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="isExpressDelivery"
+                    checked={formData.isExpressDelivery}
+                    onChange={(e) => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        isExpressDelivery: e.target.checked,
+                      }));
+                    }}
+                    className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                    disabled={isSubmitting}
+                  />
+                  <span className="text-sm font-medium text-gray-950 dark:text-gray-200">
+                    Is Express Delivery
+                  </span>
+                </label>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 ml-8">
+                  Check this if this cost applies to express delivery orders
+                </p>
+              </div>
+              <div>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="isSameLocationCharge"
+                    checked={formData.isSameLocationCharge}
+                    onChange={(e) => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        isSameLocationCharge: e.target.checked,
+                      }));
+                    }}
+                    className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                    disabled={isSubmitting}
+                  />
+                  <span className="text-sm font-medium text-gray-950 dark:text-gray-200">
+                    Is Same Location Charge
+                  </span>
+                </label>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 ml-8">
+                  Check this if this cost applies to same location delivery
+                </p>
+              </div>
             </div>
 
             {/* Value, Min Value, Max Value */}

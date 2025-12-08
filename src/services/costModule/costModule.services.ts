@@ -9,12 +9,13 @@ interface CostModule {
   remark: string;
   costType: 'Percentage' | 'Fixed';
   costField: 'product' | 'delivery';
-  costUnit?: 'pc' | 'kg' | 'moq' | 'order amount';
+  costUnit?: 'pc' | 'kg' | 'moq' | 'order amount' | 'cart quantity';
   value: number;
   minValue?: number;
   maxValue?: number;
   groupId?: string;
   isExpressDelivery?: boolean;
+  isSameLocationCharge?: boolean;
   isDeleted: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -256,6 +257,29 @@ export class CostModuleService {
       const errorMessage = err.response?.data?.message || 'Failed to retrieve costs by country';
       toastHelper.showTost(errorMessage, 'error');
       throw new Error(errorMessage);
+    }
+  };
+
+  // Get existing groupIds with cost names
+  static getGroupIds = async (): Promise<Array<{ groupId: string; display: string; names: string[] }>> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/cost/get-group-ids`;
+
+    try {
+      const res = await api.post(url, {}, {
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const responseData = res.data;
+
+      if (res.status === 200 && responseData.data) {
+        return responseData.data;
+      }
+      return [];
+    } catch (err: any) {
+      console.error('Error fetching group IDs:', err);
+      return [];
     }
   };
 }

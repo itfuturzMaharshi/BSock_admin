@@ -13,12 +13,13 @@ interface CostModule {
   remark: string;
   costType: "Percentage" | "Fixed";
   costField: "product" | "delivery";
-  costUnit?: "pc" | "kg" | "moq" | "order amount";
+  costUnit?: "pc" | "kg" | "moq" | "order amount" | "cart quantity";
   value: number;
   minValue?: number;
   maxValue?: number;
   groupId?: string;
   isExpressDelivery?: boolean;
+  isSameLocationCharge?: boolean;
   isDeleted: boolean;
 }
 
@@ -86,6 +87,7 @@ const CostModuleTable: React.FC = () => {
           maxValue: newItem.maxValue,
           groupId: newItem.groupId,
           isExpressDelivery: newItem.isExpressDelivery,
+          isSameLocationCharge: newItem.isSameLocationCharge,
         };
         await CostModuleService.updateCostModule(editItem._id, updates);
       } else {
@@ -103,6 +105,7 @@ const CostModuleTable: React.FC = () => {
           maxValue: newItem.maxValue,
           groupId: newItem.groupId,
           isExpressDelivery: newItem.isExpressDelivery,
+          isSameLocationCharge: newItem.isSameLocationCharge,
           isDeleted: newItem.isDeleted,
         });
       }
