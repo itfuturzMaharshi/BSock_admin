@@ -12,9 +12,12 @@ import {
 } from "../../services/bidProducts/bidProduct.services";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useModulePermissions } from "../../hooks/useModulePermissions";
+import { usePermissions } from "../../context/PermissionsContext";
 
 const BidProductsTable: React.FC = () => {
   const { canWrite } = useModulePermissions('/bid-products');
+  const { permissions } = usePermissions();
+  const isSuperAdmin = permissions?.role === 'superadmin';
   const [productsData, setProductsData] = useState<BidProduct[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const debouncedSearchTerm = useDebounce(searchTerm, 1000);
@@ -339,13 +342,15 @@ const BidProductsTable: React.FC = () => {
                                   <i className="fas fa-envelope"></i>
                                 </button>
                               )}
-                              <button
-                                onClick={() => handleDelete(item)}
-                                className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
-                                title="Delete Product"
-                              >
-                                <i className="fas fa-trash"></i>
-                              </button>
+                              {isSuperAdmin && (
+                                <button
+                                  onClick={() => handleDelete(item)}
+                                  className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                                  title="Delete Product"
+                                >
+                                  <i className="fas fa-trash"></i>
+                                </button>
+                              )}
                             </>
                           )}
                         </div>

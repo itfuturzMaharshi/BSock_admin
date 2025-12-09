@@ -1,5 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import { LOCAL_STORAGE_KEYS } from '../../constants/localStorage';
+import toastHelper from '../../utils/toastHelper';
 
 type UserType = 'admin' | 'customer' | 'seller';
 
@@ -47,6 +48,37 @@ class SocketServiceClass {
     this.socket.on('message', (payload: any) => {
       console.log('Received broadcast message:', payload);
     });
+
+    // Listen for force logout event (when permissions/role are changed)
+    this.socket.on('forceLogout', (payload: any) => {
+      console.log('Received forceLogout event:', payload);
+      this.handleForceLogout(payload);
+    });
+  }
+
+  // Handle force logout event
+  private handleForceLogout(payload: any) {
+    const reason = payload.reason || 'Your permissions have been updated. Please login again.';
+    
+    // Show toast notification
+    toastHelper.showTost(reason, 'warning');
+    
+    // Clear localStorage
+    localStorage.removeItem(LOCAL_STORAGE_KEYS.TOKEN);
+    localStorage.removeItem(LOCAL_STORAGE_KEYS.USER);
+    localStorage.removeItem(LOCAL_STORAGE_KEYS.USER_ID);
+    localStorage.removeItem('adminPermissions');
+    localStorage.removeItem('adminRole');
+    
+    // Disconnect socket
+    this.disconnect();
+    
+    // Use setTimeout to allow toast to show before redirect
+    setTimeout(() => {
+      // Use window.location to force a full page reload and redirect
+      // This ensures all state is cleared
+      window.location.href = '/signin';
+    }, 1500); // 1.5 second delay to show toast
   }
 
   disconnect() {
@@ -209,6 +241,18 @@ class SocketServiceClass {
     this.socket.off('userLeftNegotiation');
     this.socket.off('userTyping');
     this.socket.off('negotiationRead');
+  }
+
+  // Listen for force logout event
+  onForceLogout(callback: (data: any) => void) {
+    if (!this.socket) return;
+    this.socket.on('forceLogout', callback);
+  }
+
+  // Remove force logout listener
+  offForceLogout() {
+    if (!this.socket) return;
+    this.socket.off('forceLogout');
   }
 }
 

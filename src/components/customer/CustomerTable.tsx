@@ -8,7 +8,6 @@ import { usePermissions } from '../../context/PermissionsContext';
 const CustomerTable: React.FC = () => {
   const { hasPermission } = usePermissions();
   const canWrite = hasPermission('/customers', 'write');
-  const canVerifyApprove = hasPermission('/customers', 'verifyApprove');
   
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -64,37 +63,6 @@ const CustomerTable: React.FC = () => {
     setCurrentPage(page);
   };
 
-  const handleToggleBidding = async (customerId: string, currentStatus: boolean | undefined) => {
-    try {
-      await CustomerService.toggleBiddingStatus(customerId);
-      // Update the local state
-      setCustomers(prevCustomers =>
-        prevCustomers.map(customer =>
-          customer._id === customerId
-            ? { ...customer, isAllowBidding: !currentStatus }
-            : customer
-        )
-      );
-    } catch (err) {
-      console.error("Error toggling bidding status:", err);
-    }
-  };
-
-  const handleToggleActiveStatus = async (customerId: string, currentStatus: boolean | undefined) => {
-    try {
-      await CustomerService.toggleActiveStatus(customerId);
-      // Update the local state
-      setCustomers(prevCustomers =>
-        prevCustomers.map(customer =>
-          customer._id === customerId
-            ? { ...customer, isActive: !currentStatus }
-            : customer
-        )
-      );
-    } catch (err) {
-      console.error("Error toggling active status:", err);
-    }
-  };
 
   const handleEdit = (customer: Customer) => {
     setEditingCustomer(customer);
@@ -261,17 +229,11 @@ const CustomerTable: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-sm">
                       {customer.isActive ? (
-                        <span 
-                          onClick={canVerifyApprove ? () => handleToggleActiveStatus(customer._id, customer.isActive) : undefined}
-                          className={`${canVerifyApprove ? 'cursor-pointer hover:bg-green-200 dark:hover:bg-green-800' : ''} inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 transition-colors`}
-                        >
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                           Active
                         </span>
                       ) : (
-                        <span 
-                          onClick={canVerifyApprove ? () => handleToggleActiveStatus(customer._id, customer.isActive) : undefined}
-                          className={`${canVerifyApprove ? 'cursor-pointer hover:bg-red-200 dark:hover:bg-red-800' : ''} inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 transition-colors`}
-                        >
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
                           Inactive
                         </span>
                       )}
@@ -300,13 +262,11 @@ const CustomerTable: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
                       {customer.isAllowBidding ? (
-                        <span onClick={canVerifyApprove ? () => handleToggleBidding(customer._id, customer.isAllowBidding) : undefined}
-                        className={`${canVerifyApprove ? 'cursor-pointer' : ''} inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200`}>
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                           Allowed
                         </span>
                       ) : (
-                        <span onClick={canVerifyApprove ? () => handleToggleBidding(customer._id, customer.isAllowBidding) : undefined} 
-                        className={`${canVerifyApprove ? 'cursor-pointer' : ''} inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200`}>
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
                           Not Allowed
                         </span>
                       )}

@@ -122,12 +122,9 @@ export default function UserInfoCard({
     setModalMode("update");
     setSelectedSettings({
       _id: settings._id,
-      bidWalletAllowancePer: settings.bidWalletAllowancePer?.toString() || "",
-      readyStockAllowancePer: settings.readyStockAllowancePer?.toString() || "",
       readyStockOrderProcess: JSON.stringify(settings.readyStockOrderProcess) || "",
       reportTime: settings.reportTime || "",
       timezone: settings.timezone || "Asia/Kolkata",
-      percentage: settings.percentage?.toString() || "",
     });
     setIsModalOpen(true);
   };
@@ -373,15 +370,6 @@ export default function UserInfoCard({
           <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Wallet Percentage
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Bid Wallet Allowance
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Ready Stock Allowance
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Report Time
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -398,15 +386,6 @@ export default function UserInfoCard({
                 key={settings._id}
                 className="hover:bg-gray-50 dark:hover:bg-gray-700"
               >
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-white/90">
-                  {settings.percentage ?? "N/A"}%
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-white/90">
-                  {settings.bidWalletAllowancePer || "N/A"}%
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-white/90">
-                  {settings.readyStockAllowancePer || "N/A"}%
-                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-white/90">
                   {settings.reportTime || "N/A"}
                 </td>

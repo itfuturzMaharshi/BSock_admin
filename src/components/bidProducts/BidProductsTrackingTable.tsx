@@ -6,8 +6,11 @@ import {
   BidTrackingService,
   BidTracking,
 } from "../../services/bidProducts/bidTracking.services";
+import { usePermissions } from "../../context/PermissionsContext";
 
 const BidProductsTrackingTable: React.FC = () => {
+  const { permissions } = usePermissions();
+  const isSuperAdmin = permissions?.role === 'superadmin';
   const [trackingData, setTrackingData] = useState<BidTracking[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(true);
@@ -129,16 +132,18 @@ const BidProductsTrackingTable: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
                       <div className="inline-flex items-center justify-center gap-3">
-                        <button
-                          className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
-                          title="Delete All"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteByTrack(item);
-                          }}
-                        >
-                          <i className="fas fa-trash"></i>
-                        </button>
+                        {isSuperAdmin && (
+                          <button
+                            className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                            title="Delete All"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteByTrack(item);
+                            }}
+                          >
+                            <i className="fas fa-trash"></i>
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

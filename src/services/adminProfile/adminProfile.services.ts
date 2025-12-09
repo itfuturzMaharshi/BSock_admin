@@ -25,8 +25,6 @@ interface ChangePasswordResponse {
 
 interface Settings {
   _id?: string;
-  bidWalletAllowancePer: number | null;
-  readyStockAllowancePer: number | null;
   readyStockOrderProcess: { name: string; order: number }[];
   reportTime: string;
   timezone: string;
