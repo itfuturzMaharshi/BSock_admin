@@ -6,6 +6,8 @@ import { VariantOption } from './CascadingVariantSelector';
 import { GradeService } from '../../services/grade/grade.services';
 import { SellerService } from '../../services/seller/sellerService';
 import { ProductService } from '../../services/product/product.services';
+import { ConstantsService, Constants } from '../../services/constants/constants.services';
+import toastHelper from '../../utils/toastHelper';
 
 export interface ProductRowData {
   // Product Detail Group
@@ -37,11 +39,18 @@ export interface ProductRowData {
   moqPerVariant: number | string;
   moqPerCart: number | string;
   weight: number | string;
-  paymentTerm: string;
-  paymentMethod: string;
+  // Payment Term - grouped by currency
+  paymentTermUsd: string;
+  paymentTermHkd: string;
+  paymentTermAed: string;
+  // Payment Method - grouped by currency (stored as comma-separated string)
+  paymentMethodUsd: string;
+  paymentMethodHkd: string;
+  paymentMethodAed: string;
   
   // Other Information Group
   negotiableFixed: string;
+  tags: string; // Comma-separated string of tag codes
   shippingTime: string;
   deliveryTime: string;
   vendor: string;
@@ -49,8 +58,6 @@ export interface ProductRowData {
   carrier: string;
   carrierListingNo: string;
   uniqueListingNo: string;
-  hotDeal: string;
-  lowStock: string;
   adminCustomMessage: string;
   startTime: string;
   endTime: string;
@@ -59,6 +66,7 @@ export interface ProductRowData {
   // Additional fields
   supplierId: string;
   supplierListingNumber: string;
+  customerListingNumber: string;
   skuFamilyId: string;
   ram?: string;
   sequence?: number;
@@ -68,7 +76,7 @@ export interface ProductRowData {
 interface ExcelLikeProductFormProps {
   variantType: 'single' | 'multi';
   variants?: VariantOption[];
-  onSave: (rows: ProductRowData[]) => void;
+  onSave: (rows: ProductRowData[], totalMoq?: number | string) => void;
   onCancel: () => void;
 }
 
@@ -82,20 +90,77 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
   const [grades, setGrades] = useState<any[]>([]);
   const [sellers, setSellers] = useState<any[]>([]);
   const [skuFamilies, setSkuFamilies] = useState<any[]>([]);
+  const [constants, setConstants] = useState<Constants | null>(null);
   const [loading, setLoading] = useState(false);
+  const [totalMoq, setTotalMoq] = useState<number | string>(''); // Single TOTAL MOQ for all products (multi variant only)
   const tableRef = useRef<HTMLDivElement>(null);
   const [focusedCell, setFocusedCell] = useState<{ row: number; col: string } | null>(null);
   const cellRefs = useRef<Record<string, HTMLInputElement | HTMLSelectElement | null>>({});
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [selectedRowIndex, setSelectedRowIndex] = useState<number | null>(null);
+  const [openSupplierDropdown, setOpenSupplierDropdown] = useState<{ row: number; isOpen: boolean } | null>(null);
+  const [supplierSearchQuery, setSupplierSearchQuery] = useState<{ row: number; query: string } | null>(null);
+  const [currentCustomerListingNumber, setCurrentCustomerListingNumber] = useState<number | null>(null);
+  const [supplierListingNumbers, setSupplierListingNumbers] = useState<Record<string, { listingNumber: number; supplierCode: string }>>({});
+  const [currentUniqueListingNumber, setCurrentUniqueListingNumber] = useState<number | null>(null);
 
-  // Initialize rows based on variant type
+  // LocalStorage key for saving form data
+  const STORAGE_KEY = 'variant-product-form-data';
+
+  // Load data from localStorage on mount
   useEffect(() => {
-    if (variantType === 'multi' && variants.length > 0) {
-      const newRows: ProductRowData[] = variants.map((variant, index) => createEmptyRow(index, variant));
-      setRows(newRows);
+    try {
+      const savedData = localStorage.getItem(STORAGE_KEY);
+      if (savedData) {
+        const parsed = JSON.parse(savedData);
+        // Only restore if variantType matches
+        if (parsed.variantType === variantType && parsed.rows && parsed.rows.length > 0) {
+          setRows(parsed.rows);
+          // Restore totalMoq if it exists and variantType is multi
+          if (variantType === 'multi' && parsed.totalMoq !== undefined) {
+            setTotalMoq(parsed.totalMoq);
+          }
+          // Show notification that data was restored
+          // toastHelper.showTost(`Restored ${parsed.rows.length} row(s) from saved data`, 'info');
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Error loading from localStorage:', error);
+    }
+    
+    // Initialize rows based on variant type if no saved data
+    if (variantType === 'multi') {
+      if (variants.length > 0) {
+        const newRows: ProductRowData[] = variants.map((variant, index) => createEmptyRow(index, variant));
+        setRows(newRows);
+      } else {
+        // If no variants provided, create one empty row
+        setRows([createEmptyRow(0)]);
+      }
     } else if (variantType === 'single') {
       setRows([createEmptyRow(0)]);
     }
   }, [variantType, variants]);
+
+  // Save data to localStorage whenever rows or totalMoq change
+  useEffect(() => {
+    if (rows.length > 0) {
+      try {
+        const dataToSave = {
+          variantType,
+          rows,
+          totalMoq: variantType === 'multi' ? totalMoq : undefined,
+          timestamp: new Date().toISOString(),
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+      } catch (error) {
+        console.error('Error saving to localStorage:', error);
+      }
+    }
+  }, [rows, variantType, totalMoq]);
 
   const createEmptyRow = (index: number, variant?: VariantOption): ProductRowData => ({
     subModelName: variant?.subModelName || '',
@@ -105,7 +170,7 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
     sim: '',
     version: '',
     grade: '',
-    status: 'Active',
+    status: '', // Will be set from constants
     condition: '',
     lockUnlock: '0',
     warranty: '',
@@ -124,9 +189,14 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
     moqPerVariant: '',
     moqPerCart: variantType === 'multi' ? '' : '',
     weight: '',
-    paymentTerm: '',
-    paymentMethod: '',
+    paymentTermUsd: '',
+    paymentTermHkd: '',
+    paymentTermAed: '',
+    paymentMethodUsd: '',
+    paymentMethodHkd: '',
+    paymentMethodAed: '',
     negotiableFixed: '0',
+    tags: '',
     shippingTime: '',
     deliveryTime: '',
     vendor: '',
@@ -134,14 +204,13 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
     carrier: '',
     carrierListingNo: '',
     uniqueListingNo: '',
-    hotDeal: '',
-    lowStock: '',
     adminCustomMessage: '',
     startTime: '',
     endTime: '',
     remark: '',
     supplierId: '',
     supplierListingNumber: '',
+    customerListingNumber: '',
     skuFamilyId: variant?.skuFamilyId || '',
     ram: variant?.ram,
     sequence: index + 1,
@@ -158,6 +227,29 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
         setSellers(sellersList || []);
         const skuFamiliesList = await ProductService.getSkuFamilyListByName();
         setSkuFamilies(skuFamiliesList || []);
+        const constantsData = await ConstantsService.getConstants();
+        setConstants(constantsData);
+        
+        // Fetch next customer listing number
+        try {
+          const customerListingData = await ProductService.getNextCustomerListingNumber();
+          setCurrentCustomerListingNumber(customerListingData.listingNumber);
+        } catch (error) {
+          console.error('Error fetching customer listing number:', error);
+          // Default to 1 if fetch fails
+          setCurrentCustomerListingNumber(1);
+        }
+        
+        // Fetch next unique listing number (8-digit)
+        try {
+          const uniqueListingData = await ProductService.getNextUniqueListingNumber();
+          setCurrentUniqueListingNumber(parseInt(uniqueListingData.uniqueListingNumber, 10));
+        } catch (error) {
+          console.error('Error fetching unique listing number:', error);
+          // Default to 10000000 if fetch fails
+          setCurrentUniqueListingNumber(10000000);
+        }
+        
         // Fetch costs by country (stored for potential future use)
         // const costResponse = await CostModuleService.getCostsByCountry();
         // if (costResponse.status === 200 && costResponse.data) {
@@ -171,6 +263,79 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
     };
     fetchData();
   }, []);
+
+  // Flatten SKU Families with subSkuFamilies for search
+  const getFlattenedSkuFamilyOptions = () => {
+    const options: any[] = [];
+    skuFamilies.forEach((skuFamily) => {
+      // Add SKU Family itself (if it has no subSkuFamilies or we want to show it)
+      if (!skuFamily.subSkuFamilies || skuFamily.subSkuFamilies.length === 0) {
+        options.push({
+          skuFamilyId: skuFamily._id,
+          skuFamilyName: skuFamily.name,
+          subModelName: skuFamily.name,
+          storage: '',
+          storageId: null,
+          colour: '',
+          colorId: null,
+          ram: '',
+          ramId: null,
+          displayText: `${skuFamily.name}${skuFamily.brand ? ` - ${skuFamily.brand.title}` : ''}`,
+        });
+      } else {
+        // Add each subSkuFamily as a separate option
+        skuFamily.subSkuFamilies.forEach((subSku: any) => {
+          options.push({
+            skuFamilyId: skuFamily._id,
+            skuFamilyName: skuFamily.name,
+            subModelName: subSku.subName || skuFamily.name,
+            storage: subSku.storageId?.title || '',
+            storageId: subSku.storageId?._id || null,
+            colour: subSku.colorId?.title || '',
+            colorId: subSku.colorId?._id || null,
+            ram: subSku.ramId?.title || '',
+            ramId: subSku.ramId?._id || null,
+            displayText: `${skuFamily.name}${subSku.subName ? ` - ${subSku.subName}` : ''}${subSku.storageId?.title ? ` - ${subSku.storageId.title}` : ''}${subSku.colorId?.title ? ` - ${subSku.colorId.title}` : ''}${subSku.ramId?.title ? ` - ${subSku.ramId.title}` : ''}`,
+          });
+        });
+      }
+    });
+    return options;
+  };
+
+  // Search functionality
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      setShowSearchResults(false);
+      return;
+    }
+
+    const query = searchQuery.toLowerCase().trim();
+    const allOptions = getFlattenedSkuFamilyOptions();
+    
+    const filtered = allOptions.filter((option) => {
+      const searchText = `${option.skuFamilyName} ${option.subModelName} ${option.storage} ${option.colour} ${option.ram}`.toLowerCase();
+      return searchText.includes(query);
+    });
+
+    setSearchResults(filtered);
+    setShowSearchResults(filtered.length > 0);
+  }, [searchQuery, skuFamilies]);
+
+  // Handle selection from search results
+  const handleSearchSelect = (option: any, rowIndex: number) => {
+    updateRow(rowIndex, 'skuFamilyId', option.skuFamilyId);
+    updateRow(rowIndex, 'subModelName', option.subModelName);
+    updateRow(rowIndex, 'storage', option.storage);
+    updateRow(rowIndex, 'colour', option.colour);
+    if (option.ram) {
+      updateRow(rowIndex, 'ram', option.ram);
+    }
+    setSearchQuery('');
+    setShowSearchResults(false);
+    setSelectedRowIndex(null);
+  };
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -187,11 +352,34 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
           updateRow(focusedCell.row, focusedCell.col as keyof ProductRowData, '');
         }
       }
+      // Escape key to close supplier dropdown
+      if (e.key === 'Escape' && openSupplierDropdown?.isOpen) {
+        setOpenSupplierDropdown(null);
+        setSupplierSearchQuery(null);
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [focusedCell, rows.length]);
+  }, [focusedCell, rows.length, openSupplierDropdown]);
+
+  // Close supplier dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (openSupplierDropdown?.isOpen) {
+        const target = e.target as HTMLElement;
+        if (!target.closest('.supplier-dropdown-container')) {
+          setOpenSupplierDropdown(null);
+          setSupplierSearchQuery(null);
+        }
+      }
+    };
+
+    if (openSupplierDropdown?.isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [openSupplierDropdown]);
 
   // Auto-calculate delivery location and currency conversions
   useEffect(() => {
@@ -212,10 +400,106 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
     }));
   }, [rows.map(r => `${r.currentLocation}-${r.hkUsd}-${r.hkHkd}-${r.dubaiUsd}-${r.dubaiAed}`).join(',')]);
 
+  // Auto-generate customer listing numbers when rows change
+  useEffect(() => {
+    if (currentCustomerListingNumber !== null && rows.length > 0) {
+      setRows(prevRows => prevRows.map((row, index) => {
+        const updatedRow = { ...row };
+        const productNumber = index + 1;
+        const customerListingNo = `L${currentCustomerListingNumber}-${productNumber}`;
+        if (!updatedRow.customerListingNumber || updatedRow.customerListingNumber !== customerListingNo) {
+          updatedRow.customerListingNumber = customerListingNo;
+        }
+        return updatedRow;
+      }));
+    }
+  }, [rows.length, currentCustomerListingNumber]);
+
+  // Auto-generate unique listing numbers when rows change
+  useEffect(() => {
+    if (currentUniqueListingNumber !== null && rows.length > 0) {
+      setRows(prevRows => prevRows.map((row, index) => {
+        const updatedRow = { ...row };
+        const uniqueListingNo = String(currentUniqueListingNumber + index).padStart(8, '0');
+        if (!updatedRow.uniqueListingNo || updatedRow.uniqueListingNo !== uniqueListingNo) {
+          updatedRow.uniqueListingNo = uniqueListingNo;
+        }
+        return updatedRow;
+      }));
+    }
+  }, [rows.length, currentUniqueListingNumber]);
+
+  // Auto-generate supplier listing numbers when rows or suppliers change
+  useEffect(() => {
+    if (Object.keys(supplierListingNumbers).length === 0) return;
+    
+    setRows(prevRows => {
+      let hasChanges = false;
+      const updatedRows = prevRows.map((row, index) => {
+        if (!row.supplierId) {
+          return row;
+        }
+        
+        const listingInfo = supplierListingNumbers[row.supplierId];
+        if (!listingInfo) {
+          return row;
+        }
+        
+        const selectedSeller = sellers.find(s => s._id === row.supplierId);
+        if (!selectedSeller || !selectedSeller.code) {
+          return row;
+        }
+        
+        const listingPrefix = variantType === 'multi' 
+          ? `L${listingInfo.listingNumber}M1` 
+          : `L${listingInfo.listingNumber}`;
+        
+        // Count how many rows with this supplier come before this row
+        const productNum = prevRows.filter((r, i) => i <= index && r.supplierId === row.supplierId).length;
+        const expectedListingNo = `${listingInfo.supplierCode}-${listingPrefix}-${productNum}`;
+        
+        if (row.supplierListingNumber !== expectedListingNo) {
+          hasChanges = true;
+          return { ...row, supplierListingNumber: expectedListingNo };
+        }
+        
+        return row;
+      });
+      
+      return hasChanges ? updatedRows : prevRows;
+    });
+  }, [rows.map(r => r.supplierId).join(','), rows.length, Object.keys(supplierListingNumbers).join(','), variantType, sellers]);
+
   const updateRow = (index: number, field: keyof ProductRowData, value: any) => {
     setRows(prevRows => {
       const newRows = [...prevRows];
       newRows[index] = { ...newRows[index], [field]: value };
+      
+      // Auto-generate supplier listing number when supplier is selected
+      if (field === 'supplierId' && value) {
+        const selectedSeller = sellers.find(s => s._id === value);
+        if (selectedSeller && selectedSeller.code) {
+          // Check if we already have a listing number for this supplier in current form
+          if (!supplierListingNumbers[value]) {
+            // Fetch next supplier listing number asynchronously
+            ProductService.getNextSupplierListingNumber(value, variantType === 'multi')
+              .then(data => {
+                setSupplierListingNumbers(prev => ({
+                  ...prev,
+                  [value]: { listingNumber: data.listingNumber, supplierCode: data.supplierCode }
+                }));
+              })
+              .catch(error => {
+                console.error('Error generating supplier listing number:', error);
+              });
+          }
+        }
+      }
+      
+      // Clear supplier listing number if supplier is removed
+      if (field === 'supplierId' && !value) {
+        newRows[index].supplierListingNumber = '';
+      }
       
       // Auto-calculate currency conversions for HK
       if (field === 'hkUsd' || field === 'hkXe' || field === 'hkHkd') {
@@ -271,6 +555,7 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
       // Clear unique fields
       newRow.uniqueListingNo = '';
       newRow.supplierListingNumber = '';
+      newRow.tags = '';
       return [...prevRows, newRow];
     });
   };
@@ -309,6 +594,10 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
         if (!row.moqPerVariant) errors.push(`Row ${index + 1}: MOQ/VARIANT is required`);
         if (!row.supplierId) errors.push(`Row ${index + 1}: SUPPLIER ID is required`);
         if (!row.supplierListingNumber) errors.push(`Row ${index + 1}: SUPPLIER LISTING NO is required`);
+        if (!row.paymentTermUsd) errors.push(`Row ${index + 1}: PAYMENT TERM (USD) is required`);
+        if (!row.paymentMethodUsd || row.paymentMethodUsd.trim() === '') {
+          errors.push(`Row ${index + 1}: PAYMENT METHOD (USD) is required`);
+        }
       });
 
     if (errors.length > 0) {
@@ -321,15 +610,42 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
       }
     }
 
-    const rowsWithListingNos = rows.map((row, index) => ({
-      ...row,
-      uniqueListingNo: row.uniqueListingNo || `LIST-${Date.now()}-${index}`,
-    }));
-    onSave(rowsWithListingNos);
+    const rowsWithListingNos = rows.map((row, index) => {
+      // Ensure unique listing number is set (8-digit)
+      let uniqueListingNo = row.uniqueListingNo;
+      if (!uniqueListingNo && currentUniqueListingNumber !== null) {
+        uniqueListingNo = String(currentUniqueListingNumber + index).padStart(8, '0');
+      } else if (!uniqueListingNo) {
+        // Fallback: generate 8-digit number starting from 10000000
+        uniqueListingNo = String(10000000 + index).padStart(8, '0');
+      }
+      return {
+        ...row,
+        uniqueListingNo: uniqueListingNo,
+      };
+    });
+    
+    // Clear localStorage on successful save
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (error) {
+      console.error('Error clearing localStorage:', error);
+    }
+    
+    // Validate TOTAL MOQ for multi variant
+    if (variantType === 'multi' && !totalMoq) {
+      toastHelper.showTost('TOTAL MOQ is required for multi-variant products', 'error');
+      return;
+    }
+    
+    onSave(rowsWithListingNos, variantType === 'multi' ? totalMoq : undefined);
   };
 
   // Column definitions
   const columns = [
+    { key: 'supplierId', label: 'SUPPLIER ID*', width: 130, group: 'Supplier Info' },
+    { key: 'supplierListingNumber', label: 'SUPPLIER LISTING NO*', width: 180, group: 'Supplier Info' },
+    { key: 'customerListingNumber', label: 'CUSTOMER LISTING NO*', width: 180, group: 'Supplier Info' },
     { key: 'skuFamilyId', label: 'SKU Family*', width: 150, group: 'Product Detail' },
     { key: 'subModelName', label: 'SubModelName*', width: 150, group: 'Product Detail' },
     { key: 'storage', label: 'Storage*', width: 100, group: 'Product Detail' },
@@ -345,20 +661,25 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
     { key: 'batteryHealth', label: 'BATTERY HEALTH', width: 130, group: 'Product Detail' },
     { key: 'packing', label: 'PACKING*', width: 120, group: 'Pricing/Delivery' },
     { key: 'currentLocation', label: 'CURRENT LOCATION*', width: 150, group: 'Pricing/Delivery' },
-    { key: 'hkUsd', label: 'HK USD', width: 100, group: 'Pricing/Delivery' },
-    { key: 'hkXe', label: 'HK XE', width: 100, group: 'Pricing/Delivery' },
-    { key: 'hkHkd', label: 'HK HKD', width: 100, group: 'Pricing/Delivery' },
-    { key: 'dubaiUsd', label: 'DUBAI USD', width: 110, group: 'Pricing/Delivery' },
-    { key: 'dubaiXe', label: 'DUBAI XE', width: 110, group: 'Pricing/Delivery' },
-    { key: 'dubaiAed', label: 'DUBAI AED', width: 110, group: 'Pricing/Delivery' },
+    { key: 'hkUsd', label: 'USD', width: 100, group: 'HK DELIVERY', subgroup: 'HK' },
+    { key: 'hkXe', label: 'XE', width: 100, group: 'HK DELIVERY', subgroup: 'HK' },
+    { key: 'hkHkd', label: 'HKD', width: 100, group: 'HK DELIVERY', subgroup: 'HK' },
+    { key: 'dubaiUsd', label: 'USD', width: 110, group: 'DUBAI DELIVERY', subgroup: 'DUBAI' },
+    { key: 'dubaiXe', label: 'XE', width: 110, group: 'DUBAI DELIVERY', subgroup: 'DUBAI' },
+    { key: 'dubaiAed', label: 'AED', width: 110, group: 'DUBAI DELIVERY', subgroup: 'DUBAI' },
     { key: 'deliveryLocation', label: 'DELIVERY LOCATION', width: 150, group: 'Pricing/Delivery' },
     { key: 'customMessage', label: 'CUSTOM MESSAGE', width: 150, group: 'Pricing/Delivery' },
     { key: 'totalQty', label: 'TOTAL QTY*', width: 100, group: 'Pricing/Delivery' },
     { key: 'moqPerVariant', label: 'MOQ/VARIANT*', width: 120, group: 'Pricing/Delivery' },
     { key: 'moqPerCart', label: 'MOQ PER CART', width: 120, group: 'Pricing/Delivery' },
     { key: 'weight', label: 'WEIGHT', width: 100, group: 'Pricing/Delivery' },
-    { key: 'paymentTerm', label: 'PAYMENT TERM', width: 130, group: 'Pricing/Delivery' },
-    { key: 'paymentMethod', label: 'PAYMENT METHOD', width: 150, group: 'Pricing/Delivery' },
+    ...(variantType === 'multi' ? [{ key: 'totalMoq', label: 'TOTAL MOQ*', width: 150, group: 'Pricing/Delivery' }] : []),
+    { key: 'paymentTermUsd', label: 'USD*', width: 120, group: 'PAYMENT TERM', subgroup: 'PAYMENT_TERM' },
+    { key: 'paymentTermHkd', label: 'HKD', width: 120, group: 'PAYMENT TERM', subgroup: 'PAYMENT_TERM' },
+    { key: 'paymentTermAed', label: 'AED', width: 120, group: 'PAYMENT TERM', subgroup: 'PAYMENT_TERM' },
+    { key: 'paymentMethodUsd', label: 'USD*', width: 130, group: 'PAYMENT METHOD', subgroup: 'PAYMENT_METHOD' },
+    { key: 'paymentMethodHkd', label: 'HKD', width: 130, group: 'PAYMENT METHOD', subgroup: 'PAYMENT_METHOD' },
+    { key: 'paymentMethodAed', label: 'AED', width: 130, group: 'PAYMENT METHOD', subgroup: 'PAYMENT_METHOD' },
     { key: 'negotiableFixed', label: 'NEGOTIABLE/FIXED', width: 150, group: 'Other Info' },
     { key: 'shippingTime', label: 'SHIPPING TIME', width: 130, group: 'Other Info' },
     { key: 'deliveryTime', label: 'DELIVERY TIME', width: 130, group: 'Other Info' },
@@ -367,27 +688,48 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
     { key: 'carrier', label: 'CARRIER', width: 100, group: 'Other Info' },
     { key: 'carrierListingNo', label: 'CARRIER LISTING NO', width: 150, group: 'Other Info' },
     { key: 'uniqueListingNo', label: 'UNIQUE LISTING NO', width: 150, group: 'Other Info' },
-    { key: 'hotDeal', label: 'HOT DEAL', width: 100, group: 'Other Info' },
-    { key: 'lowStock', label: 'LOW STOCK', width: 100, group: 'Other Info' },
+    { key: 'tags', label: 'TAGS', width: 150, group: 'Other Info' },
     { key: 'adminCustomMessage', label: 'ADMIN CUSTOM MESSAGE', width: 180, group: 'Other Info' },
     { key: 'startTime', label: 'START TIME', width: 150, group: 'Other Info' },
     { key: 'endTime', label: 'END TIME', width: 150, group: 'Other Info' },
-    { key: 'supplierId', label: 'SUPPLIER ID*', width: 130, group: 'Other Info' },
-    { key: 'supplierListingNumber', label: 'SUPPLIER LISTING NO*', width: 180, group: 'Other Info' },
     { key: 'remark', label: 'REMARK', width: 150, group: 'Other Info' },
   ];
 
-  const countryOptions = ['Hong Kong', 'Dubai'];
-  const simOptions = ['Dual SIM', 'E-SIM', 'Physical Sim'];
-  const statusOptions = ['Active', 'Non Active', 'pre owned'];
+  // Get country options from constants (show name, store code)
+  const countryOptions = constants?.spec?.COUNTRY || [];
+  
+  // Get sim options based on selected country (will be filtered per row)
+  const getSimOptionsForCountry = (countryCode: string) => {
+    if (!constants?.spec?.COUNTRY) return [];
+    const country = constants.spec.COUNTRY.find(c => c.code === countryCode);
+    return country?.SIM || [];
+  };
+  
+  // Get status options from constants (show name, store code)
+  const statusOptions = constants?.status || [];
+  
   const conditionOptions = ['AAA', 'A+', 'Mixed'];
-  const lockUnlockOptions = [{ value: '1', label: 'Lock' }, { value: '0', label: 'Unlock' }];
-  const packingOptions = ['sealed', 'open sealed', 'master cartoon'];
-  const paymentTermOptions = ['on order', 'on delivery', 'as in conformation'];
-  const paymentMethodOptions = ['hkd cash / aed cash', 'usd cash /tt', 'as in conformation'];
-  const negotiableFixedOptions = [{ value: '1', label: 'Negotiable' }, { value: '0', label: 'Fixed' }];
-  const vendorOptions = ['att', 'tmobile'];
-  const carrierOptions = ['tmob', 'mixed'];
+  
+  // Get lockStatus options from constants (show name, store code)
+  const lockUnlockOptions = constants?.lockStatus || [];
+  
+  // Get packing options from constants (show name, store code)
+  const packingOptions = constants?.packing || [];
+  
+  // Get currentLocation options from constants (show name, store code)
+  const currentLocationOptions = constants?.currentLocation || [];
+  
+  const paymentTermOptions = ['on order', 'on delivery'];
+  const paymentMethodOptions = ['Cash', 'TT', 'Third party'];
+  
+  // NegotiableStatus - using negotiableStatus from constants
+  const negotiableFixedOptions = constants?.negotiableStatus || [];
+  
+  // Get vendor options from constants (show name, store code)
+  const vendorOptions = constants?.vendor || [];
+  
+  // Get carrier options from constants (show name, store code)
+  const carrierOptions = constants?.carrier || [];
 
   const renderCell = (row: ProductRowData, rowIndex: number, column: typeof columns[0]) => {
     const value = row[column.key as keyof ProductRowData];
@@ -450,7 +792,10 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
             className="w-full px-2 py-1.5 text-xs border-0 bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded transition-all duration-150 placeholder:text-gray-400"
             required={column.key === 'subModelName' || column.key === 'storage' || column.key === 'colour'}
             disabled={variantType === 'multi' && (column.key === 'subModelName' || column.key === 'storage' || column.key === 'colour')}
-            onFocus={() => setFocusedCell({ row: rowIndex, col: column.key })}
+            onFocus={() => {
+              setFocusedCell({ row: rowIndex, col: column.key });
+              setSelectedRowIndex(rowIndex);
+            }}
             placeholder={variantType === 'multi' ? 'Auto-filled' : 'Enter value'}
           />
         );
@@ -459,27 +804,50 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
         return (
           <select
             value={value as string}
-            onChange={(e) => updateRow(rowIndex, column.key as keyof ProductRowData, e.target.value)}
+            onChange={(e) => {
+              updateRow(rowIndex, column.key as keyof ProductRowData, e.target.value);
+              // Clear sim when country changes
+              updateRow(rowIndex, 'sim', '');
+            }}
             className="w-full px-2 py-1.5 text-xs border-0 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded transition-all duration-150 cursor-pointer appearance-none"
             required
-            onFocus={() => setFocusedCell({ row: rowIndex, col: column.key })}
+            onFocus={() => {
+              setFocusedCell({ row: rowIndex, col: column.key });
+              setSelectedRowIndex(rowIndex);
+            }}
           >
             <option value="" className="text-gray-500">Select Country</option>
-            {countryOptions.map(opt => <option key={opt} value={opt} className="bg-white dark:bg-gray-800">{opt}</option>)}
+            {countryOptions.map(opt => (
+              <option key={opt.code} value={opt.code} className="bg-white dark:bg-gray-800">
+                {opt.name}
+              </option>
+            ))}
           </select>
         );
 
       case 'sim':
+        const selectedCountryCode = row.country || '';
+        const availableSimOptions = getSimOptionsForCountry(selectedCountryCode);
         return (
           <select
             value={value as string}
             onChange={(e) => updateRow(rowIndex, column.key as keyof ProductRowData, e.target.value)}
             className="w-full px-2 py-1.5 text-xs border-0 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded transition-all duration-150 cursor-pointer appearance-none"
             required
-            onFocus={() => setFocusedCell({ row: rowIndex, col: column.key })}
+            disabled={!selectedCountryCode}
+            onFocus={() => {
+              setFocusedCell({ row: rowIndex, col: column.key });
+              setSelectedRowIndex(rowIndex);
+            }}
           >
-            <option value="" className="text-gray-500">Select SIM</option>
-            {simOptions.map(opt => <option key={opt} value={opt} className="bg-white dark:bg-gray-800">{opt}</option>)}
+            <option value="" className="text-gray-500">
+              {!selectedCountryCode ? 'Select Country first' : 'Select SIM'}
+            </option>
+            {availableSimOptions.map(opt => (
+              <option key={opt} value={opt} className="bg-white dark:bg-gray-800">
+                {opt}
+              </option>
+            ))}
           </select>
         );
 
@@ -520,9 +888,17 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
             onChange={(e) => updateRow(rowIndex, column.key as keyof ProductRowData, e.target.value)}
             className="w-full px-2 py-1.5 text-xs border-0 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded transition-all duration-150 cursor-pointer appearance-none"
             required
-            onFocus={() => setFocusedCell({ row: rowIndex, col: column.key })}
+            onFocus={() => {
+              setFocusedCell({ row: rowIndex, col: column.key });
+              setSelectedRowIndex(rowIndex);
+            }}
           >
-            {statusOptions.map(opt => <option key={opt} value={opt} className="bg-white dark:bg-gray-800">{opt}</option>)}
+            <option value="" className="text-gray-500">Select Status</option>
+            {statusOptions.map(opt => (
+              <option key={opt.code} value={opt.code} className="bg-white dark:bg-gray-800">
+                {opt.name}
+              </option>
+            ))}
           </select>
         );
 
@@ -532,7 +908,10 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
             value={value as string}
             onChange={(e) => updateRow(rowIndex, column.key as keyof ProductRowData, e.target.value)}
             className="w-full px-2 py-1.5 text-xs border-0 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded transition-all duration-150 cursor-pointer appearance-none"
-            onFocus={() => setFocusedCell({ row: rowIndex, col: column.key })}
+            onFocus={() => {
+              setFocusedCell({ row: rowIndex, col: column.key });
+              setSelectedRowIndex(rowIndex);
+            }}
           >
             <option value="" className="bg-white dark:bg-gray-800">Select Condition</option>
             {conditionOptions.map(opt => <option key={opt} value={opt} className="bg-white dark:bg-gray-800">{opt}</option>)}
@@ -548,33 +927,149 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
             onChange={(e) => updateRow(rowIndex, column.key as keyof ProductRowData, e.target.value)}
             className="w-full px-2 py-1 text-xs border-0 bg-transparent focus:outline-none focus:ring-1 focus:ring-blue-500"
             required={column.key === 'lockUnlock'}
-            onFocus={() => setFocusedCell({ row: rowIndex, col: column.key })}
+            onFocus={() => {
+              setFocusedCell({ row: rowIndex, col: column.key });
+              setSelectedRowIndex(rowIndex);
+            }}
           >
-            {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+            <option value="" className="text-gray-500">Select</option>
+            {options.map(opt => (
+              <option key={opt.code} value={opt.code}>
+                {opt.name}
+              </option>
+            ))}
           </select>
         );
 
       case 'packing':
-      case 'paymentTerm':
-      case 'paymentMethod':
-      case 'vendor':
-      case 'carrier':
-        const selectOptions = 
-          column.key === 'packing' ? packingOptions :
-          column.key === 'paymentTerm' ? paymentTermOptions :
-          column.key === 'paymentMethod' ? paymentMethodOptions :
-          column.key === 'vendor' ? vendorOptions : carrierOptions;
         return (
           <select
             value={value as string}
             onChange={(e) => updateRow(rowIndex, column.key as keyof ProductRowData, e.target.value)}
             className="w-full px-2 py-1 text-xs border-0 bg-transparent focus:outline-none focus:ring-1 focus:ring-blue-500"
-            required={column.key === 'packing' || (['currentLocation'].includes(column.key) as any)}
-            onFocus={() => setFocusedCell({ row: rowIndex, col: column.key })}
+            required
+            onFocus={() => {
+              setFocusedCell({ row: rowIndex, col: column.key });
+              setSelectedRowIndex(rowIndex);
+            }}
           >
             <option value="">Select</option>
-            {selectOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            {packingOptions.map(opt => (
+              <option key={opt.code} value={opt.code}>
+                {opt.name}
+              </option>
+            ))}
           </select>
+        );
+
+      case 'vendor':
+      case 'carrier':
+        const selectOptions = column.key === 'vendor' ? vendorOptions : carrierOptions;
+        return (
+          <select
+            value={value as string}
+            onChange={(e) => updateRow(rowIndex, column.key as keyof ProductRowData, e.target.value)}
+            className="w-full px-2 py-1 text-xs border-0 bg-transparent focus:outline-none focus:ring-1 focus:ring-blue-500"
+            onFocus={() => {
+              setFocusedCell({ row: rowIndex, col: column.key });
+              setSelectedRowIndex(rowIndex);
+            }}
+          >
+            <option value="">Select</option>
+            {selectOptions.map(opt => (
+              <option key={opt.code} value={opt.code}>
+                {opt.name}
+              </option>
+            ))}
+          </select>
+        );
+
+      case 'paymentTermUsd':
+      case 'paymentTermHkd':
+      case 'paymentTermAed':
+        return (
+          <select
+            value={value as string}
+            onChange={(e) => updateRow(rowIndex, column.key as keyof ProductRowData, e.target.value)}
+            className="w-full px-2 py-1.5 text-xs border-0 bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded transition-all duration-150 cursor-pointer appearance-none"
+            required={column.key === 'paymentTermUsd'}
+            onFocus={() => {
+              setFocusedCell({ row: rowIndex, col: column.key });
+              setSelectedRowIndex(rowIndex);
+            }}
+          >
+            <option value="">Select</option>
+            {paymentTermOptions.map(opt => (
+              <option key={opt} value={opt} className="bg-white dark:bg-gray-800">{opt}</option>
+            ))}
+          </select>
+        );
+
+      case 'paymentMethodUsd':
+      case 'paymentMethodHkd':
+      case 'paymentMethodAed':
+        // Convert comma-separated string to array for react-select
+        const selectedMethods = (value as string) 
+          ? (value as string).split(',').map(m => m.trim()).filter(m => m)
+          : [];
+        const selectedOptions = paymentMethodOptions
+          .filter(opt => selectedMethods.includes(opt))
+          .map(opt => ({ value: opt, label: opt }));
+        
+        return (
+          <div className="min-w-[130px]" onFocus={() => setFocusedCell({ row: rowIndex, col: column.key })}>
+            <Select
+              isMulti
+              options={paymentMethodOptions.map(opt => ({ value: opt, label: opt }))}
+              value={selectedOptions}
+              onChange={(selected) => {
+                const selectedValues = selected ? selected.map(opt => opt.value).join(', ') : '';
+                updateRow(rowIndex, column.key as keyof ProductRowData, selectedValues);
+              }}
+              className="text-xs"
+              classNamePrefix="select"
+              isSearchable={false}
+              placeholder="Select methods..."
+              styles={{
+                control: (provided, state) => ({ 
+                  ...provided, 
+                  minHeight: '32px', 
+                  fontSize: '12px', 
+                  border: 'none', 
+                  boxShadow: state.isFocused ? '0 0 0 2px rgba(59, 130, 246, 0.5)' : 'none',
+                  backgroundColor: 'transparent',
+                  '&:hover': { border: 'none' }
+                }),
+                valueContainer: (provided) => ({ ...provided, padding: '4px 8px', minHeight: '32px' }),
+                input: (provided) => ({ ...provided, margin: '0', padding: '0' }),
+                indicatorsContainer: (provided) => ({ ...provided, height: '32px' }),
+                menu: (provided) => ({ ...provided, zIndex: 9999, boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }),
+                multiValue: (provided) => ({
+                  ...provided,
+                  backgroundColor: '#dbeafe',
+                  fontSize: '11px',
+                }),
+                multiValueLabel: (provided) => ({
+                  ...provided,
+                  color: '#1e40af',
+                  fontWeight: '500',
+                }),
+                multiValueRemove: (provided) => ({
+                  ...provided,
+                  color: '#1e40af',
+                  ':hover': {
+                    backgroundColor: '#93c5fd',
+                    color: '#fff',
+                  },
+                }),
+              }}
+              onFocus={() => {
+                setFocusedCell({ row: rowIndex, col: column.key });
+                setSelectedRowIndex(rowIndex);
+              }}
+              required={column.key === 'paymentMethodUsd'}
+            />
+          </div>
         );
 
       case 'currentLocation':
@@ -584,10 +1079,17 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
             onChange={(e) => updateRow(rowIndex, column.key as keyof ProductRowData, e.target.value)}
             className="w-full px-2 py-1 text-xs border-0 bg-transparent focus:outline-none focus:ring-1 focus:ring-blue-500"
             required
-            onFocus={() => setFocusedCell({ row: rowIndex, col: column.key })}
+            onFocus={() => {
+              setFocusedCell({ row: rowIndex, col: column.key });
+              setSelectedRowIndex(rowIndex);
+            }}
           >
             <option value="">Select</option>
-            {countryOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            {currentLocationOptions.map(opt => (
+              <option key={opt.code} value={opt.code}>
+                {opt.name}
+              </option>
+            ))}
           </select>
         );
 
@@ -610,9 +1112,39 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
             className="w-full px-2 py-1.5 text-xs border-0 bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded transition-all duration-150 text-right font-medium placeholder:text-gray-400"
             placeholder="0.00"
             disabled={column.key === 'moqPerCart' && variantType === 'single'}
-            onFocus={() => setFocusedCell({ row: rowIndex, col: column.key })}
+            onFocus={() => {
+              setFocusedCell({ row: rowIndex, col: column.key });
+              setSelectedRowIndex(rowIndex);
+            }}
           />
         );
+
+      case 'totalMoq':
+        // Only render in first row, will span all rows
+        if (rowIndex === 0) {
+          return (
+            <div className="flex flex-col items-center justify-center h-full py-2">
+              <input
+                type="number"
+                step="0.01"
+                value={totalMoq}
+                onChange={(e) => setTotalMoq(e.target.value)}
+                className="w-full px-2 py-1.5 text-sm border-2 border-purple-300 dark:border-purple-600 rounded-lg bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all font-medium text-center"
+                placeholder="0.00"
+                required
+                style={{ minHeight: `${rows.length * 40}px` }}
+                onFocus={() => {
+                  setFocusedCell({ row: rowIndex, col: column.key });
+                  setSelectedRowIndex(rowIndex);
+                }}
+              />
+              <span className="text-xs text-gray-500 dark:text-gray-400 mt-1 italic">
+                All {rows.length} products
+              </span>
+            </div>
+          );
+        }
+        return null; // Don't render for other rows
 
       case 'deliveryLocation':
         return (
@@ -639,38 +1171,110 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
             dateFormat="yyyy-MM-dd HH:mm"
             className="w-full px-2 py-1.5 text-xs border-0 bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded transition-all duration-150 placeholder:text-gray-400"
             placeholderText="Select date & time"
-            onFocus={() => setFocusedCell({ row: rowIndex, col: column.key })}
+            onFocus={() => {
+              setFocusedCell({ row: rowIndex, col: column.key });
+              setSelectedRowIndex(rowIndex);
+            }}
             wrapperClassName="w-full"
           />
         );
 
       case 'supplierId':
+        const isDropdownOpen = openSupplierDropdown?.row === rowIndex && openSupplierDropdown?.isOpen;
+        const currentSearchQuery = supplierSearchQuery?.row === rowIndex ? supplierSearchQuery.query : '';
+        const selectedSupplier = sellers.find(s => s._id === value);
+        
+        // Filter sellers based on search query
+        const filteredSellers = currentSearchQuery
+          ? sellers.filter(s => {
+              const searchLower = currentSearchQuery.toLowerCase();
+              const nameMatch = s.name?.toLowerCase().includes(searchLower);
+              const codeMatch = s.code?.toLowerCase().includes(searchLower);
+              return nameMatch || codeMatch;
+            })
+          : sellers;
+
         return (
-          <div className="min-w-[130px]" onFocus={() => setFocusedCell({ row: rowIndex, col: column.key })}>
-            <Select
-              options={sellers.map(s => ({ value: s._id, label: `${s.name}${s.code ? ` (${s.code})` : ''}` }))}
-              value={sellers.find(s => s._id === value) ? { value: value as string, label: sellers.find(s => s._id === value)?.name } : null}
-              onChange={(opt) => updateRow(rowIndex, column.key as keyof ProductRowData, opt?.value || '')}
-              className="text-xs"
-              classNamePrefix="select"
-              isSearchable
-              placeholder="Select Supplier"
-              styles={{
-                control: (provided, state) => ({ 
-                  ...provided, 
-                  minHeight: '32px', 
-                  fontSize: '12px', 
-                  border: 'none', 
-                  boxShadow: state.isFocused ? '0 0 0 2px rgba(59, 130, 246, 0.5)' : 'none',
-                  backgroundColor: 'transparent',
-                  '&:hover': { border: 'none' }
-                }),
-                valueContainer: (provided) => ({ ...provided, padding: '4px 8px' }),
-                input: (provided) => ({ ...provided, margin: '0', padding: '0' }),
-                indicatorsContainer: (provided) => ({ ...provided, height: '32px' }),
-                menu: (provided) => ({ ...provided, zIndex: 9999, boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }),
+          <div className="relative min-w-[130px] supplier-dropdown-container">
+            <div
+              onClick={() => {
+                setOpenSupplierDropdown({ row: rowIndex, isOpen: !isDropdownOpen });
+                setSupplierSearchQuery({ row: rowIndex, query: '' });
+                setFocusedCell({ row: rowIndex, col: column.key });
+                setSelectedRowIndex(rowIndex);
               }}
-            />
+              className="w-full px-2 py-1.5 text-xs border-0 bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded transition-all duration-150 cursor-pointer flex items-center justify-between"
+            >
+              <span className={selectedSupplier ? 'text-gray-800 dark:text-gray-200' : 'text-gray-400'}>
+                {selectedSupplier 
+                  ? `${selectedSupplier.name}${selectedSupplier.code ? ` (${selectedSupplier.code})` : ''}`
+                  : 'Click to select supplier...'}
+              </span>
+              <i className={`fas fa-chevron-${isDropdownOpen ? 'up' : 'down'} text-gray-400 text-xs ml-2`}></i>
+            </div>
+            
+            {/* Custom Dropdown with Search */}
+            {isDropdownOpen && (
+              <div className="absolute top-full w-[230px] left-0 right-0 mt-1 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg shadow-xl z-[10000] overflow-hidden">
+                {/* Search Input at Top */}
+                <div className="p-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                  <div className="relative">
+                    <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
+                    <input
+                      type="text"
+                      placeholder="Type to search supplier..."
+                      value={currentSearchQuery}
+                      onChange={(e) => setSupplierSearchQuery({ row: rowIndex, query: e.target.value })}
+                      className="w-full pl-10 pr-4 py-2 text-sm border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      autoFocus
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                </div>
+                
+                {/* Options List */}
+                <div className="max-h-[300px] overflow-y-auto">
+                  {filteredSellers.length > 0 ? (
+                    filteredSellers.map((seller) => (
+                      <div
+                        key={seller._id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          updateRow(rowIndex, column.key as keyof ProductRowData, seller._id);
+                          setOpenSupplierDropdown({ row: rowIndex, isOpen: false });
+                          setSupplierSearchQuery({ row: rowIndex, query: '' });
+                        }}
+                        className={`px-4 py-3 cursor-pointer border-b border-gray-200 dark:border-gray-700 last:border-b-0 transition-colors ${
+                          value === seller._id
+                            ? 'bg-blue-100 dark:bg-blue-900/30 font-semibold'
+                            : 'hover:bg-blue-50 dark:hover:bg-blue-900/20'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                              {seller.name}
+                            </div>
+                            {seller.code && (
+                              <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                Code: {seller.code}
+                              </div>
+                            )}
+                          </div>
+                          {value === seller._id && (
+                            <i className="fas fa-check text-blue-600 dark:text-blue-400 text-sm"></i>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                      {currentSearchQuery ? `No supplier found for "${currentSearchQuery}"` : 'No suppliers available'}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         );
 
@@ -688,6 +1292,99 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
           </div>
         );
 
+      case 'supplierListingNumber':
+        return (
+          <div className="relative">
+            <input
+              type="text"
+              value={value as string}
+              className="w-full px-2 py-1.5 text-xs border-0 bg-gray-200 dark:bg-gray-700 rounded text-gray-600 dark:text-gray-400 italic"
+              readOnly
+              placeholder="Auto-generated"
+            />
+            <i className="fas fa-tag absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs"></i>
+          </div>
+        );
+
+      case 'customerListingNumber':
+        return (
+          <div className="relative">
+            <input
+              type="text"
+              value={value as string}
+              className="w-full px-2 py-1.5 text-xs border-0 bg-gray-200 dark:bg-gray-700 rounded text-gray-600 dark:text-gray-400 italic"
+              readOnly
+              placeholder="Auto-generated"
+            />
+            <i className="fas fa-tag absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs"></i>
+          </div>
+        );
+
+      case 'tags':
+        const tagOptions = constants?.tags || [];
+        // Convert comma-separated string of tag codes to array for react-select
+        const selectedTagCodes = (value as string) 
+          ? (value as string).split(',').map(t => parseInt(t.trim())).filter(t => !isNaN(t))
+          : [];
+        const selectedTagOptions = tagOptions
+          .filter(tag => selectedTagCodes.includes(tag.code))
+          .map(tag => ({ value: String(tag.code), label: tag.tag }));
+        
+        return (
+          <div className="min-w-[150px]" onFocus={() => setFocusedCell({ row: rowIndex, col: column.key })}>
+            <Select
+              isMulti
+              options={tagOptions.map(tag => ({ value: String(tag.code), label: tag.tag }))}
+              value={selectedTagOptions}
+              onChange={(selected) => {
+                const selectedValues = selected ? selected.map(opt => opt.value).join(', ') : '';
+                updateRow(rowIndex, column.key as keyof ProductRowData, selectedValues);
+              }}
+              className="text-xs"
+              classNamePrefix="select"
+              isSearchable={false}
+              placeholder="Select tags..."
+              styles={{
+                control: (provided, state) => ({ 
+                  ...provided, 
+                  minHeight: '32px', 
+                  fontSize: '12px', 
+                  border: 'none', 
+                  boxShadow: state.isFocused ? '0 0 0 2px rgba(59, 130, 246, 0.5)' : 'none',
+                  backgroundColor: 'transparent',
+                  '&:hover': { border: 'none' }
+                }),
+                valueContainer: (provided) => ({ ...provided, padding: '4px 8px', minHeight: '32px' }),
+                input: (provided) => ({ ...provided, margin: '0', padding: '0' }),
+                indicatorsContainer: (provided) => ({ ...provided, height: '32px' }),
+                menu: (provided) => ({ ...provided, zIndex: 9999, boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }),
+                multiValue: (provided) => ({
+                  ...provided,
+                  backgroundColor: '#dbeafe',
+                  fontSize: '11px',
+                }),
+                multiValueLabel: (provided) => ({
+                  ...provided,
+                  color: '#1e40af',
+                  fontWeight: '500',
+                }),
+                multiValueRemove: (provided) => ({
+                  ...provided,
+                  color: '#1e40af',
+                  ':hover': {
+                    backgroundColor: '#93c5fd',
+                    color: '#fff',
+                  },
+                }),
+              }}
+              onFocus={() => {
+                setFocusedCell({ row: rowIndex, col: column.key });
+                setSelectedRowIndex(rowIndex);
+              }}
+            />
+          </div>
+        );
+
       default:
         return (
           <input
@@ -696,7 +1393,10 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
             onChange={(e) => updateRow(rowIndex, column.key as keyof ProductRowData, e.target.value)}
             className="w-full px-2 py-1.5 text-xs border-0 bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded transition-all duration-150 placeholder:text-gray-400"
             required={column.key === 'supplierListingNumber'}
-            onFocus={() => setFocusedCell({ row: rowIndex, col: column.key })}
+            onFocus={() => {
+              setFocusedCell({ row: rowIndex, col: column.key });
+              setSelectedRowIndex(rowIndex);
+            }}
             placeholder={column.key.includes('message') || column.key.includes('Message') ? 'Enter message...' : 'Enter value...'}
           />
         );
@@ -730,7 +1430,7 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
     <form onSubmit={handleSubmit} className="flex flex-col h-full">
       {/* Enhanced Toolbar */}
       <div className="bg-gray-100 dark:bg-gray-800 border-b-2 border-gray-300 dark:border-gray-700 px-6 py-3 flex items-center justify-between sticky top-0 z-20 shadow-md">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-1">
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -756,6 +1456,90 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
             </button>
           </div>
           <div className="h-8 w-px bg-gray-300 dark:bg-gray-600 mx-1"></div>
+          {/* SKU Family Search Field */}
+          <div className="relative flex-1 max-w-md">
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setShowSearchResults(true);
+                }}
+                onFocus={() => {
+                  if (searchQuery && searchResults.length > 0) {
+                    setShowSearchResults(true);
+                  }
+                }}
+                onBlur={() => {
+                  // Delay hiding to allow click on results
+                  setTimeout(() => setShowSearchResults(false), 200);
+                }}
+                placeholder="Search SKU Family, SubModel, Storage, Colour..."
+                className="w-full px-4 py-2 pl-10 pr-4 text-sm border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              />
+              <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setShowSearchResults(false);
+                  }}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <i className="fas fa-times text-sm"></i>
+                </button>
+              )}
+            </div>
+            {/* Search Results Dropdown */}
+            {showSearchResults && searchResults.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg shadow-xl max-h-96 overflow-y-auto z-50">
+                <div className="px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border-b border-gray-200 dark:border-gray-700">
+                  <div className="text-xs font-semibold text-blue-700 dark:text-blue-300">
+                    {selectedRowIndex !== null 
+                      ? `Will fill Row ${selectedRowIndex + 1} (click row number to change)`
+                      : focusedCell?.row !== undefined
+                      ? `Will fill Row ${focusedCell.row + 1} (click row number to select different row)`
+                      : 'Will fill Row 1 (click row number to select different row)'}
+                  </div>
+                </div>
+                {searchResults.map((option, idx) => {
+                  const targetRow = selectedRowIndex !== null ? selectedRowIndex : (focusedCell?.row ?? 0);
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => handleSearchSelect(option, targetRow)}
+                      className="px-4 py-3 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer border-b border-gray-200 dark:border-gray-700 last:border-b-0 transition-colors"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="font-semibold text-sm text-gray-800 dark:text-gray-200">
+                            {option.skuFamilyName}
+                          </div>
+                          <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                            {option.subModelName && <span className="mr-2">Model: {option.subModelName}</span>}
+                            {option.storage && <span className="mr-2">Storage: {option.storage}</span>}
+                            {option.colour && <span className="mr-2">Color: {option.colour}</span>}
+                            {option.ram && <span>RAM: {option.ram}</span>}
+                          </div>
+                        </div>
+                        <i className="fas fa-arrow-right text-blue-500 text-xs mt-1"></i>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {showSearchResults && searchQuery && searchResults.length === 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg shadow-xl p-4 z-50">
+                <div className="text-sm text-gray-500 dark:text-gray-400 text-center">
+                  No results found
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="h-8 w-px bg-gray-300 dark:bg-gray-600 mx-1"></div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
               <i className="fas fa-table text-blue-500 text-sm"></i>
@@ -777,9 +1561,34 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
                 </span>
               </div>
             )}
+            {/* <div className="flex items-center gap-2 px-3 py-1.5 bg-green-100 dark:bg-green-900/40 rounded-lg border border-green-300 dark:border-green-700 shadow-sm">
+              <i className="fas fa-save text-green-600 dark:text-green-400 text-sm"></i>
+              <span className="text-xs font-semibold text-green-700 dark:text-green-300">
+                Auto-saved
+              </span>
+            </div> */}
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {/* <button
+            type="button"
+            onClick={() => {
+              if (window.confirm('Are you sure you want to clear all saved form data?')) {
+                try {
+                  localStorage.removeItem(STORAGE_KEY);
+                  toastHelper.showTost('Saved form data cleared', 'success');
+                } catch (error) {
+                  console.error('Error clearing localStorage:', error);
+                  toastHelper.showTost('Error clearing saved data', 'error');
+                }
+              }
+            }}
+            className="px-4 py-2 bg-yellow-500 text-white text-sm font-medium rounded-lg hover:bg-yellow-600 border-2 border-yellow-600 shadow-sm hover:shadow-md transition-all duration-200 flex items-center gap-2"
+            title="Clear saved form data from localStorage"
+          >
+            <i className="fas fa-trash-alt text-sm"></i>
+            <span>Clear Saved</span>
+          </button> */}
           <button
             type="button"
             onClick={onCancel}
@@ -805,39 +1614,93 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
       <div 
         ref={tableRef}
         className="flex-1 overflow-auto bg-white dark:bg-gray-900 relative"
-        style={{ maxHeight: 'calc(100vh - 200px)' }}
+        style={{ maxHeight: 'calc(100vh - 136px)' }}
       >
         {/* Scroll Shadow Indicators */}
-        <div className="absolute top-0 right-0 w-8 h-full bg-gray-100 dark:bg-gray-800 pointer-events-none z-10 opacity-50"></div>
-        <div className="absolute bottom-0 left-0 w-full h-8 bg-gray-100 dark:bg-gray-800 pointer-events-none z-10 opacity-50"></div>
+        {/* <div className="absolute top-0 right-0 w-8 h-full bg-gray-100 dark:bg-gray-800 pointer-events-none z-10 opacity-50"></div> */}
+        {/* <div className="absolute bottom-0 left-0 w-full h-8 bg-gray-100 dark:bg-gray-800 pointer-events-none z-10 opacity-50"></div> */}
         <div style={{ width: `${totalWidth}px`, minWidth: '100%' }}>
           {/* Enhanced Column Headers with Groups */}
           <div className="sticky top-0 z-10 shadow-lg">
-            {/* Group Headers with Better Styling */}
-            <div className="flex border-b-2 border-gray-400 dark:border-gray-600">
+            {/* Group Headers for Price Sections */}
+            <div className="flex border-b border-gray-300 dark:border-gray-600">
               <div className="min-w-12 border-r-2 border-gray-400 dark:border-gray-600 bg-gray-300 dark:bg-gray-800 sticky left-0 z-10"></div>
-              {Object.entries(groupedColumns).map(([groupName, cols], idx) => {
-                const totalWidth = cols.reduce((sum, c) => sum + c.width, 0);
-                const colors = [
-                  'bg-yellow-500 dark:bg-yellow-700',
-                  'bg-green-500 dark:bg-green-700',
-                  'bg-purple-500 dark:bg-purple-700',
-                ];
-                return (
-                  <div
-                    key={groupName}
-                    className={`${colors[idx % colors.length]} px-3 py-2 text-xs font-bold text-white text-center border-r-2 border-gray-400 dark:border-gray-600 shadow-inner`}
-                    style={{ width: `${totalWidth}px`, minWidth: `${totalWidth}px` }}
-                  >
-                    <div className="flex items-center justify-center gap-2">
-                      <i className={`fas ${idx === 0 ? 'fa-box' : idx === 1 ? 'fa-dollar-sign' : 'fa-info-circle'} text-xs`}></i>
-                      <span>{groupName}</span>
-                      <span className="bg-white/30 dark:bg-black/30 px-1.5 py-0.5 rounded text-xs">
-                        {cols.length}
-                      </span>
+              {columns.map((col) => {
+                const hkCols = columns.filter(c => c.subgroup === 'HK');
+                const dubaiCols = columns.filter(c => c.subgroup === 'DUBAI');
+                const paymentTermCols = columns.filter(c => c.subgroup === 'PAYMENT_TERM');
+                const paymentMethodCols = columns.filter(c => c.subgroup === 'PAYMENT_METHOD');
+                const hkWidth = hkCols.reduce((sum, c) => sum + c.width, 0);
+                const dubaiWidth = dubaiCols.reduce((sum, c) => sum + c.width, 0);
+                const paymentTermWidth = paymentTermCols.reduce((sum, c) => sum + c.width, 0);
+                const paymentMethodWidth = paymentMethodCols.reduce((sum, c) => sum + c.width, 0);
+                
+                // Check if this is the first column of a group
+                if (col.key === 'hkUsd') {
+                  return (
+                    <div
+                      key={`group-hk`}
+                      className="bg-blue-500 dark:bg-blue-700 px-3 py-2 text-xs font-bold text-white text-center border-r-2 border-blue-600 dark:border-blue-800 shadow-inner"
+                      style={{ width: `${hkWidth}px`, minWidth: `${hkWidth}px` }}
+                    >
+                      <div className="flex items-center justify-center gap-2">
+                        <i className="fas fa-dollar-sign text-xs"></i>
+                        <span>HK DELIVERY PRICE</span>
+                      </div>
                     </div>
-                  </div>
-                );
+                  );
+                } else if (col.key === 'dubaiUsd') {
+                  return (
+                    <div
+                      key={`group-dubai`}
+                      className="bg-green-500 dark:bg-green-700 px-3 py-2 text-xs font-bold text-white text-center border-r-2 border-green-600 dark:border-green-800 shadow-inner"
+                      style={{ width: `${dubaiWidth}px`, minWidth: `${dubaiWidth}px` }}
+                    >
+                      <div className="flex items-center justify-center gap-2">
+                        <i className="fas fa-dollar-sign text-xs"></i>
+                        <span>DUBAI DELIVERY PRICE</span>
+                      </div>
+                    </div>
+                  );
+                } else if (col.key === 'paymentTermUsd') {
+                  return (
+                    <div
+                      key={`group-payment-term`}
+                      className="bg-purple-500 dark:bg-purple-700 px-3 py-2 text-xs font-bold text-white text-center border-r-2 border-purple-600 dark:border-purple-800 shadow-inner"
+                      style={{ width: `${paymentTermWidth}px`, minWidth: `${paymentTermWidth}px` }}
+                    >
+                      <div className="flex items-center justify-center gap-2">
+                        <i className="fas fa-calendar-check text-xs"></i>
+                        <span>PAYMENT TERM</span>
+                      </div>
+                    </div>
+                  );
+                } else if (col.key === 'paymentMethodUsd') {
+                  return (
+                    <div
+                      key={`group-payment-method`}
+                      className="bg-orange-500 dark:bg-orange-700 px-3 py-2 text-xs font-bold text-white text-center border-r-2 border-orange-600 dark:border-orange-800 shadow-inner"
+                      style={{ width: `${paymentMethodWidth}px`, minWidth: `${paymentMethodWidth}px` }}
+                    >
+                      <div className="flex items-center justify-center gap-2">
+                        <i className="fas fa-credit-card text-xs"></i>
+                        <span>PAYMENT METHOD</span>
+                      </div>
+                    </div>
+                  );
+                } else if (col.subgroup) {
+                  // Skip rendering for other columns in the group (they're covered by the group header)
+                  return null;
+                } else {
+                  // Regular column - show empty space for alignment
+                  return (
+                    <div
+                      key={`group-empty-${col.key}`}
+                      className="border-r border-gray-300 dark:border-gray-600 bg-gray-200 dark:bg-gray-800"
+                      style={{ width: `${col.width}px`, minWidth: `${col.width}px` }}
+                    ></div>
+                  );
+                }
               })}
             </div>
             {/* Column Headers with Better Styling */}
@@ -849,7 +1712,17 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
               {columns.map((col) => (
                 <div
                   key={col.key}
-                  className="px-3 py-3 text-xs font-bold text-gray-800 dark:text-gray-200 bg-gray-200 dark:bg-gray-800 border-r border-gray-300 dark:border-gray-600 whitespace-nowrap hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors cursor-default"
+                  className={`px-3 py-3 text-xs font-bold text-gray-800 dark:text-gray-200 border-r border-gray-300 dark:border-gray-600 whitespace-nowrap hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors cursor-default ${
+                    col.subgroup === 'HK' 
+                      ? 'bg-blue-50 dark:bg-blue-900/30' 
+                      : col.subgroup === 'DUBAI' 
+                      ? 'bg-green-50 dark:bg-green-900/30'
+                      : col.subgroup === 'PAYMENT_TERM'
+                      ? 'bg-purple-50 dark:bg-purple-900/30'
+                      : col.subgroup === 'PAYMENT_METHOD'
+                      ? 'bg-orange-50 dark:bg-orange-900/30'
+                      : 'bg-gray-200 dark:bg-gray-800'
+                  }`}
                   style={{ width: `${col.width}px`, minWidth: `${col.width}px` }}
                   title={col.label}
                 >
@@ -882,7 +1755,15 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
                 {/* Enhanced Row Number */}
                 <div className="min-w-12 border-r-2 border-gray-300 dark:border-gray-700 bg-gray-200 dark:bg-gray-800 flex items-center justify-center text-xs font-bold text-gray-700 dark:text-gray-300 sticky left-0 z-5 shadow-sm">
                   <div className="flex flex-col items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-blue-600 dark:bg-blue-700 flex items-center justify-center text-white font-bold shadow-md">
+                    <div 
+                      onClick={() => setSelectedRowIndex(rowIndex)}
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-white font-bold shadow-md cursor-pointer transition-all ${
+                        selectedRowIndex === rowIndex 
+                          ? 'bg-green-600 dark:bg-green-700 ring-2 ring-green-400 ring-offset-2' 
+                          : 'bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600'
+                      }`}
+                      title={selectedRowIndex === rowIndex ? 'Selected for search fill (click to deselect)' : 'Click to select this row for search fill'}
+                    >
                       {rowIndex + 1}
                     </div>
                     <div className="flex gap-1">
@@ -909,21 +1790,43 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
                 </div>
 
                 {/* Enhanced Cells */}
-                {columns.map((col) => (
-                  <div
-                    key={col.key}
-                    className={`px-0 py-1.5 border-r border-gray-200 dark:border-gray-700 relative group transition-all duration-150 ${
-                      focusedCell?.row === rowIndex && focusedCell?.col === col.key
-                        ? 'ring-2 ring-blue-500 ring-offset-1 z-10 bg-blue-50 dark:bg-blue-900/30 shadow-md'
-                        : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
-                    }`}
-                    style={{ width: `${col.width}px`, minWidth: `${col.width}px` }}
-                    onDoubleClick={() => fillAllBelow(rowIndex, col.key)}
-                    title="Double-click to fill all below"
-                  >
-                    <div className="px-2">
-                      {renderCell(row, rowIndex, col)}
-                    </div>
+                {columns.map((col) => {
+                  // For totalMoq column, only render in first row
+                  if (col.key === 'totalMoq' && rowIndex !== 0) {
+                    return null;
+                  }
+                  
+                  // Calculate rowspan for totalMoq column
+                  const isTotalMoqFirstRow = col.key === 'totalMoq' && rowIndex === 0;
+                  const rowspan = isTotalMoqFirstRow ? rows.length : 1;
+                  
+                  return (
+                    <div
+                      key={col.key}
+                      className={`px-0 py-1.5 border-r border-gray-200 dark:border-gray-700 relative group transition-all duration-150 ${
+                        col.key === 'totalMoq' 
+                          ? 'bg-purple-50 dark:bg-purple-900/30 border-purple-300 dark:border-purple-600'
+                          : ''
+                      } ${
+                        focusedCell?.row === rowIndex && focusedCell?.col === col.key
+                          ? 'ring-2 ring-blue-500 ring-offset-1 z-10 bg-blue-50 dark:bg-blue-900/30 shadow-md'
+                          : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
+                      }`}
+                      style={{ 
+                        width: `${col.width}px`, 
+                        minWidth: `${col.width}px`,
+                        ...(isTotalMoqFirstRow ? { 
+                          height: `${rows.length * 40}px`,
+                          minHeight: `${rows.length * 40}px`,
+                          verticalAlign: 'middle'
+                        } : {})
+                      }}
+                      onDoubleClick={() => fillAllBelow(rowIndex, col.key)}
+                      title="Double-click to fill all below"
+                    >
+                      <div className="px-2">
+                        {renderCell(row, rowIndex, col)}
+                      </div>
                     {rowIndex < rows.length - 1 && focusedCell?.row === rowIndex && focusedCell?.col === col.key && (
                       <button
                         type="button"
@@ -941,7 +1844,8 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
                     {/* Hover indicator */}
                     <div className="absolute inset-0 border-2 border-transparent group-hover:border-blue-300 dark:group-hover:border-blue-700 rounded pointer-events-none transition-all duration-150"></div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             ))}
           </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { format } from "date-fns";
 import toastHelper from "../../utils/toastHelper";
@@ -6,6 +7,7 @@ import ProductModal from "./ProductsModal";
 import ProductListingModal from "./ProductListingModal";
 import UploadExcelModal from "./UploadExcelModal";
 import ProductHistoryModal from "./ProductHistoryModal";
+import VariantSelectionModal from "./VariantSelectionModal";
 import {
   ProductService,
   Product,
@@ -19,6 +21,7 @@ interface ProductsTableProps {
 }
 
 const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
+  const navigate = useNavigate();
   const { hasPermission } = usePermissions();
   const canWrite = hasPermission('/products', 'write');
   const canVerifyApprove = hasPermission('/products', 'verifyApprove');
@@ -33,6 +36,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
   const [isListingModalOpen, setIsListingModalOpen] = useState<boolean>(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState<boolean>(false);
+  const [isVariantSelectOpen, setIsVariantSelectOpen] = useState<boolean>(false);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [historyProductId, setHistoryProductId] = useState<string | undefined>(undefined);
@@ -849,10 +853,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                   </button>
                   <button
                     className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
-                    onClick={() => {
-                      setEditProduct(null);
-                      setIsListingModalOpen(true);
-                    }}
+                    onClick={() => setIsVariantSelectOpen(true)}
                   >
                     <i className="fas fa-plus text-xs"></i>
                     Add Product
@@ -1193,6 +1194,19 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
         }}
         productId={historyProductId}
         productName={historyProductName}
+      />
+
+      <VariantSelectionModal
+        isOpen={isVariantSelectOpen}
+        onClose={() => setIsVariantSelectOpen(false)}
+        onSelectVariant={(type) => {
+          setIsVariantSelectOpen(false);
+          if (type === 'single') {
+            navigate('/products/create?type=single');
+          } else {
+            navigate('/products/create?type=multi');
+          }
+        }}
       />
 
       {selectedProduct && (

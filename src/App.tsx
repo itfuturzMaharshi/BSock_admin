@@ -20,6 +20,7 @@ import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
 import SkuFamily from "./pages/SkuFamily/SkuFamily";
 import Products from "./pages/Products/Products";
+import ProductVariantForm from "./pages/Products/ProductVariantForm";
 import Admins from "./pages/Admin/Admins";
 import CostModule from "./pages/CostModule/CostModule";
 import WalletAmount from "./pages/WalletAmount/WalletAmount";
@@ -110,6 +111,9 @@ export default function App() {
           {/* Auth Layout */}
           <Route path="/signin" element={<SignIn />} />
           <Route path="/signup" element={<SignUp />} />
+
+          {/* Fullscreen Pages (without sidebar) */}
+          <Route path="/products/create" element={<ProductVariantForm />} />
 
           {/* Fallback Route */}
           <Route path="*" element={<NotFound />} />

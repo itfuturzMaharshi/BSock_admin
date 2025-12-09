@@ -296,12 +296,21 @@ export class ProductService {
   static getSkuFamilyListByName = async (): Promise<{ 
     _id: string; 
     name: string;
-    brand?: { _id: string; title: string };
-    subModel?: string;
-    storageId?: { _id: string; title: string };
-    ramId?: { _id: string; title: string };
-    colorId?: { _id: string; title: string };
-    images?: string[];
+    code?: string;
+    brand?: { _id: string; title: string; code?: string };
+    productcategoriesId?: { _id: string; title: string; code?: string };
+    conditionCategoryId?: { _id: string; title: string; code?: string };
+    subSkuFamilies?: Array<{
+      _id: string;
+      subName?: string;
+      storageId?: { _id: string; title: string; code?: string } | null;
+      ramId?: { _id: string; title: string; code?: string } | null;
+      colorId?: { _id: string; title: string; code?: string } | null;
+      subSkuCode?: string;
+      images?: string[];
+      videos?: string[];
+      subSkuSequence?: number;
+    }>;
   }[]> => {
     const baseUrl = import.meta.env.VITE_BASE_URL;
     const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
@@ -545,6 +554,54 @@ export class ProductService {
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Failed to mark products as sold out';
       toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
+
+  // Get next supplier listing number
+  static getNextSupplierListingNumber = async (sellerId: string, isMultiVariant: boolean = false): Promise<any> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/product/get-next-supplier-listing-number`;
+
+    try {
+      const res = await api.post(url, { sellerId, isMultiVariant });
+      return res.data.data;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to get next supplier listing number';
+      console.error('Get supplier listing number error:', errorMessage);
+      throw new Error(errorMessage);
+    }
+  };
+
+  // Get next customer listing number
+  static getNextCustomerListingNumber = async (): Promise<any> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/product/get-next-customer-listing-number`;
+
+    try {
+      const res = await api.post(url, {});
+      return res.data.data;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to get next customer listing number';
+      console.error('Get customer listing number error:', errorMessage);
+      throw new Error(errorMessage);
+    }
+  };
+
+  // Get next unique listing number (8-digit)
+  static getNextUniqueListingNumber = async (): Promise<any> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/product/get-next-unique-listing-number`;
+
+    try {
+      const res = await api.post(url, {});
+      return res.data.data;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to get next unique listing number';
+      console.error('Get unique listing number error:', errorMessage);
       throw new Error(errorMessage);
     }
   };

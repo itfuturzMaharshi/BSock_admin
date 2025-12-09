@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Select from 'react-select';
 import { ProductService } from '../../services/product/product.services';
+import { StorageService } from '../../services/storage/storage.services';
 
 export interface VariantOption {
   skuFamilyId: string;
@@ -23,6 +24,14 @@ interface SkuFamilyOption {
   storageId?: { _id: string; title: string };
   colorId?: { _id: string; title: string };
   ramId?: { _id: string; title: string };
+  subSkuFamilies?: Array<{
+    _id: string;
+    subName?: string;
+    storageId?: { _id: string; title: string; code?: string } | null;
+    ramId?: { _id: string; title: string; code?: string } | null;
+    colorId?: { _id: string; title: string; code?: string } | null;
+    subSkuCode?: string;
+  }>;
 }
 
 interface SelectOption {
@@ -39,21 +48,26 @@ const CascadingVariantSelector: React.FC<CascadingVariantSelectorProps> = ({
   const [selectedStorages, setSelectedStorages] = useState<SelectOption[]>([]);
   const [selectedColors, setSelectedColors] = useState<SelectOption[]>([]);
   const [loading, setLoading] = useState(false);
+  const [allStorages, setAllStorages] = useState<Array<{ _id: string; title: string }>>([]);
 
-  // Fetch all SKU families on mount
+  // Fetch all SKU families and storages on mount
   useEffect(() => {
-    const fetchSkuFamilies = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        const list = await ProductService.getSkuFamilyListByName();
-        setSkuFamilies(list);
+        const [skuList, storageList] = await Promise.all([
+          ProductService.getSkuFamilyListByName(),
+          StorageService.getStorageList(1, 1000).catch(() => ({ data: { docs: [] } }))
+        ]);
+        setSkuFamilies(skuList);
+        setAllStorages(storageList?.data?.docs || []);
       } catch (error) {
-        console.error('Error fetching SKU families:', error);
+        console.error('Error fetching data:', error);
       } finally {
         setLoading(false);
       }
     };
-    fetchSkuFamilies();
+    fetchData();
   }, []);
 
   // Get unique models (SKU families) based on search
@@ -75,17 +89,54 @@ const CascadingVariantSelector: React.FC<CascadingVariantSelectorProps> = ({
     );
 
     const storageSet = new Set<string>();
+    let foundStorageInSubSkus = false;
+
     relevantSkus.forEach(sku => {
-      if (sku.storageId && typeof sku.storageId === 'object' && sku.storageId.title) {
-        storageSet.add(sku.storageId.title);
+      // Check subSkuFamilies first (most common case)
+      if (sku.subSkuFamilies && Array.isArray(sku.subSkuFamilies) && sku.subSkuFamilies.length > 0) {
+        sku.subSkuFamilies.forEach((subSku: any) => {
+          if (subSku.storageId) {
+            if (typeof subSku.storageId === 'object' && subSku.storageId.title) {
+              storageSet.add(subSku.storageId.title);
+              foundStorageInSubSkus = true;
+            } else if (typeof subSku.storageId === 'string') {
+              // If storageId is just an ID, find it in allStorages
+              const storage = allStorages.find(s => s._id === subSku.storageId);
+              if (storage && storage.title) {
+                storageSet.add(storage.title);
+                foundStorageInSubSkus = true;
+              }
+            }
+          }
+        });
+      }
+      // Fallback to top-level storageId if no subSkuFamilies
+      if (!foundStorageInSubSkus && sku.storageId) {
+        if (typeof sku.storageId === 'object' && sku.storageId.title) {
+          storageSet.add(sku.storageId.title);
+        } else if (typeof sku.storageId === 'string') {
+          const storage = allStorages.find(s => s._id === sku.storageId);
+          if (storage && storage.title) {
+            storageSet.add(storage.title);
+          }
+        }
       }
     });
 
-    return Array.from(storageSet).map(storage => ({
+    // If no storage found in selected models, show all available storages as fallback
+    if (storageSet.size === 0 && allStorages.length > 0) {
+      allStorages.forEach(storage => {
+        if (storage.title) {
+          storageSet.add(storage.title);
+        }
+      });
+    }
+
+    return Array.from(storageSet).sort().map(storage => ({
       value: storage,
       label: storage,
     }));
-  }, [selectedModels, skuFamilies]);
+  }, [selectedModels, skuFamilies, allStorages]);
 
   // Get available color options filtered by selected models + storages
   const colorOptions = useMemo(() => {
@@ -94,22 +145,36 @@ const CascadingVariantSelector: React.FC<CascadingVariantSelectorProps> = ({
     const selectedModelIds = selectedModels.map(m => m.value);
     const selectedStorageValues = selectedStorages.map(s => s.value);
 
-    const relevantSkus = skuFamilies.filter(sku => {
-      if (!selectedModelIds.includes(sku._id)) return false;
-      if (sku.storageId && typeof sku.storageId === 'object' && sku.storageId.title) {
-        return selectedStorageValues.includes(sku.storageId.title);
-      }
-      return false;
-    });
-
     const colorSet = new Set<string>();
-    relevantSkus.forEach(sku => {
-      if (sku.colorId && typeof sku.colorId === 'object' && sku.colorId.title) {
-        colorSet.add(sku.colorId.title);
+    
+    selectedModelIds.forEach(modelId => {
+      const sku = skuFamilies.find(s => s._id === modelId);
+      if (!sku) return;
+
+      // Check subSkuFamilies first (most common case)
+      if (sku.subSkuFamilies && Array.isArray(sku.subSkuFamilies) && sku.subSkuFamilies.length > 0) {
+        sku.subSkuFamilies.forEach((subSku: any) => {
+          const subStorage = subSku.storageId && typeof subSku.storageId === 'object' ? subSku.storageId.title : null;
+          // If storage matches or no storage filter needed
+          if (subStorage && selectedStorageValues.includes(subStorage)) {
+            if (subSku.colorId && typeof subSku.colorId === 'object' && subSku.colorId.title) {
+              colorSet.add(subSku.colorId.title);
+            }
+          }
+        });
+      }
+      // Fallback to top-level colorId if no subSkuFamilies
+      else {
+        const skuStorage = sku.storageId && typeof sku.storageId === 'object' ? sku.storageId.title : null;
+        if (!skuStorage || selectedStorageValues.includes(skuStorage)) {
+          if (sku.colorId && typeof sku.colorId === 'object' && sku.colorId.title) {
+            colorSet.add(sku.colorId.title);
+          }
+        }
       }
     });
 
-    return Array.from(colorSet).map(color => ({
+    return Array.from(colorSet).sort().map(color => ({
       value: color,
       label: color,
     }));
