@@ -30,27 +30,26 @@ export const PermissionsProvider: React.FC<PermissionsProviderProps> = ({ childr
   const loadPermissions = async () => {
     try {
       setLoading(true);
-      
-      // First, try to get permissions from localStorage (from login)
+
+      // 1) Seed from localStorage (fast paint), but do NOT return early.
+      //    We still fetch fresh permissions from the API to pick up changes after logout/login.
       const storedPermissions = localStorage.getItem('adminPermissions');
       const storedRole = localStorage.getItem('adminRole');
-      
+
       if (storedPermissions && storedRole) {
         try {
           const parsedPermissions = JSON.parse(storedPermissions);
           setPermissions(parsedPermissions);
-          setLoading(false);
-          return; // Use stored permissions
         } catch (e) {
           console.error('Error parsing stored permissions:', e);
         }
       }
-      
-      // If no stored permissions, fetch from API
+
+      // 2) Always fetch latest permissions from API to reflect role/permission changes immediately.
       const myPermissions = await RoleManagementService.getMyPermissions();
       setPermissions(myPermissions);
-      
-      // Store in localStorage for future use
+
+      // Store in localStorage for future fast load
       localStorage.setItem('adminPermissions', JSON.stringify(myPermissions));
       localStorage.setItem('adminRole', myPermissions.role);
     } catch (error) {
