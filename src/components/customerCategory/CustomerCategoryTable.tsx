@@ -7,7 +7,7 @@ import { useDebounce } from "../../hooks/useDebounce";
 import { useModulePermissions } from "../../hooks/useModulePermissions";
 
 const CustomerCategoryTable: React.FC = () => {
-  const { canWrite } = useModulePermissions('/masters');
+  const { canMarginUpdate } = useModulePermissions('/masters');
   const [categoriesData, setCategoriesData] = useState<CustomerCategory[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const debouncedSearchTerm = useDebounce(searchTerm, 1000);
@@ -69,6 +69,7 @@ const CustomerCategoryTable: React.FC = () => {
   };
 
   const handleEdit = (category: CustomerCategory) => {
+    if (!canMarginUpdate) return;
     setEditCategory(category);
     setIsModalOpen(true);
   };
@@ -146,7 +147,7 @@ const CustomerCategoryTable: React.FC = () => {
               <i className="fas fa-file-export text-xs"></i>
               Export
             </button>
-            {canWrite && (
+            {canMarginUpdate && (
               <>
                 <label className="inline-flex items-center gap-1 rounded-lg bg-orange-600 text-white px-4 py-2 text-sm font-medium hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600 transition-colors cursor-pointer">
                   <i className="fas fa-file-import text-xs"></i>
@@ -248,7 +249,7 @@ const CustomerCategoryTable: React.FC = () => {
                         : "-"}
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
-                      {canWrite ? (
+                      {canMarginUpdate ? (
                         <div className="inline-flex items-center gap-3">
                           <button
                             onClick={() => handleEdit(item)}
