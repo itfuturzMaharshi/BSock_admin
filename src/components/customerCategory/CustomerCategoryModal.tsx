@@ -6,6 +6,10 @@ interface FormData {
   description: string;
   marginType?: 'fixed' | 'percentage' | '';
   margin?: number | null;
+  maxBidPercentage?: number | null;
+  minBidPercentage?: number | null;
+  bidWalletAllowancePer?: number | null;
+  readyStockAllowancePer?: number | null;
 }
 
 interface CustomerCategoryModalProps {
@@ -26,6 +30,10 @@ const CustomerCategoryModal: React.FC<CustomerCategoryModalProps> = ({
     description: "",
     marginType: "",
     margin: null,
+    maxBidPercentage: null,
+    minBidPercentage: null,
+    bidWalletAllowancePer: null,
+    readyStockAllowancePer: null,
   });
   const [errors, setErrors] = useState<Partial<FormData>>({});
 
@@ -36,6 +44,10 @@ const CustomerCategoryModal: React.FC<CustomerCategoryModalProps> = ({
         description: editItem.description || "",
         marginType: editItem.marginType || "",
         margin: editItem.margin ?? null,
+        maxBidPercentage: editItem.maxBidPercentage ?? null,
+        minBidPercentage: editItem.minBidPercentage ?? null,
+        bidWalletAllowancePer: editItem.bidWalletAllowancePer ?? null,
+        readyStockAllowancePer: editItem.readyStockAllowancePer ?? null,
       });
     } else {
       setFormData({
@@ -43,6 +55,10 @@ const CustomerCategoryModal: React.FC<CustomerCategoryModalProps> = ({
         description: "",
         marginType: "",
         margin: null,
+        maxBidPercentage: null,
+        minBidPercentage: null,
+        bidWalletAllowancePer: null,
+        readyStockAllowancePer: null,
       });
     }
     setErrors({});
@@ -159,6 +175,90 @@ const CustomerCategoryModal: React.FC<CustomerCategoryModalProps> = ({
             />
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
               Enter margin value based on selected margin type
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Max Bid Percentage (%)
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.maxBidPercentage ?? ''}
+              onChange={(e) => {
+                const value = e.target.value;
+                setFormData({ ...formData, maxBidPercentage: value === '' ? null : parseFloat(value) || 0 });
+              }}
+              className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+              placeholder="Enter max bid percentage (optional)"
+            />
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Maximum bid percentage allowed for this category
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Min Bid Percentage (%)
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.minBidPercentage ?? ''}
+              onChange={(e) => {
+                const value = e.target.value;
+                setFormData({ ...formData, minBidPercentage: value === '' ? null : parseFloat(value) || 0 });
+              }}
+              className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+              placeholder="Enter min bid percentage (optional)"
+            />
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Minimum bid increment percentage for this category
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Bid Wallet Allowance (%)
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.bidWalletAllowancePer ?? ''}
+              onChange={(e) => {
+                const value = e.target.value;
+                setFormData({ ...formData, bidWalletAllowancePer: value === '' ? null : parseFloat(value) || 0 });
+              }}
+              className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+              placeholder="Enter bid wallet allowance percentage (optional)"
+            />
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Percentage of bid amount required in wallet
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Ready Stock Allowance (%)
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.readyStockAllowancePer ?? ''}
+              onChange={(e) => {
+                const value = e.target.value;
+                setFormData({ ...formData, readyStockAllowancePer: value === '' ? null : parseFloat(value) || 0 });
+              }}
+              className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+              placeholder="Enter ready stock allowance percentage (optional)"
+            />
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Ready stock allowance percentage for this category
             </p>
           </div>
 

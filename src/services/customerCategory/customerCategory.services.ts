@@ -7,6 +7,10 @@ export interface CustomerCategory {
   description?: string;
   marginType?: 'fixed' | 'percentage' | null;
   margin?: number | null;
+  maxBidPercentage?: number | null;
+  minBidPercentage?: number | null;
+  bidWalletAllowancePer?: number | null;
+  readyStockAllowancePer?: number | null;
   createdAt?: string;
   updatedAt?: string;
 }

@@ -17,13 +17,9 @@ interface SettingsModalProps {
   mode: "create" | "update";
   initialData?: {
     _id?: string;
-    bidWalletAllowancePer: string;
-    readyStockAllowancePer: string;
     readyStockOrderProcess: string;
     reportTime: string;
     timezone: string;
-    percentage?: string;
-    maxBidPercentage?: string;
   };
   onSave: () => void;
 }
@@ -36,12 +32,8 @@ export default function SettingsModal({
   onSave,
 }: SettingsModalProps) {
   const [formData, setFormData] = useState({
-    bidWalletAllowancePer: initialData?.bidWalletAllowancePer || "",
-    readyStockAllowancePer: initialData?.readyStockAllowancePer || "",
     reportTime: initialData?.reportTime || "",
     timezone: initialData?.timezone || "Asia/Kolkata",
-    percentage: initialData?.percentage || "",
-    maxBidPercentage: initialData?.maxBidPercentage || "",
   });
 
   const [readyStockOrderProcess, setReadyStockOrderProcess] = useState<ProcessStep[]>([]);
@@ -50,12 +42,8 @@ export default function SettingsModal({
   useEffect(() => {
     if (initialData) {
       setFormData({
-        bidWalletAllowancePer: initialData.bidWalletAllowancePer || "",
-        readyStockAllowancePer: initialData.readyStockAllowancePer || "",
         reportTime: initialData.reportTime || "",
         timezone: initialData.timezone || "Asia/Kolkata",
-        percentage: initialData.percentage || "",
-        maxBidPercentage: initialData.maxBidPercentage || "",
       });
 
       // Parse readyStockOrderProcess from JSON string or default to empty array
@@ -71,12 +59,8 @@ export default function SettingsModal({
     } else {
       // Reset form for create mode
       setFormData({
-        bidWalletAllowancePer: "",
-        readyStockAllowancePer: "",
         reportTime: "",
         timezone: "Asia/Kolkata",
-        percentage: "",
-        maxBidPercentage: "",
       });
       setReadyStockOrderProcess([]);
     }
@@ -118,11 +102,8 @@ export default function SettingsModal({
 
   const handleSubmit = async () => {
     if (
-      !formData.bidWalletAllowancePer ||
-      !formData.readyStockAllowancePer ||
       !formData.reportTime ||
-      !formData.timezone ||
-      !formData.percentage // ✅ validation added
+      !formData.timezone
     ) {
       toastHelper.error("Please fill in all required fields");
       return;
@@ -137,15 +118,9 @@ export default function SettingsModal({
 
       const settingsData = {
         id: initialData?._id,
-        bidWalletAllowancePer:
-          parseFloat(formData.bidWalletAllowancePer) || null,
-        readyStockAllowancePer:
-          parseFloat(formData.readyStockAllowancePer) || null,
         readyStockOrderProcess: cleanedProcess,
         reportTime: formData.reportTime,
         timezone: formData.timezone,
-        percentage: parseFloat(formData.percentage) || null,
-        maxBidPercentage: parseFloat(formData.maxBidPercentage) || null,
       };
 
       const response =
@@ -188,65 +163,6 @@ export default function SettingsModal({
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-6">
           <div className="grid grid-cols-1 gap-4">
-        {/* ✅ New Wallet Percentage Field */}
-        <div>
-          <label className="mb-1 flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400">
-            <i className="fas fa-percent text-gray-500"></i> Wallet Percentage (%)
-          </label>
-          <input
-            type="number"
-            name="percentage"
-            value={formData.percentage}
-            onChange={handleChange}
-            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring focus:ring-blue-300 dark:bg-gray-700 dark:text-white/90"
-          />
-        </div>
-
-        {/* Max Bid Percentage Field */}
-        <div>
-          <label className="mb-1 flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400">
-            <i className="fas fa-percent text-gray-500"></i> Max Bid Percentage (%)
-          </label>
-          <input
-            type="number"
-            name="maxBidPercentage"
-            value={formData.maxBidPercentage}
-            onChange={handleChange}
-            placeholder="Enter max bid percentage"
-            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring focus:ring-blue-300 dark:bg-gray-700 dark:text-white/90"
-          />
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            This percentage will be used to calculate max bid from starting bid price
-          </p>
-        </div>
-
-        {/* Existing Fields */}
-        <div>
-          <label className="mb-1 flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400">
-            <i className="fas fa-wallet text-gray-500"></i> Bid Wallet Allowance (%)
-          </label>
-          <input
-            type="number"
-            name="bidWalletAllowancePer"
-            value={formData.bidWalletAllowancePer}
-            onChange={handleChange}
-            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring focus:ring-blue-300 dark:bg-gray-700 dark:text-white/90"
-          />
-        </div>
-
-        <div>
-          <label className="mb-1 flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400">
-            <i className="fas fa-box text-gray-500"></i> Ready Stock Allowance (%)
-          </label>
-          <input
-            type="number"
-            name="readyStockAllowancePer"
-            value={formData.readyStockAllowancePer}
-            onChange={handleChange}
-            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring focus:ring-blue-300 dark:bg-gray-700 dark:text-white/90"
-          />
-        </div>
-
         <div>
           <label className="mb-1 flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400">
             <i className="fas fa-list-ol text-gray-500"></i> Ready Stock Order Process
