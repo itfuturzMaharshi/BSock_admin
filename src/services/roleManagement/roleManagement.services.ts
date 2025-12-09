@@ -14,7 +14,6 @@ export interface Permission {
   write: boolean;
   verifyApprove?: boolean; // Optional - only for modules that support it
   marginUpdate?: boolean; // Only for Master module
-  marginValue?: number; // Margin value when marginUpdate is enabled
 }
 
 export interface ModulePermissions {

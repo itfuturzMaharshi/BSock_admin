@@ -6,7 +6,7 @@ interface PermissionsContextType {
   loading: boolean;
   refreshPermissions: () => Promise<void>;
   hasAccess: (modulePath: string) => boolean;
-  hasPermission: (modulePath: string, permission: 'read' | 'write' | 'verifyApprove') => boolean;
+  hasPermission: (modulePath: string, permission: 'read' | 'write' | 'verifyApprove' | 'marginUpdate') => boolean;
 }
 
 const PermissionsContext = createContext<PermissionsContextType | undefined>(undefined);
@@ -83,7 +83,7 @@ export const PermissionsProvider: React.FC<PermissionsProviderProps> = ({ childr
     return module?.hasAccess || false;
   };
 
-  const hasPermission = (modulePath: string, permission: 'read' | 'write' | 'verifyApprove'): boolean => {
+  const hasPermission = (modulePath: string, permission: 'read' | 'write' | 'verifyApprove' | 'marginUpdate'): boolean => {
     if (!permissions) return false;
     
     if (permissions.role === 'superadmin') {

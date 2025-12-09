@@ -21,7 +21,6 @@ const PermissionManagementModal: React.FC<PermissionManagementModalProps> = ({
 }) => {
   const [modules, setModules] = useState<Module[]>([]);
   const [permissions, setPermissions] = useState<ModulePermissions>({});
-  const [initialPermissions, setInitialPermissions] = useState<ModulePermissions>({});
   const [selectedRole, setSelectedRole] = useState<string>(adminRole);
   const [availableRoles, setAvailableRoles] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -46,6 +45,9 @@ const PermissionManagementModal: React.FC<PermissionManagementModalProps> = ({
       setAvailableRoles(rolesData);
       setSelectedRole(adminPermissionsData.admin.role);
       const fetchedPermissions = adminPermissionsData.permissions || {};
+      
+      // Debug: Log permissions to check if marginUpdate is present
+      console.log('Fetched permissions:', JSON.stringify(fetchedPermissions, null, 2));
       
       // Note: Backend schema has been fixed to include sellers module
       
@@ -73,21 +75,36 @@ const PermissionManagementModal: React.FC<PermissionManagementModalProps> = ({
           if (foundKey) {
             modulePermission = fetchedPermissions[foundKey];
             // Copy to the correct key, ensuring proper boolean values
+            const isMaster = module.key.toLowerCase() === "master" || 
+                            module.key.toLowerCase() === "masters" ||
+                            module.name.toLowerCase() === "master" || 
+                            module.name.toLowerCase() === "masters" ||
+                            module.name.toLowerCase().includes("master");
             fetchedPermissions[module.key] = {
               read: Boolean(modulePermission.read),
               write: Boolean(modulePermission.write),
               ...(typeof modulePermission.verifyApprove !== 'undefined' && modulePermission.verifyApprove !== null && {
                 verifyApprove: Boolean(modulePermission.verifyApprove),
               }),
+              ...(isMaster && typeof modulePermission.marginUpdate !== 'undefined' && modulePermission.marginUpdate !== null && {
+                marginUpdate: Boolean(modulePermission.marginUpdate),
+              }),
             };
           }
         }
         
         // Initialize permissions object if it doesn't exist
+        const isMaster = module.key.toLowerCase() === "master" || 
+                        module.key.toLowerCase() === "masters" ||
+                        module.name.toLowerCase() === "master" || 
+                        module.name.toLowerCase() === "masters" ||
+                        module.name.toLowerCase().includes("master");
+        
         if (!fetchedPermissions[module.key]) {
           fetchedPermissions[module.key] = {
             read: false,
             write: false,
+            ...(isMaster && { marginUpdate: false }),
           };
         } else {
           // Ensure read and write are always defined and are proper booleans
@@ -106,23 +123,14 @@ const PermissionManagementModal: React.FC<PermissionManagementModalProps> = ({
           if (typeof perm.verifyApprove !== 'undefined' && perm.verifyApprove !== null) {
             perm.verifyApprove = Boolean(perm.verifyApprove);
           }
-        }
-        
-        
-        // Initialize marginUpdate and marginValue for Master module
-        const isMaster = module.key.toLowerCase() === "master" || 
-                        module.key.toLowerCase() === "masters" ||
-                        module.name.toLowerCase() === "master" || 
-                        module.name.toLowerCase() === "masters" ||
-                        module.name.toLowerCase().includes("master");
-        
-        if (isMaster) {
-          // Ensure marginUpdate and marginValue are initialized for Master module
-          if (typeof fetchedPermissions[module.key].marginUpdate === 'undefined') {
-            fetchedPermissions[module.key].marginUpdate = false;
-          }
-          if (typeof fetchedPermissions[module.key].marginValue === 'undefined') {
-            fetchedPermissions[module.key].marginValue = 0;
+          
+          // Ensure marginUpdate is properly handled for Master module
+          if (isMaster) {
+            if (typeof perm.marginUpdate === 'undefined' || perm.marginUpdate === null) {
+              perm.marginUpdate = false;
+            } else {
+              perm.marginUpdate = Boolean(perm.marginUpdate);
+            }
           }
         }
       });
@@ -142,7 +150,6 @@ const PermissionManagementModal: React.FC<PermissionManagementModalProps> = ({
         }
       }
       setPermissions(fetchedPermissions);
-      setInitialPermissions(JSON.parse(JSON.stringify(fetchedPermissions))); // Deep copy for comparison
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -168,18 +175,6 @@ const PermissionManagementModal: React.FC<PermissionManagementModalProps> = ({
     });
   };
 
-  const handleMarginValueChange = (moduleKey: string, value: string) => {
-    const numValue = value === "" ? 0 : parseFloat(value);
-    if (!isNaN(numValue)) {
-      setPermissions((prev) => ({
-        ...prev,
-        [moduleKey]: {
-          ...prev[moduleKey],
-          marginValue: numValue,
-        },
-      }));
-    }
-  };
 
   const handleRoleChange = async (newRole: string) => {
     setSelectedRole(newRole);
@@ -196,7 +191,6 @@ const PermissionManagementModal: React.FC<PermissionManagementModalProps> = ({
           ...(supportsVerifyApprove && { verifyApprove: true }),
           ...(isMaster && {
             marginUpdate: true,
-            marginValue: permissions[module.key]?.marginValue ?? 0,
           }),
         };
       });
@@ -249,8 +243,10 @@ const PermissionManagementModal: React.FC<PermissionManagementModalProps> = ({
             ...(moduleSupportsVerifyApprove(module.key, module.name) && typeof permissionToSend.verifyApprove !== 'undefined' && {
               verifyApprove: Boolean(permissionToSend.verifyApprove),
             }),
-            // Exclude marginUpdate and marginValue as backend doesn't recognize them as permissions
-            // These should be handled via a separate endpoint or stored differently
+            // Always include marginUpdate for Master module (even if false)
+            ...(isMasterModule(module) && {
+              marginUpdate: Boolean(permissionToSend.marginUpdate ?? false),
+            }),
           };
           
         });
@@ -280,11 +276,10 @@ const PermissionManagementModal: React.FC<PermissionManagementModalProps> = ({
           // Backend now properly supports 'sellers' key, no need for fallback
         }
         
-        await RoleManagementService.updateAdminPermissions(adminId, permissionsToSend);
+        // Debug: Log permissions being sent
+        console.log('Sending permissions:', JSON.stringify(permissionsToSend, null, 2));
         
-        // TODO: If marginUpdate and marginValue need to be saved, create a separate API call
-        // For now, we'll store them in the permissions object but not send to backend
-        // You may need to create a separate endpoint like: updateAdminMarginSettings(adminId, marginValue)
+        await RoleManagementService.updateAdminPermissions(adminId, permissionsToSend);
       }
 
       toastHelper.showTost("Permissions updated successfully!", "success");
@@ -436,8 +431,7 @@ const PermissionManagementModal: React.FC<PermissionManagementModalProps> = ({
                       write: false,
                     };
                     
-                    
-                    // Ensure Master module has marginUpdate and marginValue initialized
+                    // Ensure Master module has marginUpdate initialized
                     const isMaster = isMasterModule(module);
                     const modulePermission: Permission = {
                       read: Boolean(basePermission.read),
@@ -446,10 +440,9 @@ const PermissionManagementModal: React.FC<PermissionManagementModalProps> = ({
                       ...(typeof basePermission.verifyApprove !== 'undefined' && {
                         verifyApprove: Boolean(basePermission.verifyApprove),
                       }),
-                      // Initialize marginUpdate and marginValue for Master module
+                      // Initialize marginUpdate for Master module
                       ...(isMaster && {
                         marginUpdate: Boolean(basePermission.marginUpdate ?? false),
-                        marginValue: basePermission.marginValue ?? 0,
                       }),
                     };
                     
@@ -532,52 +525,26 @@ const PermissionManagementModal: React.FC<PermissionManagementModalProps> = ({
 
                           {/* Margin Update Permission - Only for Master Module */}
                           {isMaster && (
-                            <>
-                              <label className="flex items-center justify-between cursor-pointer group">
-                                <div className="flex items-center gap-2">
-                                  <i className="fas fa-percent text-gray-500 dark:text-gray-400"></i>
-                                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Margin Update
-                                  </span>
-                                </div>
-                                <input
-                                  type="checkbox"
-                                  checked={modulePermission.marginUpdate || false}
-                                  onChange={(e) =>
-                                    handlePermissionChange(
-                                      module.key,
-                                      "marginUpdate",
-                                      e.target.checked
-                                    )
-                                  }
-                                  className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
-                                />
-                              </label>
-
-                              {/* Margin Value Input - Show only when Margin Update is checked */}
-                              {modulePermission.marginUpdate && (
-                                <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
-                                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Margin Value (%)
-                                  </label>
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    max="100"
-                                    step="0.01"
-                                    value={modulePermission.marginValue ?? 0}
-                                    onChange={(e) =>
-                                      handleMarginValueChange(module.key, e.target.value)
-                                    }
-                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                                    placeholder="Enter margin value"
-                                  />
-                                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                    Enter a value between 0 and 100
-                                  </p>
-                                </div>
-                              )}
-                            </>
+                            <label className="flex items-center justify-between cursor-pointer group">
+                              <div className="flex items-center gap-2">
+                                <i className="fas fa-percent text-gray-500 dark:text-gray-400"></i>
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                  Margin Update
+                                </span>
+                              </div>
+                              <input
+                                type="checkbox"
+                                checked={modulePermission.marginUpdate || false}
+                                onChange={(e) =>
+                                  handlePermissionChange(
+                                    module.key,
+                                    "marginUpdate",
+                                    e.target.checked
+                                  )
+                                }
+                                className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
+                              />
+                            </label>
                           )}
                         </div>
                       </div>
