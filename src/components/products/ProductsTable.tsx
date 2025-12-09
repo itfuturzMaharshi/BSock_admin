@@ -19,9 +19,10 @@ interface ProductsTableProps {
 }
 
 const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
-  const { hasPermission } = usePermissions();
+  const { hasPermission, permissions } = usePermissions();
   const canWrite = hasPermission('/products', 'write');
   const canVerifyApprove = hasPermission('/products', 'verifyApprove');
+  const isSuperAdmin = permissions?.role === 'superadmin';
   
   const [productsData, setProductsData] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -1084,16 +1085,18 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ loggedInAdminId }) => {
                                   <i className="fas fa-edit"></i>
                                   Edit
                                 </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDelete(item);
-                                  }}
-                                  className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-red-600"
-                                >
-                                  <i className="fas fa-trash"></i>
-                                  Delete
-                                </button>
+                                {isSuperAdmin && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDelete(item);
+                                    }}
+                                    className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-red-600"
+                                  >
+                                    <i className="fas fa-trash"></i>
+                                    Delete
+                                  </button>
+                                )}
                               </>
                             )}
                             {canVerifyApprove && (

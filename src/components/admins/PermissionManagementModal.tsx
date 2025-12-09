@@ -314,30 +314,19 @@ const PermissionManagementModal: React.FC<PermissionManagementModalProps> = ({
   };
 
   // Check if module supports Verify/Approve permission
-  // Only show Verify/Approve for specific modules: customer, seller, orders, products, skufamily, wallet amounts, business request, admin
+  // Removed: customer, seller, wallet amounts, customer cart, admin, skufamily from verify/approve
+  // Only show Verify/Approve for specific modules: orders, products, business request
   const moduleSupportsVerifyApprove = (moduleKey: string, moduleName: string): boolean => {
-    // List of modules that support Verify/Approve
+    // List of modules that support Verify/Approve (removed customer, seller, wallet, cart, admin, skufamily)
     const modulesWithVerifyApprove = [
-      'customer',
-      'customers',
-      'seller',
-      'sellers',
       'order',
       'orders',
       'product',
       'products',
-      'skufamily',
-      'sku-family',
-      'wallet',
-      'walletamount',
-      'wallet-amount',
-      'wallet amounts',
       'business',
       'businessrequest',
       'business-request',
       'business requests',
-      'admin',
-      'admins',
     ];
     
     const keyLower = moduleKey.toLowerCase();

@@ -5,9 +5,12 @@ import SellerCategoryModal from "./SellerCategoryModal";
 import { SellerCategoryService, SellerCategory } from "../../services/sellerCategory/sellerCategory.services";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useModulePermissions } from "../../hooks/useModulePermissions";
+import { usePermissions } from "../../context/PermissionsContext";
 
 const SellerCategoryTable: React.FC = () => {
-  const { canMarginUpdate } = useModulePermissions('/masters');
+  const { canWrite, canMarginUpdate } = useModulePermissions('/masters');
+  const { permissions } = usePermissions();
+  const isSuperAdmin = permissions?.role === 'superadmin';
   const [categoriesData, setCategoriesData] = useState<SellerCategory[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const debouncedSearchTerm = useDebounce(searchTerm, 1000);
@@ -69,7 +72,7 @@ const SellerCategoryTable: React.FC = () => {
   };
 
   const handleEdit = (category: SellerCategory) => {
-    if (!canMarginUpdate) return;
+    if (!canWrite) return;
     setEditCategory(category);
     setIsModalOpen(true);
   };
@@ -147,7 +150,7 @@ const SellerCategoryTable: React.FC = () => {
               <i className="fas fa-file-export text-xs"></i>
               Export
             </button>
-            {canMarginUpdate && (
+            {canWrite && (
               <>
                 <label className="inline-flex items-center gap-1 rounded-lg bg-orange-600 text-white px-4 py-2 text-sm font-medium hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600 transition-colors cursor-pointer">
                   <i className="fas fa-file-import text-xs"></i>
@@ -195,12 +198,16 @@ const SellerCategoryTable: React.FC = () => {
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Description
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Margin Type
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
-                  Margin
-                </th>
+                {canMarginUpdate && (
+                  <>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                      Margin Type
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
+                      Margin
+                    </th>
+                  </>
+                )}
                 <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 align-middle">
                   Actions
                 </th>
@@ -209,7 +216,7 @@ const SellerCategoryTable: React.FC = () => {
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="p-12 text-center">
+                  <td colSpan={canMarginUpdate ? 5 : 3} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
                       Loading Seller Categories...
@@ -218,7 +225,7 @@ const SellerCategoryTable: React.FC = () => {
                 </tr>
               ) : categoriesData.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-12 text-center">
+                  <td colSpan={canMarginUpdate ? 5 : 3} className="p-12 text-center">
                     <div className="text-gray-500 dark:text-gray-400 text-lg">
                       No seller categories found
                     </div>
@@ -238,18 +245,22 @@ const SellerCategoryTable: React.FC = () => {
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                       {item.description || "-"}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.marginType || "-"}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {item.margin !== undefined && item.margin !== null 
-                        ? item.marginType === 'percentage' 
-                          ? `${item.margin}%` 
-                          : item.margin
-                        : "-"}
-                    </td>
+                    {canMarginUpdate && (
+                      <>
+                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                          {item.marginType || "-"}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                          {item.margin !== undefined && item.margin !== null 
+                            ? item.marginType === 'percentage' 
+                              ? `${item.margin}%` 
+                              : item.margin
+                            : "-"}
+                        </td>
+                      </>
+                    )}
                     <td className="px-6 py-4 text-sm text-center">
-                      {canMarginUpdate ? (
+                      {canWrite ? (
                         <div className="inline-flex items-center gap-3">
                           <button
                             onClick={() => handleEdit(item)}
@@ -258,13 +269,15 @@ const SellerCategoryTable: React.FC = () => {
                           >
                             <i className="fas fa-edit"></i>
                           </button>
-                          <button
-                            onClick={() => handleDelete(item)}
-                            className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
-                            title="Delete Category"
-                          >
-                            <i className="fas fa-trash"></i>
-                          </button>
+                          {isSuperAdmin && (
+                            <button
+                              onClick={() => handleDelete(item)}
+                              className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
+                              title="Delete Category"
+                            >
+                              <i className="fas fa-trash"></i>
+                            </button>
+                          )}
                         </div>
                       ) : (
                         <span className="text-gray-400 dark:text-gray-500 text-sm">View Only</span>
@@ -328,6 +341,7 @@ const SellerCategoryTable: React.FC = () => {
         }}
         onSave={handleSave}
         editItem={editCategory || undefined}
+        allowMarginEdit={canMarginUpdate}
       />
     </div>
   );

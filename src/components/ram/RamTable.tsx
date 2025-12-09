@@ -6,9 +6,12 @@ import { RamService, Ram } from "../../services/ram/ram.services";
 import { BrandService } from "../../services/brand/brand.services";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useModulePermissions } from "../../hooks/useModulePermissions";
+import { usePermissions } from "../../context/PermissionsContext";
 
 const RamTable: React.FC = () => {
   const { canWrite } = useModulePermissions('/masters');
+  const { permissions } = usePermissions();
+  const isSuperAdmin = permissions?.role === 'superadmin';
   const [ramsData, setRamsData] = useState<Ram[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const debouncedSearchTerm = useDebounce(searchTerm, 1000);
@@ -248,13 +251,15 @@ const RamTable: React.FC = () => {
                           >
                             <i className="fas fa-edit"></i>
                           </button>
-                          <button
-                            onClick={() => handleDelete(item)}
-                            className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
-                            title="Delete RAM"
-                          >
-                            <i className="fas fa-trash"></i>
-                          </button>
+                          {isSuperAdmin && (
+                            <button
+                              onClick={() => handleDelete(item)}
+                              className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
+                              title="Delete RAM"
+                            >
+                              <i className="fas fa-trash"></i>
+                            </button>
+                          )}
                         </div>
                       ) : (
                         <span className="text-gray-400 dark:text-gray-500 text-sm">View Only</span>

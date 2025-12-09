@@ -9,9 +9,12 @@ import placeholderImage from "../../../public/images/product/noimage.jpg";
 import { SkuFamily } from "./types";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useModulePermissions } from "../../hooks/useModulePermissions";
+import { usePermissions } from "../../context/PermissionsContext";
 
 const SkuFamilyTable: React.FC = () => {
   const { canWrite } = useModulePermissions('/sku-family');
+  const { permissions } = usePermissions();
+  const isSuperAdmin = permissions?.role === 'superadmin';
   const [skuFamilyData, setSkuFamilyData] = useState<SkuFamily[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const debouncedSearchTerm = useDebounce(searchTerm, 1000);
@@ -555,18 +558,20 @@ const SkuFamilyTable: React.FC = () => {
                               >
                                 <i className="fas fa-edit text-sm"></i>
                               </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (item._id) {
-                                    handleDelete(item._id);
-                                  }
-                                }}
-                                className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors p-1"
-                                title="Delete"
-                              >
-                                <i className="fas fa-trash text-sm"></i>
-                              </button>
+                              {isSuperAdmin && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (item._id) {
+                                      handleDelete(item._id);
+                                    }
+                                  }}
+                                  className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors p-1"
+                                  title="Delete"
+                                >
+                                  <i className="fas fa-trash text-sm"></i>
+                                </button>
+                              )}
                             </>
                           )}
                         </div>

@@ -8,7 +8,6 @@ import { usePermissions } from '../../context/PermissionsContext';
 const SellerTable: React.FC = () => {
   const { hasPermission } = usePermissions();
   const canWrite = hasPermission('/sellers', 'write');
-  const canVerifyApprove = hasPermission('/sellers', 'verifyApprove');
   
   const [sellers, setSellers] = useState<Seller[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -62,21 +61,6 @@ const SellerTable: React.FC = () => {
     setCurrentPage(page);
   };
 
-  const handleToggleActiveStatus = async (sellerId: string, currentStatus: boolean | undefined) => {
-    try {
-      await SellerService.toggleActiveStatus(sellerId);
-      // Update the local state
-      setSellers(prevSellers =>
-        prevSellers.map(seller =>
-          seller._id === sellerId
-            ? { ...seller, isActive: !currentStatus }
-            : seller
-        )
-      );
-    } catch (err) {
-      console.error("Error toggling active status:", err);
-    }
-  };
 
   const handleEdit = (seller: Seller) => {
     setEditingSeller(seller);
@@ -221,17 +205,11 @@ const SellerTable: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-sm">
                       {seller.isActive ? (
-                        <span 
-                          onClick={canVerifyApprove ? () => handleToggleActiveStatus(seller._id, seller.isActive) : undefined}
-                          className={`${canVerifyApprove ? 'cursor-pointer hover:bg-green-200 dark:hover:bg-green-800' : ''} inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 transition-colors`}
-                        >
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                           Active
                         </span>
                       ) : (
-                        <span 
-                          onClick={canVerifyApprove ? () => handleToggleActiveStatus(seller._id, seller.isActive) : undefined}
-                          className={`${canVerifyApprove ? 'cursor-pointer hover:bg-red-200 dark:hover:bg-red-800' : ''} inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 transition-colors`}
-                        >
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
                           Inactive
                         </span>
                       )}

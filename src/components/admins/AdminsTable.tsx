@@ -9,9 +9,9 @@ import { useDebounce } from "../../hooks/useDebounce";
 import { usePermissions } from "../../context/PermissionsContext";
 
 const AdminsTable: React.FC = () => {
-  const { hasPermission } = usePermissions();
+  const { hasPermission, permissions } = usePermissions();
   const canWrite = hasPermission('/admin', 'write');
-  const canVerifyApprove = hasPermission('/admin', 'verifyApprove');
+  const isSuperAdmin = permissions?.role === 'superadmin';
   const [adminsData, setAdminsData] = useState<Admin[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const debouncedSearchTerm = useDebounce(searchTerm, 1000);
@@ -22,7 +22,6 @@ const AdminsTable: React.FC = () => {
   const [totalPages, setTotalPages] = useState<number>(1);
   const [totalDocs, setTotalDocs] = useState<number>(0);
   const [resettingPassword, setResettingPassword] = useState<string | null>(null);
-  const [togglingStatus, setTogglingStatus] = useState<string | null>(null);
   const [permissionModalOpen, setPermissionModalOpen] = useState<boolean>(false);
   const [selectedAdminForPermissions, setSelectedAdminForPermissions] = useState<Admin | null>(null);
   const itemsPerPage = 10;
@@ -152,37 +151,6 @@ const AdminsTable: React.FC = () => {
     }
   };
 
-  const handleToggleStatus = async (admin: Admin) => {
-    const newStatus = !admin.isActive;
-    const statusText = newStatus ? 'active' : 'inactive';
-    
-    setTogglingStatus(admin._id);
-    
-    try {
-      const updateData: UpdateAdminRequest = {
-        id: admin._id,
-        name: admin.name,
-        email: admin.email,
-        isActive: newStatus,
-      };
-      
-      await AdminService.updateAdmin(updateData);
-      
-      // Update local state optimistically
-      setAdminsData((prevAdmins) =>
-        prevAdmins.map((item) =>
-          item._id === admin._id ? { ...item, isActive: newStatus } : item
-        )
-      );
-      
-      toastHelper.showTost(`Admin status changed to ${statusText}`, 'success');
-    } catch (error) {
-      console.error('Error toggling admin status:', error);
-      toastHelper.showTost('Failed to update admin status', 'error');
-    } finally {
-      setTogglingStatus(null);
-    }
-  };
 
   // Function to get status styles and icons
   const getStatusStyles = (isActive: boolean) => {
@@ -294,29 +262,12 @@ const AdminsTable: React.FC = () => {
                       {new Date(item.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 text-sm">
-                      {canVerifyApprove ? (
-                        <span 
-                          onClick={() => handleToggleStatus(item)}
-                          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold tracking-wider cursor-pointer transition-all hover:opacity-80 ${getStatusStyles(item.isActive)} ${
-                            togglingStatus === item._id ? 'opacity-50 cursor-wait' : ''
-                          }`}
-                          title={`Click to ${item.isActive ? 'deactivate' : 'activate'}`}
-                        >
-                          {togglingStatus === item._id ? (
-                            <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-current"></div>
-                          ) : (
-                            <i className={`fas ${getStatusIcon(item.isActive)} text-xs`}></i>
-                          )}
-                          {item.isActive ? 'Active' : 'Inactive'}
-                        </span>
-                      ) : (
-                        <span 
-                          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold tracking-wider ${getStatusStyles(item.isActive)}`}
-                        >
-                          <i className={`fas ${getStatusIcon(item.isActive)} text-xs`}></i>
-                          {item.isActive ? 'Active' : 'Inactive'}
-                        </span>
-                      )}
+                      <span 
+                        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold tracking-wider ${getStatusStyles(item.isActive)}`}
+                      >
+                        <i className={`fas ${getStatusIcon(item.isActive)} text-xs`}></i>
+                        {item.isActive ? 'Active' : 'Inactive'}
+                      </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
                       {canWrite ? (
@@ -350,13 +301,15 @@ const AdminsTable: React.FC = () => {
                           >
                             <i className="fas fa-shield-alt"></i>
                           </button>
-                          <button
-                            onClick={() => handleDelete(item)}
-                            className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
-                            title="Delete Admin"
-                          >
-                            <i className="fas fa-trash"></i>
-                          </button>
+                          {isSuperAdmin && (
+                            <button
+                              onClick={() => handleDelete(item)}
+                              className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                              title="Delete Admin"
+                            >
+                              <i className="fas fa-trash"></i>
+                            </button>
+                          )}
                         </div>
                       ) : (
                         <span className="text-gray-400 dark:text-gray-500 text-sm">View Only</span>
