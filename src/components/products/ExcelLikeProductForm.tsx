@@ -37,7 +37,6 @@ export interface ProductRowData {
   customMessage: string;
   totalQty: number | string;
   moqPerVariant: number | string;
-  moqPerCart: number | string;
   weight: number | string;
   // Payment Term - grouped by currency
   paymentTermUsd: string;
@@ -93,7 +92,7 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
   const [skuFamilies, setSkuFamilies] = useState<any[]>([]);
   const [constants, setConstants] = useState<Constants | null>(null);
   const [loading, setLoading] = useState(false);
-  const [totalMoq, setTotalMoq] = useState<number | string>(''); // Single TOTAL MOQ for all products (multi variant only)
+  const [totalMoq, setTotalMoq] = useState<number | string>(''); 
   const tableRef = useRef<HTMLDivElement>(null);
   const [focusedCell, setFocusedCell] = useState<{ row: number; col: string } | null>(null);
   const cellRefs = useRef<Record<string, HTMLInputElement | HTMLSelectElement | null>>({});
@@ -222,7 +221,6 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
     }
   }, [rows.map(r => r.shippingTime).join(',')]);
 
-  // Calculate TOTAL MOQ cell height and position to span all rows
   useEffect(() => {
     if (variantType === 'multi' && rows.length > 0) {
       const updatePosition = () => {
@@ -317,7 +315,6 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
     customMessage: '',
     totalQty: '',
     moqPerVariant: '',
-    moqPerCart: variantType === 'multi' ? '' : '',
     weight: '',
     paymentTermUsd: '',
     paymentTermHkd: '',
@@ -763,9 +760,8 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
       console.error('Error clearing localStorage:', error);
     }
     
-    // Validate TOTAL MOQ for multi variant
     if (variantType === 'multi' && !totalMoq) {
-      toastHelper.showTost('TOTAL MOQ is required for multi-variant products', 'error');
+      toastHelper.showTost('MOQ PER CART is required for multi-variant products', 'error');
       return;
     }
     
@@ -802,9 +798,8 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
     { key: 'customMessage', label: 'CUSTOM MESSAGE', width: 150, group: 'Pricing/Delivery' },
     { key: 'totalQty', label: 'TOTAL QTY*', width: 100, group: 'Pricing/Delivery' },
     { key: 'moqPerVariant', label: 'MOQ/VARIANT*', width: 120, group: 'Pricing/Delivery' },
-    { key: 'moqPerCart', label: 'MOQ PER CART', width: 120, group: 'Pricing/Delivery' },
     { key: 'weight', label: 'WEIGHT', width: 100, group: 'Pricing/Delivery' },
-    ...(variantType === 'multi' ? [{ key: 'totalMoq', label: 'TOTAL MOQ*', width: 150, group: 'Pricing/Delivery' }] : []),
+    ...(variantType === 'multi' ? [{ key: 'totalMoq', label: 'MOQ PER CART*', width: 150, group: 'Pricing/Delivery' }] : []),
     { key: 'paymentTermUsd', label: 'USD*', width: 120, group: 'PAYMENT TERM', subgroup: 'PAYMENT_TERM' },
     { key: 'paymentTermHkd', label: 'HKD', width: 120, group: 'PAYMENT TERM', subgroup: 'PAYMENT_TERM' },
     { key: 'paymentTermAed', label: 'AED', width: 120, group: 'PAYMENT TERM', subgroup: 'PAYMENT_TERM' },
@@ -1254,7 +1249,6 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
       case 'dubaiAed':
       case 'totalQty':
       case 'moqPerVariant':
-      case 'moqPerCart':
       case 'weight':
         return (
           <input
@@ -1264,7 +1258,6 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
             onChange={(e) => updateRow(rowIndex, column.key as keyof ProductRowData, e.target.value)}
             className="w-full px-2 py-1.5 text-xs border-0 bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded transition-all duration-150 text-right font-medium placeholder:text-gray-400"
             placeholder="0.00"
-            disabled={column.key === 'moqPerCart' && variantType === 'single'}
             onFocus={() => {
               setFocusedCell({ row: rowIndex, col: column.key });
               setSelectedRowIndex(rowIndex);
@@ -2022,7 +2015,6 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
 
           {/* Enhanced Rows */}
           <div ref={rowsContainerRef} className="relative">
-            {/* TOTAL MOQ spanning cell - rendered once for multi-variant mode */}
             {variantType === 'multi' && rows.length > 0 && totalMoqLeft > 0 && (() => {
               const totalMoqCol = columns.find(col => col.key === 'totalMoq');
               if (!totalMoqCol) return null;
@@ -2040,7 +2032,7 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
                     minHeight: totalMoqHeight > 0 ? `${totalMoqHeight}px` : `${rows.length * 40}px`,
                     zIndex: 10
                   }}
-                  title={`Total MOQ for all ${rows.length} products`}
+                  title={`MOQ PER CART for all ${rows.length} products`}
                 >
                   <div className="w-full h-full flex flex-col items-center justify-center px-2">
                     {renderCell(rows[0], 0, totalMoqCol)}

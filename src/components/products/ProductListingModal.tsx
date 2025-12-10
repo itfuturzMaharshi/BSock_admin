@@ -120,7 +120,7 @@ const ProductListingModal: React.FC<ProductListingModalProps> = ({
           stock: parseFloat(String(row.totalQty)) || 0,
           country: (cleanString(row.country) || null) as string | null,
           moq: parseFloat(String(row.moqPerVariant)) || 1,
-          purchaseType: row.moqPerCart ? 'partial' : 'full',
+          purchaseType: 'full',
           isNegotiable: row.negotiableFixed === '1',
           // Check if tags contains HOT DEAL (code 1)
           isFlashDeal: row.tags && row.tags.split(',').map(t => parseInt(t.trim())).includes(1) ? 'true' : 'false',
@@ -135,7 +135,6 @@ const ProductListingModal: React.FC<ProductListingModalProps> = ({
           currentLocation: cleanString(row.currentLocation) || '',
           deliveryLocation: cleanString(row.deliveryLocation) || '',
           customMessage: cleanString(row.customMessage) || '',
-          moqPerCart: row.moqPerCart ? parseFloat(String(row.moqPerCart)) : null,
           paymentTerm: cleanString(row.paymentTerm) || null,
           paymentMethod: cleanString(row.paymentMethod) || null,
           shippingTime: cleanString(row.shippingTime) || '',

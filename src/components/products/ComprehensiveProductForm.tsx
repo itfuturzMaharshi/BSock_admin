@@ -33,7 +33,6 @@ export interface ProductRowData {
   customMessage: string;
   totalQty: number | string;
   moqPerVariant: number | string;
-  moqPerCart: number | string;
   weight: number | string;
   paymentTerm: string;
   paymentMethod: string;
@@ -109,7 +108,6 @@ const ComprehensiveProductForm: React.FC<ComprehensiveProductFormProps> = ({
         customMessage: '',
         totalQty: '',
         moqPerVariant: '',
-        moqPerCart: variantType === 'multi' ? '' : '',
         weight: '',
         paymentTerm: '',
         paymentMethod: '',
@@ -160,7 +158,6 @@ const ComprehensiveProductForm: React.FC<ComprehensiveProductFormProps> = ({
         customMessage: '',
         totalQty: '',
         moqPerVariant: '',
-        moqPerCart: '',
         weight: '',
         paymentTerm: '',
         paymentMethod: '',
@@ -523,7 +520,6 @@ const ComprehensiveProductForm: React.FC<ComprehensiveProductFormProps> = ({
                 <th className="px-3 py-2 text-xs font-semibold border text-left min-w-[120px]">CUSTOM MESSAGE</th>
                 <th className="px-3 py-2 text-xs font-semibold border text-left min-w-[100px]">TOTAL QTY*</th>
                 <th className="px-3 py-2 text-xs font-semibold border text-left min-w-[100px]">MOQ/VARIANT*</th>
-                <th className="px-3 py-2 text-xs font-semibold border text-left min-w-[100px]">MOQ PER CART</th>
                 <th className="px-3 py-2 text-xs font-semibold border text-left min-w-[100px]">WEIGHT</th>
                 <th className="px-3 py-2 text-xs font-semibold border text-left min-w-[120px]">PAYMENT TERM</th>
                 <th className="px-3 py-2 text-xs font-semibold border text-left min-w-[120px]">PAYMENT METHOD</th>
@@ -654,16 +650,6 @@ const ComprehensiveProductForm: React.FC<ComprehensiveProductFormProps> = ({
                       className="w-full px-2 py-1 text-sm border rounded bg-gray-50 dark:bg-gray-800"
                       required
                       placeholder="0"
-                    />
-                  </td>
-                  <td className="px-3 py-2 border">
-                    <input
-                      type="number"
-                      value={row.moqPerCart}
-                      onChange={(e) => updateRow(rowIndex, 'moqPerCart', e.target.value)}
-                      className="w-full px-2 py-1 text-sm border rounded bg-gray-50 dark:bg-gray-800"
-                      placeholder={variantType === 'multi' ? 'Multi variant only' : 'N/A'}
-                      disabled={variantType === 'single'}
                     />
                   </td>
                   <td className="px-3 py-2 border">

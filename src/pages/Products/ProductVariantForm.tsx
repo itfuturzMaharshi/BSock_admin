@@ -163,7 +163,7 @@ const ProductVariantForm: React.FC = () => {
           stock: parseFloat(String(row.totalQty)) || 0,
           country: (cleanString(row.country) || null) as string | null,
           moq: parseFloat(String(row.moqPerVariant)) || 1,
-          purchaseType: row.moqPerCart ? 'partial' : 'full',
+          purchaseType: 'full',
           isNegotiable: row.negotiableFixed === '1',
           // Use flashDeal field from form (code value from constants), convert to boolean string
           // Assuming code '1' or 'true' means flash deal enabled, empty or '0'/'false' means disabled
@@ -180,7 +180,6 @@ const ProductVariantForm: React.FC = () => {
           currentLocation: cleanString(row.currentLocation) || '',
           deliveryLocation: cleanString(row.deliveryLocation) || '',
           customMessage: cleanString(row.customMessage) || '',
-          moqPerCart: row.moqPerCart ? parseFloat(String(row.moqPerCart)) : null,
           totalMoq: variantType === 'multi' && totalMoq ? parseFloat(String(totalMoq)) : null,
           paymentTerm: cleanString(row.paymentTermUsd) || cleanString(row.paymentTermHkd) || cleanString(row.paymentTermAed) || null,
           paymentMethod: cleanString(row.paymentMethodUsd) || cleanString(row.paymentMethodHkd) || cleanString(row.paymentMethodAed) || null,
