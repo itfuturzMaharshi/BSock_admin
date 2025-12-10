@@ -122,20 +122,6 @@ const StorageTable: React.FC = () => {
           </div>
           <div className="flex items-center gap-3">
             <button
-              className="inline-flex items-center gap-1 rounded-lg bg-green-600 text-white px-4 py-2 text-sm font-medium hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 transition-colors"
-              onClick={async () => {
-                try {
-                  await BrandService.downloadSample();
-                } catch (error) {
-                  console.error('Failed to download sample:', error);
-                }
-              }}
-              title="Download Sample Excel"
-            >
-              <i className="fas fa-download text-xs"></i>
-              Sample
-            </button>
-            <button
               className="inline-flex items-center gap-1 rounded-lg bg-purple-600 text-white px-4 py-2 text-sm font-medium hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600 transition-colors"
               onClick={async () => {
                 try {
@@ -150,41 +136,6 @@ const StorageTable: React.FC = () => {
               <i className="fas fa-file-export text-xs"></i>
               Export
             </button>
-            {canWrite && (
-              <>
-                <label className="inline-flex items-center gap-1 rounded-lg bg-orange-600 text-white px-4 py-2 text-sm font-medium hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600 transition-colors cursor-pointer">
-                  <i className="fas fa-file-import text-xs"></i>
-                  Import
-                  <input
-                    type="file"
-                    accept=".xlsx,.xls"
-                    className="hidden"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        try {
-                          await BrandService.importFromExcel(file);
-                          fetchStorages();
-                        } catch (error) {
-                          console.error('Failed to import:', error);
-                        }
-                      }
-                      e.target.value = '';
-                    }}
-                  />
-                </label>
-                <button
-                  className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
-                  onClick={() => {
-                    setEditStorage(null);
-                    setIsModalOpen(true);
-                  }}
-                >
-                  <i className="fas fa-plus text-xs"></i>
-                  Add Storage
-                </button>
-              </>
-            )}
           </div>
         </div>
 
