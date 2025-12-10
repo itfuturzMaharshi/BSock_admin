@@ -234,36 +234,55 @@ const ComprehensiveProductForm: React.FC<ComprehensiveProductFormProps> = ({
       const newRows = [...prevRows];
       newRows[index] = { ...newRows[index], [field]: value };
       
-      // Auto-calculate currency conversions
+      // Auto-calculate currency conversions for HK
       if (field === 'hkUsd' || field === 'hkXe' || field === 'hkHkd') {
         const usd = parseFloat(String(newRows[index].hkUsd)) || 0;
         const xe = parseFloat(String(newRows[index].hkXe)) || 0;
         const hkd = parseFloat(String(newRows[index].hkHkd)) || 0;
         
-        if (field === 'hkUsd' && xe && !hkd) {
-          newRows[index].hkHkd = (usd * xe).toFixed(2);
-        } else if (field === 'hkXe' && usd && !hkd) {
-          newRows[index].hkHkd = (usd * xe).toFixed(2);
-        } else if (field === 'hkHkd' && xe && !usd) {
-          newRows[index].hkUsd = (hkd / xe).toFixed(2);
-        } else if (field === 'hkHkd' && usd && !xe) {
-          newRows[index].hkXe = (hkd / usd).toFixed(6);
+        // Count how many values are present (greater than 0)
+        const valuesCount = [usd, xe, hkd].filter(v => v > 0).length;
+        
+        // Only calculate if at least 2 values exist
+        if (valuesCount >= 2) {
+          // Calculate the missing value when any two values exist
+          // Priority: don't overwrite the field being edited
+          if (field !== 'hkHkd' && usd > 0 && xe > 0) {
+            // If USD and XE exist, calculate HKD (multiply USD * XE)
+            newRows[index].hkHkd = (usd * xe).toFixed(2);
+          } else if (field !== 'hkUsd' && hkd > 0 && xe > 0) {
+            // If HKD and XE exist, calculate USD (divide HKD / XE)
+            newRows[index].hkUsd = (hkd / xe).toFixed(2);
+          } else if (field !== 'hkXe' && usd > 0 && hkd > 0) {
+            // If USD and HKD exist, calculate XE (divide HKD / USD)
+            newRows[index].hkXe = (hkd / usd).toFixed(4);
+          }
         }
       }
       
+      // Auto-calculate currency conversions for Dubai
       if (field === 'dubaiUsd' || field === 'dubaiXe' || field === 'dubaiAed') {
         const usd = parseFloat(String(newRows[index].dubaiUsd)) || 0;
         const xe = parseFloat(String(newRows[index].dubaiXe)) || 0;
         const aed = parseFloat(String(newRows[index].dubaiAed)) || 0;
         
-        if (field === 'dubaiUsd' && xe && !aed) {
-          newRows[index].dubaiAed = (usd * xe).toFixed(2);
-        } else if (field === 'dubaiXe' && usd && !aed) {
-          newRows[index].dubaiAed = (usd * xe).toFixed(2);
-        } else if (field === 'dubaiAed' && xe && !usd) {
-          newRows[index].dubaiUsd = (aed / xe).toFixed(2);
-        } else if (field === 'dubaiAed' && usd && !xe) {
-          newRows[index].dubaiXe = (aed / usd).toFixed(6);
+        // Count how many values are present (greater than 0)
+        const valuesCount = [usd, xe, aed].filter(v => v > 0).length;
+        
+        // Only calculate if at least 2 values exist
+        if (valuesCount >= 2) {
+          // Calculate the missing value when any two values exist
+          // Priority: don't overwrite the field being edited
+          if (field !== 'dubaiAed' && usd > 0 && xe > 0) {
+            // If USD and XE exist, calculate AED (multiply USD * XE)
+            newRows[index].dubaiAed = (usd * xe).toFixed(2);
+          } else if (field !== 'dubaiUsd' && aed > 0 && xe > 0) {
+            // If AED and XE exist, calculate USD (divide AED / XE)
+            newRows[index].dubaiUsd = (aed / xe).toFixed(2);
+          } else if (field !== 'dubaiXe' && usd > 0 && aed > 0) {
+            // If USD and AED exist, calculate XE (divide AED / USD)
+            newRows[index].dubaiXe = (aed / usd).toFixed(4);
+          }
         }
       }
       
@@ -567,11 +586,11 @@ const ComprehensiveProductForm: React.FC<ComprehensiveProductFormProps> = ({
                   <td className="px-3 py-2 border">
                     <input
                       type="number"
-                      step="0.000001"
+                      step="0.0001"
                       value={row.hkXe}
                       onChange={(e) => updateRow(rowIndex, 'hkXe', e.target.value)}
                       className="w-full px-2 py-1 text-sm border rounded bg-gray-50 dark:bg-gray-800"
-                      placeholder="0.000000"
+                      placeholder="0.0000"
                     />
                   </td>
                   <td className="px-3 py-2 border">
@@ -597,11 +616,11 @@ const ComprehensiveProductForm: React.FC<ComprehensiveProductFormProps> = ({
                   <td className="px-3 py-2 border">
                     <input
                       type="number"
-                      step="0.000001"
+                      step="0.0001"
                       value={row.dubaiXe}
                       onChange={(e) => updateRow(rowIndex, 'dubaiXe', e.target.value)}
                       className="w-full px-2 py-1 text-sm border rounded bg-gray-50 dark:bg-gray-800"
-                      placeholder="0.000000"
+                      placeholder="0.0000"
                     />
                   </td>
                   <td className="px-3 py-2 border">

@@ -7,7 +7,12 @@ import { GradeService } from '../../services/grade/grade.services';
 import { SellerService } from '../../services/seller/sellerService';
 import { ProductService } from '../../services/product/product.services';
 import { ConstantsService, Constants } from '../../services/constants/constants.services';
+import { SkuFamilyService } from '../../services/skuFamily/skuFamily.services';
 import toastHelper from '../../utils/toastHelper';
+import MarginSelectionModal, { MarginSelection } from './MarginSelectionModal';
+import CostModuleSelectionModal, { SelectedCost } from './CostModuleSelectionModal';
+import ProductPreviewModal from './ProductPreviewModal';
+import { ProductCalculationResult } from '../../utils/priceCalculation';
 
 export interface ProductRowData {
   // Product Detail Group
@@ -111,6 +116,20 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
   const totalMoqPlaceholderRef = useRef<HTMLDivElement | null>(null);
   const [totalMoqHeight, setTotalMoqHeight] = useState<number>(0);
   const [totalMoqLeft, setTotalMoqLeft] = useState<number>(0);
+
+  // Modal states
+  const [showMarginModal, setShowMarginModal] = useState(false);
+  const [showCostModal, setShowCostModal] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [currentCostCountry, setCurrentCostCountry] = useState<'Hongkong' | 'Dubai' | null>(null);
+  const [marginSelection, setMarginSelection] = useState<MarginSelection | null>(null);
+  const [selectedCosts, setSelectedCosts] = useState<{ Hongkong: SelectedCost[]; Dubai: SelectedCost[] }>({
+    Hongkong: [],
+    Dubai: [],
+  });
+  const [calculationResults, setCalculationResults] = useState<ProductCalculationResult[]>([]);
+  const [pendingRows, setPendingRows] = useState<ProductRowData[]>([]);
+  const [pendingTotalMoq, setPendingTotalMoq] = useState<number | string | undefined>(undefined);
 
   // LocalStorage key for saving form data
   const STORAGE_KEY = 'variant-product-form-data';
@@ -635,14 +654,23 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
         const xe = parseFloat(String(newRows[index].hkXe)) || 0;
         const hkd = parseFloat(String(newRows[index].hkHkd)) || 0;
         
-        if (field === 'hkUsd' && xe && !hkd) {
-          newRows[index].hkHkd = (usd * xe).toFixed(2);
-        } else if (field === 'hkXe' && usd && !hkd) {
-          newRows[index].hkHkd = (usd * xe).toFixed(2);
-        } else if (field === 'hkHkd' && xe && !usd) {
-          newRows[index].hkUsd = (hkd / xe).toFixed(2);
-        } else if (field === 'hkHkd' && usd && !xe) {
-          newRows[index].hkXe = (hkd / usd).toFixed(6);
+        // Count how many values are present (greater than 0)
+        const valuesCount = [usd, xe, hkd].filter(v => v > 0).length;
+        
+        // Only calculate if at least 2 values exist
+        if (valuesCount >= 2) {
+          // Calculate the missing value when any two values exist
+          // Priority: don't overwrite the field being edited
+          if (field !== 'hkHkd' && usd > 0 && xe > 0) {
+            // If USD and XE exist, calculate HKD (multiply USD * XE)
+            newRows[index].hkHkd = (usd * xe).toFixed(2);
+          } else if (field !== 'hkUsd' && hkd > 0 && xe > 0) {
+            // If HKD and XE exist, calculate USD (divide HKD / XE)
+            newRows[index].hkUsd = (hkd / xe).toFixed(2);
+          } else if (field !== 'hkXe' && usd > 0 && hkd > 0) {
+            // If USD and HKD exist, calculate XE (divide HKD / USD)
+            newRows[index].hkXe = (hkd / usd).toFixed(4);
+          }
         }
       }
       
@@ -652,14 +680,23 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
         const xe = parseFloat(String(newRows[index].dubaiXe)) || 0;
         const aed = parseFloat(String(newRows[index].dubaiAed)) || 0;
         
-        if (field === 'dubaiUsd' && xe && !aed) {
-          newRows[index].dubaiAed = (usd * xe).toFixed(2);
-        } else if (field === 'dubaiXe' && usd && !aed) {
-          newRows[index].dubaiAed = (usd * xe).toFixed(2);
-        } else if (field === 'dubaiAed' && xe && !usd) {
-          newRows[index].dubaiUsd = (aed / xe).toFixed(2);
-        } else if (field === 'dubaiAed' && usd && !xe) {
-          newRows[index].dubaiXe = (aed / usd).toFixed(6);
+        // Count how many values are present (greater than 0)
+        const valuesCount = [usd, xe, aed].filter(v => v > 0).length;
+        
+        // Only calculate if at least 2 values exist
+        if (valuesCount >= 2) {
+          // Calculate the missing value when any two values exist
+          // Priority: don't overwrite the field being edited
+          if (field !== 'dubaiAed' && usd > 0 && xe > 0) {
+            // If USD and XE exist, calculate AED (multiply USD * XE)
+            newRows[index].dubaiAed = (usd * xe).toFixed(2);
+          } else if (field !== 'dubaiUsd' && aed > 0 && xe > 0) {
+            // If AED and XE exist, calculate USD (divide AED / XE)
+            newRows[index].dubaiUsd = (aed / xe).toFixed(2);
+          } else if (field !== 'dubaiXe' && usd > 0 && aed > 0) {
+            // If USD and AED exist, calculate XE (divide AED / USD)
+            newRows[index].dubaiXe = (aed / usd).toFixed(4);
+          }
         }
       }
       
@@ -753,19 +790,308 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
       };
     });
     
-    // Clear localStorage on successful save
-    try {
-      localStorage.removeItem(STORAGE_KEY);
-    } catch (error) {
-      console.error('Error clearing localStorage:', error);
-    }
-    
     if (variantType === 'multi' && !totalMoq) {
       toastHelper.showTost('MOQ PER CART is required for multi-variant products', 'error');
       return;
     }
     
-    onSave(rowsWithListingNos, variantType === 'multi' ? totalMoq : undefined);
+    // Store rows and open margin modal
+    setPendingRows(rowsWithListingNos);
+    setPendingTotalMoq(variantType === 'multi' ? totalMoq : undefined);
+    setShowMarginModal(true);
+  };
+
+  // Handle margin selection
+  const handleMarginNext = (selection: MarginSelection) => {
+    setMarginSelection(selection);
+    setShowMarginModal(false);
+    
+    // Check which countries have products
+    const hasHK = pendingRows.some(r => r.hkUsd || r.hkHkd);
+    const hasDubai = pendingRows.some(r => r.dubaiUsd || r.dubaiAed);
+    
+    // Open cost modal for first country
+    if (hasHK) {
+      setCurrentCostCountry('Hongkong');
+      setShowCostModal(true);
+    } else if (hasDubai) {
+      setCurrentCostCountry('Dubai');
+      setShowCostModal(true);
+    } else {
+      // No country deliverables, proceed to calculation
+      proceedToCalculation();
+    }
+  };
+
+  // Handle cost selection
+  const handleCostNext = (costs: SelectedCost[]) => {
+    if (currentCostCountry) {
+      setSelectedCosts(prev => ({
+        ...prev,
+        [currentCostCountry]: costs,
+      }));
+    }
+    
+    setShowCostModal(false);
+    
+    // Check if we need to open cost modal for other country
+    const hasHK = pendingRows.some(r => r.hkUsd || r.hkHkd);
+    const hasDubai = pendingRows.some(r => r.dubaiUsd || r.dubaiAed);
+    
+    if (currentCostCountry === 'Hongkong' && hasDubai) {
+      setCurrentCostCountry('Dubai');
+      setShowCostModal(true);
+    } else {
+      // All countries processed, proceed to calculation
+      proceedToCalculation();
+    }
+  };
+
+  // Calculate prices and show preview
+  const proceedToCalculation = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch SKU Family data to get brand and product category codes
+      const skuFamilyIds = [...new Set(pendingRows.map(r => r.skuFamilyId).filter(Boolean))];
+      const skuFamilyMap = new Map();
+      
+      // Fetch all SKU families and create a map by _id
+      try {
+        const skuFamilyResponse = await SkuFamilyService.getSkuFamilyList(1, 10000);
+        if (skuFamilyResponse?.data?.docs) {
+          skuFamilyResponse.data.docs.forEach((skuFamily: any) => {
+            skuFamilyMap.set(skuFamily._id, skuFamily);
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch SKU Families:', error);
+      }
+      
+      // Fetch seller data to get seller codes
+      const sellerIds = [...new Set(pendingRows.map(r => r.supplierId).filter(Boolean))];
+      const sellerMap = new Map();
+      
+      // Fetch all sellers and create a map by _id
+      try {
+        const sellerResponse = await SellerService.getSellerList({ page: 1, limit: 10000 });
+        if (sellerResponse?.docs) {
+          sellerResponse.docs.forEach((seller: any) => {
+            sellerMap.set(seller._id, seller);
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch sellers:', error);
+      }
+      
+      // Prepare products for calculation
+      const productsForCalculation = await Promise.all(pendingRows.map(async (row) => {
+        const countryDeliverables: any[] = [];
+        
+        if (row.hkUsd || row.hkHkd) {
+          countryDeliverables.push({
+            country: 'Hongkong',
+            price: parseFloat(String(row.hkUsd)) || 0,
+            usd: parseFloat(String(row.hkUsd)) || 0,
+            xe: parseFloat(String(row.hkXe)) || 0,
+            local: parseFloat(String(row.hkHkd)) || 0,
+            hkd: parseFloat(String(row.hkHkd)) || 0,
+          });
+        }
+        
+        if (row.dubaiUsd || row.dubaiAed) {
+          countryDeliverables.push({
+            country: 'Dubai',
+            price: parseFloat(String(row.dubaiUsd)) || 0,
+            usd: parseFloat(String(row.dubaiUsd)) || 0,
+            xe: parseFloat(String(row.dubaiXe)) || 0,
+            local: parseFloat(String(row.dubaiAed)) || 0,
+            aed: parseFloat(String(row.dubaiAed)) || 0,
+          });
+        }
+
+        const skuFamily = skuFamilyMap.get(row.skuFamilyId);
+        const seller = sellerMap.get(row.supplierId);
+
+        // Extract brand code - should be populated from list endpoint
+        let brandCode = '';
+        if (skuFamily?.brand) {
+          if (skuFamily.brand && typeof skuFamily.brand === 'object' && skuFamily.brand.code) {
+            brandCode = skuFamily.brand.code;
+          }
+        }
+
+        // Extract product category code - should be populated from list endpoint
+        let productCategoryCode = '';
+        if (skuFamily?.productcategoriesId) {
+          if (skuFamily.productcategoriesId && typeof skuFamily.productcategoriesId === 'object' && skuFamily.productcategoriesId.code) {
+            productCategoryCode = skuFamily.productcategoriesId.code;
+          }
+        }
+
+        return {
+          ...row,
+          countryDeliverables,
+          sellerCode: seller?.code || '',
+          brandCode: brandCode,
+          productCategoryCode: productCategoryCode,
+          conditionCode: row.condition || '',
+          moq: parseFloat(String(row.moqPerVariant)) || 1,
+          weight: parseFloat(String(row.weight)) || 0,
+        };
+      }));
+
+      // Prepare selected costs by country
+      const selectedCostsByCountry: Record<string, string[]> = {
+        Hongkong: selectedCosts.Hongkong.map(c => c.costId),
+        Dubai: selectedCosts.Dubai.map(c => c.costId),
+      };
+
+      // Call calculation API
+      const response = await ProductService.calculateProductPrices(
+        productsForCalculation,
+        marginSelection!,
+        selectedCostsByCountry
+      );
+
+      if (response.data && response.data.products) {
+        // Map response to ProductCalculationResult format
+        const results: ProductCalculationResult[] = response.data.products.map((product: any, index: number) => ({
+          product: pendingRows[index],
+          countryDeliverables: product.countryDeliverables.map((cd: any) => ({
+            country: cd.country,
+            basePrice: cd.basePrice,
+            calculatedPrice: cd.calculatedPrice,
+            margins: cd.margins || [],
+            costs: cd.costs || [],
+            exchangeRate: cd.xe,
+          })),
+        }));
+        
+        setCalculationResults(results);
+        setShowPreviewModal(true);
+      }
+    } catch (error: any) {
+      toastHelper.showTost(error.message || 'Failed to calculate prices', 'error');
+      console.error('Calculation error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle final submit
+  const handleFinalSubmit = async () => {
+    try {
+      setLoading(true);
+      
+      // Transform calculation results back to product format with calculated prices
+      const productsToCreate = calculationResults.map((result, index) => {
+        const row = result.product;
+        
+        // Build countryDeliverables with calculated prices
+        const countryDeliverables: any[] = result.countryDeliverables.map(cd => ({
+          country: cd.country,
+          price: cd.calculatedPrice,
+          usd: cd.calculatedPrice,
+          xe: cd.exchangeRate || 0,
+          local: cd.country === 'Hongkong' 
+            ? (cd.calculatedPrice * (cd.exchangeRate || 0))
+            : (cd.calculatedPrice * (cd.exchangeRate || 0)),
+          hkd: cd.country === 'Hongkong' ? (cd.calculatedPrice * (cd.exchangeRate || 0)) : null,
+          aed: cd.country === 'Dubai' ? (cd.calculatedPrice * (cd.exchangeRate || 0)) : null,
+          basePrice: cd.basePrice,
+          calculatedPrice: cd.calculatedPrice,
+          margins: cd.margins,
+          costs: cd.costs,
+        }));
+
+        // Helper to convert empty strings to null
+        const cleanString = (val: string | null | undefined): string | null => {
+          if (!val || val === '' || (typeof val === 'string' && val.trim() === '')) return null;
+          return val;
+        };
+
+        return {
+          skuFamilyId: row.skuFamilyId,
+          gradeId: (row.grade && /^[0-9a-fA-F]{24}$/.test(row.grade)) ? row.grade : null,
+          sellerId: (row.supplierId && /^[0-9a-fA-F]{24}$/.test(row.supplierId)) ? row.supplierId : null,
+          specification: cleanString(row.version) || '',
+          simType: row.sim || '',
+          color: row.colour || '',
+          ram: cleanString(row.ram) || '',
+          storage: row.storage || '',
+          weight: row.weight ? parseFloat(String(row.weight)) : null,
+          condition: cleanString(row.condition) || null,
+          price: countryDeliverables[0]?.calculatedPrice || countryDeliverables[0]?.price || 0,
+          stock: parseFloat(String(row.totalQty)) || 0,
+          country: (cleanString(row.country) || null) as string | null,
+          moq: parseFloat(String(row.moqPerVariant)) || 1,
+          purchaseType: 'full',
+          isNegotiable: row.negotiableFixed === '1',
+          isFlashDeal: row.flashDeal && (row.flashDeal === '1' || row.flashDeal === 'true' || row.flashDeal.toLowerCase() === 'yes') ? 'true' : 'false',
+          startTime: cleanString(row.startTime) ? new Date(row.startTime).toISOString() : '',
+          expiryTime: cleanString(row.endTime) ? new Date(row.endTime).toISOString() : '',
+          groupCode: variantType === 'multi' ? `GROUP-${Date.now()}` : undefined,
+          sequence: row.sequence || null,
+          countryDeliverables,
+          supplierListingNumber: cleanString(row.supplierListingNumber) || '',
+          customerListingNumber: cleanString(row.customerListingNumber) || '',
+          packing: cleanString(row.packing) || '',
+          currentLocation: cleanString(row.currentLocation) || '',
+          deliveryLocation: cleanString(row.deliveryLocation) || '',
+          customMessage: cleanString(row.customMessage) || '',
+          totalMoq: variantType === 'multi' && pendingTotalMoq ? parseFloat(String(pendingTotalMoq)) : null,
+          paymentTerm: cleanString(row.paymentTermUsd) || cleanString(row.paymentTermHkd) || cleanString(row.paymentTermAed) || null,
+          paymentMethod: cleanString(row.paymentMethodUsd) || cleanString(row.paymentMethodHkd) || cleanString(row.paymentMethodAed) || null,
+          paymentTermDetails: {
+            usd: cleanString(row.paymentTermUsd) || null,
+            hkd: cleanString(row.paymentTermHkd) || null,
+            aed: cleanString(row.paymentTermAed) || null,
+          },
+          paymentMethodDetails: {
+            usd: cleanString(row.paymentMethodUsd) || null,
+            hkd: cleanString(row.paymentMethodHkd) || null,
+            aed: cleanString(row.paymentMethodAed) || null,
+          },
+          shippingTime: cleanString(row.shippingTime) || '',
+          deliveryTime: cleanString(row.deliveryTime) || '',
+          vendor: cleanString(row.vendor) || null,
+          vendorListingNo: cleanString(row.vendorListingNo) || '',
+          carrier: cleanString(row.carrier) || null,
+          carrierListingNo: cleanString(row.carrierListingNo) || '',
+          uniqueListingNo: cleanString(row.uniqueListingNo) || '',
+          tags: cleanString(row.tags) || '',
+          adminCustomMessage: cleanString(row.adminCustomMessage) || '',
+          remark: cleanString(row.remark) || '',
+          warranty: cleanString(row.warranty) || '',
+          batteryHealth: cleanString(row.batteryHealth) || '',
+          lockUnlock: row.lockUnlock === '1',
+        };
+      });
+
+      // Create all products
+      const createPromises = productsToCreate.map(product => 
+        ProductService.createProduct(product)
+      );
+
+      await Promise.all(createPromises);
+      
+      // Clear localStorage on successful save
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch (error) {
+        console.error('Error clearing localStorage:', error);
+      }
+      
+      toastHelper.showTost('Products created successfully!', 'success');
+      setShowPreviewModal(false);
+      onSave(pendingRows, pendingTotalMoq);
+    } catch (error: any) {
+      console.error('Error creating products:', error);
+      toastHelper.showTost(error.message || 'Failed to create products', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Column definitions
@@ -1253,7 +1579,7 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
         return (
           <input
             type="number"
-            step={column.key.includes('Xe') || column.key.includes('XE') ? '0.000001' : '0.01'}
+            step={column.key.includes('Xe') || column.key.includes('XE') ? '0.0001' : '0.01'}
             value={value as string | number}
             onChange={(e) => updateRow(rowIndex, column.key as keyof ProductRowData, e.target.value)}
             className="w-full px-2 py-1.5 text-xs border-0 bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded transition-all duration-150 text-right font-medium placeholder:text-gray-400"
@@ -1703,6 +2029,7 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
   const totalWidth = columns.reduce((sum, col) => sum + col.width + 1, 0);
 
   return (
+    <>
     <form onSubmit={handleSubmit} className="flex flex-col h-full">
       {/* Enhanced Toolbar */}
       <div className="bg-gray-100 dark:bg-gray-800 border-b-2 border-gray-300 dark:border-gray-700 px-6 py-3 flex items-center justify-between sticky top-0 z-20 shadow-md">
@@ -2157,6 +2484,36 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
         </div>
       </div>
     </form>
+
+      {/* Modals */}
+      <MarginSelectionModal
+        isOpen={showMarginModal}
+        onClose={() => setShowMarginModal(false)}
+        onNext={handleMarginNext}
+        products={pendingRows}
+      />
+
+      {currentCostCountry && (
+        <CostModuleSelectionModal
+          isOpen={showCostModal}
+          onClose={() => {
+            setShowCostModal(false);
+            setCurrentCostCountry(null);
+          }}
+          onNext={handleCostNext}
+          products={pendingRows}
+          country={currentCostCountry}
+        />
+      )}
+
+      <ProductPreviewModal
+        isOpen={showPreviewModal}
+        onClose={() => setShowPreviewModal(false)}
+        onSubmit={handleFinalSubmit}
+        calculationResults={calculationResults}
+        loading={loading}
+      />
+    </>
   );
 };
 

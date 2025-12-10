@@ -1,0 +1,214 @@
+import React, { useState } from 'react';
+import { ProductCalculationResult } from '../../utils/priceCalculation';
+
+interface ProductPreviewModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: () => void;
+  calculationResults: ProductCalculationResult[];
+  loading?: boolean;
+}
+
+const ProductPreviewModal: React.FC<ProductPreviewModalProps> = ({
+  isOpen,
+  onClose,
+  onSubmit,
+  calculationResults,
+  loading = false,
+}) => {
+  const [expandedProduct, setExpandedProduct] = useState<number | null>(null);
+
+  if (!isOpen) return null;
+
+  const toggleProduct = (index: number) => {
+    setExpandedProduct(expandedProduct === index ? null : index);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-6xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
+              Product Preview
+            </h2>
+            <button
+              onClick={onClose}
+              className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+            >
+              <i className="fas fa-times text-xl"></i>
+            </button>
+          </div>
+
+          <div className="mb-4 text-sm text-gray-600 dark:text-gray-400">
+            Click on any product to view detailed margin and cost breakdown
+          </div>
+
+          <div className="space-y-4 mb-6">
+            {calculationResults.map((result, index) => (
+              <div
+                key={index}
+                className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
+              >
+                <div
+                  className="p-4 bg-gray-50 dark:bg-gray-900 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  onClick={() => toggleProduct(index)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-800 dark:text-white">
+                        Product {index + 1}
+                      </h3>
+                      <div className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                        <div>SKU: {result.product.skuFamilyId || 'N/A'}</div>
+                        <div>Storage: {result.product.storage || 'N/A'}</div>
+                        <div>Color: {result.product.colour || 'N/A'}</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      {result.countryDeliverables.map((deliverable, idx) => (
+                        <div key={idx} className="mb-2">
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            {deliverable.country}
+                          </div>
+                          <div className="font-bold text-lg text-blue-600 dark:text-blue-400">
+                            ${deliverable.calculatedPrice.toFixed(2)}
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            Base: ${deliverable.basePrice.toFixed(2)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="ml-4">
+                      <i
+                        className={`fas fa-chevron-${expandedProduct === index ? 'up' : 'down'} text-gray-400`}
+                      ></i>
+                    </div>
+                  </div>
+                </div>
+
+                {expandedProduct === index && (
+                  <div className="p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+                    {result.countryDeliverables.map((deliverable, idx) => (
+                      <div key={idx} className="mb-4 last:mb-0">
+                        <h4 className="font-semibold text-gray-800 dark:text-white mb-3">
+                          {deliverable.country} Details
+                        </h4>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <div className="mb-2">
+                              <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                                Base Price:
+                              </span>
+                              <span className="ml-2 text-gray-800 dark:text-white">
+                                ${deliverable.basePrice.toFixed(2)}
+                              </span>
+                            </div>
+                            
+                            {deliverable.margins.length > 0 && (
+                              <div className="mb-3">
+                                <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
+                                  Margins:
+                                </div>
+                                <div className="space-y-1">
+                                  {deliverable.margins.map((margin, mIdx) => (
+                                    <div
+                                      key={mIdx}
+                                      className="text-sm bg-blue-50 dark:bg-blue-900/20 p-2 rounded"
+                                    >
+                                      <div className="flex justify-between">
+                                        <span className="text-gray-700 dark:text-gray-300">
+                                          {margin.name} ({margin.marginType === 'percentage' ? `${margin.marginValue}%` : `$${margin.marginValue}`})
+                                        </span>
+                                        <span className="font-semibold text-blue-600 dark:text-blue-400">
+                                          +${margin.calculatedAmount.toFixed(2)}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {deliverable.costs.length > 0 && (
+                              <div>
+                                <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
+                                  Costs:
+                                </div>
+                                <div className="space-y-1">
+                                  {deliverable.costs.map((cost, cIdx) => (
+                                    <div
+                                      key={cIdx}
+                                      className="text-sm bg-green-50 dark:bg-green-900/20 p-2 rounded"
+                                    >
+                                      <div className="flex justify-between">
+                                        <span className="text-gray-700 dark:text-gray-300">
+                                          {cost.name} ({cost.costType === 'Percentage' ? `${cost.value}%` : `$${cost.value}`})
+                                        </span>
+                                        <span className="font-semibold text-green-600 dark:text-green-400">
+                                          +${cost.calculatedAmount.toFixed(2)}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          <div>
+                            <div className="mb-2 p-3 bg-gray-50 dark:bg-gray-900 rounded">
+                              <div className="text-sm text-gray-600 dark:text-gray-400">
+                                Final Calculated Price
+                              </div>
+                              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">
+                                ${deliverable.calculatedPrice.toFixed(2)}
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                                Base: ${deliverable.basePrice.toFixed(2)} + 
+                                Margins: ${deliverable.margins.reduce((sum, m) => sum + m.calculatedAmount, 0).toFixed(2)} + 
+                                Costs: ${deliverable.costs.reduce((sum, c) => sum + c.calculatedAmount, 0).toFixed(2)}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={onClose}
+              className="px-6 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
+              disabled={loading}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onSubmit}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={loading}
+            >
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Submitting...
+                </span>
+              ) : (
+                'Submit Products'
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ProductPreviewModal;

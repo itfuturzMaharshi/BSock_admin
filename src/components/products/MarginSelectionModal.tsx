@@ -1,0 +1,228 @@
+import React, { useState, useEffect } from 'react';
+import { BrandService } from '../../services/brand/brand.services';
+import { ProductCategoryService } from '../../services/productCategory/productCategory.services';
+import { ConditionCategoryService } from '../../services/conditionCategory/conditionCategory.services';
+import { SellerCategoryService } from '../../services/sellerCategory/sellerCategory.services';
+import { CustomerCategoryService } from '../../services/customerCategory/customerCategory.services';
+import toastHelper from '../../utils/toastHelper';
+
+export interface MarginSelection {
+  brand: boolean;
+  productCategory: boolean;
+  conditionCategory: boolean;
+  sellerCategory: boolean;
+  customerCategory: boolean;
+}
+
+interface MarginSelectionModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onNext: (selection: MarginSelection) => void;
+  products: any[];
+}
+
+const MarginSelectionModal: React.FC<MarginSelectionModalProps> = ({
+  isOpen,
+  onClose,
+  onNext,
+  products,
+}) => {
+  const [selection, setSelection] = useState<MarginSelection>({
+    brand: false,
+    productCategory: false,
+    conditionCategory: false,
+    sellerCategory: false,
+    customerCategory: false,
+  });
+  const [loading, setLoading] = useState(false);
+  const [hasSellerCode, setHasSellerCode] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      // Check if any product has seller code
+      const hasSeller = products.some(p => p.supplierId);
+      setHasSellerCode(hasSeller);
+      
+      // If seller margin is off, uncheck all others
+      if (!selection.sellerCategory) {
+        setSelection(prev => ({
+          ...prev,
+          brand: false,
+          productCategory: false,
+          conditionCategory: false,
+          customerCategory: false,
+        }));
+      }
+    }
+  }, [isOpen, products, selection.sellerCategory]);
+
+  const handleToggle = (key: keyof MarginSelection) => {
+    if (key === 'sellerCategory') {
+      setSelection(prev => ({
+        ...prev,
+        [key]: !prev[key],
+        // If seller margin is turned off, turn off all others
+        ...(prev[key] ? {
+          brand: false,
+          productCategory: false,
+          conditionCategory: false,
+          customerCategory: false,
+        } : {}),
+      }));
+    } else {
+      // If seller margin is off, don't allow others to be selected
+      if (!selection.sellerCategory) {
+        toastHelper.showTost('Please enable Seller Category margin first', 'warning');
+        return;
+      }
+      setSelection(prev => ({
+        ...prev,
+        [key]: !prev[key],
+      }));
+    }
+  };
+
+  const handleNext = () => {
+    // Validate that at least seller category is selected if products have seller code
+    if (hasSellerCode && !selection.sellerCategory) {
+      toastHelper.showTost('Seller Category margin is required when products have seller code', 'warning');
+      return;
+    }
+    onNext(selection);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
+              Select Margins to Apply
+            </h2>
+            <button
+              onClick={onClose}
+              className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+            >
+              <i className="fas fa-times text-xl"></i>
+            </button>
+          </div>
+
+          <div className="space-y-4 mb-6">
+            <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selection.sellerCategory}
+                  onChange={() => handleToggle('sellerCategory')}
+                  className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                />
+                <span className="ml-3 text-lg font-medium text-gray-800 dark:text-white">
+                  Seller Category Margin
+                </span>
+                {hasSellerCode && (
+                  <span className="ml-2 text-sm text-blue-600 dark:text-blue-400">
+                    (Required)
+                  </span>
+                )}
+              </label>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 ml-8">
+                Apply margin based on seller category. If disabled, all other margins will be disabled.
+              </p>
+            </div>
+
+            <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selection.brand}
+                  onChange={() => handleToggle('brand')}
+                  disabled={!selection.sellerCategory}
+                  className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+                <span className={`ml-3 text-lg font-medium ${!selection.sellerCategory ? 'text-gray-400' : 'text-gray-800 dark:text-white'}`}>
+                  Brand Margin
+                </span>
+              </label>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 ml-8">
+                Apply margin based on product brand.
+              </p>
+            </div>
+
+            <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selection.productCategory}
+                  onChange={() => handleToggle('productCategory')}
+                  disabled={!selection.sellerCategory}
+                  className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+                <span className={`ml-3 text-lg font-medium ${!selection.sellerCategory ? 'text-gray-400' : 'text-gray-800 dark:text-white'}`}>
+                  Product Category Margin
+                </span>
+              </label>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 ml-8">
+                Apply margin based on product category.
+              </p>
+            </div>
+
+            <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selection.conditionCategory}
+                  onChange={() => handleToggle('conditionCategory')}
+                  disabled={!selection.sellerCategory}
+                  className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+                <span className={`ml-3 text-lg font-medium ${!selection.sellerCategory ? 'text-gray-400' : 'text-gray-800 dark:text-white'}`}>
+                  Condition Category Margin
+                </span>
+              </label>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 ml-8">
+                Apply margin based on condition category.
+              </p>
+            </div>
+
+            <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selection.customerCategory}
+                  onChange={() => handleToggle('customerCategory')}
+                  disabled={!selection.sellerCategory}
+                  className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+                <span className={`ml-3 text-lg font-medium ${!selection.sellerCategory ? 'text-gray-400' : 'text-gray-800 dark:text-white'}`}>
+                  Customer Category Margin
+                </span>
+              </label>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 ml-8">
+                Apply margin based on customer category.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={onClose}
+              className="px-6 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleNext}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default MarginSelectionModal;

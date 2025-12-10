@@ -657,4 +657,55 @@ export class ProductService {
       throw new Error(errorMessage);
     }
   };
+
+  // Calculate product prices with margins and costs
+  static calculateProductPrices = async (
+    products: any[],
+    selectedMargins: Record<string, boolean>,
+    selectedCosts: Record<string, string[]>
+  ): Promise<any> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/product/calculate-prices`;
+
+    try {
+      const res = await api.post(url, { products, selectedMargins, selectedCosts });
+      if (res.data?.status !== 200) {
+        throw new Error(res.data?.message || 'Failed to calculate prices');
+      }
+      return res.data;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to calculate prices';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
+
+  // Import products with calculated prices, margins, and costs
+  static importProductsWithCalculations = async (
+    filePath: string,
+    calculatedProducts: any[]
+  ): Promise<ImportResponse> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/product/import`;
+
+    try {
+      // Convert calculated products to the format expected by import endpoint
+      const res = await api.post(url, { 
+        filePath, 
+        calculatedProducts,
+        useCalculations: true 
+      });
+      if (res.data?.status !== 200) {
+        throw new Error(res.data?.message || 'Failed to import products');
+      }
+      toastHelper.showTost(res.data.message || 'Products imported successfully!', 'success');
+      return res.data;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to import products';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
 }
