@@ -51,6 +51,7 @@ export interface ProductRowData {
   // Other Information Group
   negotiableFixed: string;
   tags: string; // Comma-separated string of tag codes
+  flashDeal: string;
   shippingTime: string;
   deliveryTime: string;
   vendor: string;
@@ -105,6 +106,12 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
   const [currentCustomerListingNumber, setCurrentCustomerListingNumber] = useState<number | null>(null);
   const [supplierListingNumbers, setSupplierListingNumbers] = useState<Record<string, { listingNumber: number; supplierCode: string }>>({});
   const [currentUniqueListingNumber, setCurrentUniqueListingNumber] = useState<number | null>(null);
+  const [shippingTimeMode, setShippingTimeMode] = useState<Record<number, 'today' | 'tomorrow' | 'custom'>>({});
+  const totalMoqCellRef = useRef<HTMLDivElement | null>(null);
+  const rowsContainerRef = useRef<HTMLDivElement | null>(null);
+  const totalMoqPlaceholderRef = useRef<HTMLDivElement | null>(null);
+  const [totalMoqHeight, setTotalMoqHeight] = useState<number>(0);
+  const [totalMoqLeft, setTotalMoqLeft] = useState<number>(0);
 
   // LocalStorage key for saving form data
   const STORAGE_KEY = 'variant-product-form-data';
@@ -144,6 +151,129 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
       setRows([createEmptyRow(0)]);
     }
   }, [variantType, variants]);
+
+  // Sync shipping time mode with values
+  useEffect(() => {
+    const newModes: Record<number, 'today' | 'tomorrow' | 'calendar' | ''> = {};
+    let hasChanges = false;
+    
+    rows.forEach((row, index) => {
+      const shippingTimeValue = row.shippingTime;
+      if (!shippingTimeValue) {
+        if (shippingTimeMode[index]) {
+          newModes[index] = '';
+          hasChanges = true;
+        }
+        return;
+      }
+      
+      try {
+        const formatDate = (date: Date): string => {
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        };
+        
+        const getToday = (): Date => {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          return today;
+        };
+        
+        const getTomorrow = (): Date => {
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          tomorrow.setHours(0, 0, 0, 0);
+          return tomorrow;
+        };
+        
+        const dateValue = new Date(shippingTimeValue);
+        dateValue.setHours(0, 0, 0, 0);
+        
+        const todayStr = formatDate(getToday());
+        const tomorrowStr = formatDate(getTomorrow());
+        const valueStr = formatDate(dateValue);
+        
+        let detectedMode: 'today' | 'tomorrow' | 'calendar' | '' = '';
+        if (valueStr === todayStr) {
+          detectedMode = 'today';
+        } else if (valueStr === tomorrowStr) {
+          detectedMode = 'tomorrow';
+        } else {
+          detectedMode = 'calendar';
+        }
+        
+        if (shippingTimeMode[index] !== detectedMode) {
+          newModes[index] = detectedMode;
+          hasChanges = true;
+        }
+      } catch (e) {
+        // Invalid date, clear mode
+        if (shippingTimeMode[index]) {
+          newModes[index] = '';
+          hasChanges = true;
+        }
+      }
+    });
+    
+    if (hasChanges) {
+      setShippingTimeMode({ ...shippingTimeMode, ...newModes });
+    }
+  }, [rows.map(r => r.shippingTime).join(',')]);
+
+  // Calculate TOTAL MOQ cell height and position to span all rows
+  useEffect(() => {
+    if (variantType === 'multi' && rows.length > 0) {
+      const updatePosition = () => {
+        if (rowsContainerRef.current) {
+          // Get the actual height of the rows container
+          const containerHeight = rowsContainerRef.current.scrollHeight;
+          setTotalMoqHeight(containerHeight);
+        } else {
+          // Fallback: calculate approximate height (40px per row + borders)
+          const approximateHeight = rows.length * 40;
+          setTotalMoqHeight(approximateHeight);
+        }
+        
+        // Measure the actual left position from the placeholder
+        if (totalMoqPlaceholderRef.current && rowsContainerRef.current) {
+          const placeholderRect = totalMoqPlaceholderRef.current.getBoundingClientRect();
+          const containerRect = rowsContainerRef.current.getBoundingClientRect();
+          const leftPosition = placeholderRect.left - containerRect.left;
+          setTotalMoqLeft(leftPosition);
+        }
+      };
+      
+      // Use ResizeObserver for accurate tracking
+      if (rowsContainerRef.current) {
+        const resizeObserver = new ResizeObserver(() => {
+          updatePosition();
+        });
+        resizeObserver.observe(rowsContainerRef.current);
+        
+        // Initial update
+        updatePosition();
+        
+        // Also update after a short delay to ensure DOM is ready
+        const timeoutId = setTimeout(updatePosition, 100);
+        const timeoutId2 = setTimeout(updatePosition, 300);
+        
+        return () => {
+          resizeObserver.disconnect();
+          clearTimeout(timeoutId);
+          clearTimeout(timeoutId2);
+        };
+      } else {
+        // Fallback calculation
+        const approximateHeight = rows.length * 40;
+        setTotalMoqHeight(approximateHeight);
+      }
+    } else {
+      setTotalMoqHeight(0);
+      setTotalMoqLeft(0);
+    }
+  }, [rows.length, variantType, rows]);
 
   // Save data to localStorage whenever rows or totalMoq change
   useEffect(() => {
@@ -197,6 +327,7 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
     paymentMethodAed: '',
     negotiableFixed: '0',
     tags: '',
+    flashDeal: '',
     shippingTime: '',
     deliveryTime: '',
     vendor: '',
@@ -681,6 +812,7 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
     { key: 'paymentMethodHkd', label: 'HKD', width: 130, group: 'PAYMENT METHOD', subgroup: 'PAYMENT_METHOD' },
     { key: 'paymentMethodAed', label: 'AED', width: 130, group: 'PAYMENT METHOD', subgroup: 'PAYMENT_METHOD' },
     { key: 'negotiableFixed', label: 'NEGOTIABLE/FIXED', width: 150, group: 'Other Info' },
+    { key: 'flashDeal', label: 'FLASH DEAL', width: 130, group: 'Other Info' },
     { key: 'shippingTime', label: 'SHIPPING TIME', width: 130, group: 'Other Info' },
     { key: 'deliveryTime', label: 'DELIVERY TIME', width: 130, group: 'Other Info' },
     { key: 'vendor', label: 'VENDOR', width: 100, group: 'Other Info' },
@@ -730,6 +862,9 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
   
   // Get carrier options from constants (show name, store code)
   const carrierOptions = constants?.carrier || [];
+  
+  // Get flashDeal options from constants (show name, store code)
+  const flashDealOptions = constants?.flashDeal || [];
 
   const renderCell = (row: ProductRowData, rowIndex: number, column: typeof columns[0]) => {
     const value = row[column.key as keyof ProductRowData];
@@ -737,26 +872,25 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
 
     switch (column.key) {
       case 'skuFamilyId':
-        if (variantType === 'multi') {
-          return (
-            <div className="relative">
-              <input
-                type="text"
-                value={value as string}
-                className="w-full px-2 py-1.5 text-xs border-0 bg-gray-200 dark:bg-gray-700 rounded text-gray-600 dark:text-gray-400 italic"
-                readOnly
-                disabled
-              />
-              <i className="fas fa-lock absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs"></i>
-            </div>
-          );
-        }
         return (
           <div className="min-w-[150px]" onFocus={() => setFocusedCell({ row: rowIndex, col: column.key })}>
             <Select
               options={skuFamilies.map(sku => ({ value: sku._id, label: sku.name }))}
               value={skuFamilies.find(sku => sku._id === value) ? { value: value as string, label: skuFamilies.find(sku => sku._id === value)?.name } : null}
-              onChange={(opt) => updateRow(rowIndex, column.key as keyof ProductRowData, opt?.value || '')}
+              onChange={(opt) => {
+                updateRow(rowIndex, column.key as keyof ProductRowData, opt?.value || '');
+                // Auto-fill related fields if SKU Family has subSkuFamilies
+                if (opt?.value) {
+                  const selectedSku = skuFamilies.find(sku => sku._id === opt.value);
+                  if (selectedSku && selectedSku.subSkuFamilies && selectedSku.subSkuFamilies.length > 0) {
+                    // If SKU Family has subSkuFamilies, don't auto-fill (let user select via search)
+                    // The search functionality will handle filling these fields
+                  } else if (selectedSku) {
+                    // If no subSkuFamilies, fill basic info
+                    updateRow(rowIndex, 'subModelName', selectedSku.name);
+                  }
+                }
+              }}
               className="text-xs"
               classNamePrefix="select"
               isSearchable
@@ -791,12 +925,11 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
             onChange={(e) => updateRow(rowIndex, column.key as keyof ProductRowData, e.target.value)}
             className="w-full px-2 py-1.5 text-xs border-0 bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded transition-all duration-150 placeholder:text-gray-400"
             required={column.key === 'subModelName' || column.key === 'storage' || column.key === 'colour'}
-            disabled={variantType === 'multi' && (column.key === 'subModelName' || column.key === 'storage' || column.key === 'colour')}
             onFocus={() => {
               setFocusedCell({ row: rowIndex, col: column.key });
               setSelectedRowIndex(rowIndex);
             }}
-            placeholder={variantType === 'multi' ? 'Auto-filled' : 'Enter value'}
+            placeholder="Enter value or use search"
           />
         );
 
@@ -984,6 +1117,26 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
           </select>
         );
 
+      case 'flashDeal':
+        return (
+          <select
+            value={value as string}
+            onChange={(e) => updateRow(rowIndex, column.key as keyof ProductRowData, e.target.value)}
+            className="w-full px-2 py-1 text-xs border-0 bg-transparent focus:outline-none focus:ring-1 focus:ring-blue-500"
+            onFocus={() => {
+              setFocusedCell({ row: rowIndex, col: column.key });
+              setSelectedRowIndex(rowIndex);
+            }}
+          >
+            <option value="">Select</option>
+            {flashDealOptions.map(opt => (
+              <option key={opt.code} value={opt.code}>
+                {opt.name}
+              </option>
+            ))}
+          </select>
+        );
+
       case 'paymentTermUsd':
       case 'paymentTermHkd':
       case 'paymentTermAed':
@@ -1121,9 +1274,9 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
 
       case 'totalMoq':
         // Only render in first row, will span all rows
-        if (rowIndex === 0) {
+        if (rowIndex === 0 && variantType === 'multi') {
           return (
-            <div className="flex flex-col items-center justify-center h-full py-2">
+            <div className="flex flex-col items-center justify-center w-full h-full py-2">
               <input
                 type="number"
                 step="0.01"
@@ -1132,7 +1285,6 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
                 className="w-full px-2 py-1.5 text-sm border-2 border-purple-300 dark:border-purple-600 rounded-lg bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all font-medium text-center"
                 placeholder="0.00"
                 required
-                style={{ minHeight: `${rows.length * 40}px` }}
                 onFocus={() => {
                   setFocusedCell({ row: rowIndex, col: column.key });
                   setSelectedRowIndex(rowIndex);
@@ -1144,7 +1296,8 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
             </div>
           );
         }
-        return null; // Don't render for other rows
+        // Don't render for other rows or single variant
+        return null;
 
       case 'deliveryLocation':
         return (
@@ -1382,6 +1535,136 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
                 setSelectedRowIndex(rowIndex);
               }}
             />
+          </div>
+        );
+
+      case 'shippingTime':
+        const shippingTimeValue = value as string;
+        
+        // Helper function to format date as YYYY-MM-DD
+        const formatDate = (date: Date): string => {
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        };
+        
+        // Helper function to get today's date
+        const getToday = (): Date => {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          return today;
+        };
+        
+        // Helper function to get tomorrow's date
+        const getTomorrow = (): Date => {
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          tomorrow.setHours(0, 0, 0, 0);
+          return tomorrow;
+        };
+        
+        // Determine current selected date value and detect mode from value
+        let selectedDate: Date | null = null;
+        let detectedMode: 'today' | 'tomorrow' | 'calendar' | '' = '';
+        
+        if (shippingTimeValue) {
+          try {
+            const dateValue = new Date(shippingTimeValue);
+            dateValue.setHours(0, 0, 0, 0);
+            selectedDate = dateValue;
+            
+            // Auto-detect if it's today or tomorrow
+            const todayStr = formatDate(getToday());
+            const tomorrowStr = formatDate(getTomorrow());
+            const valueStr = formatDate(dateValue);
+            
+            if (valueStr === todayStr) {
+              detectedMode = 'today';
+            } else if (valueStr === tomorrowStr) {
+              detectedMode = 'tomorrow';
+            } else {
+              detectedMode = 'calendar';
+            }
+          } catch (e) {
+            selectedDate = null;
+            detectedMode = '';
+          }
+        }
+        
+        // Use stored mode if exists, otherwise use detected mode
+        const storedMode = shippingTimeMode[rowIndex];
+        const currentMode = storedMode || detectedMode;
+        
+        return (
+          <div className="w-full" onFocus={() => setFocusedCell({ row: rowIndex, col: column.key })}>
+            {/* Dropdown for selection */}
+            <select
+              value={currentMode || ''}
+              onChange={(e) => {
+                const selectedMode = e.target.value as 'today' | 'tomorrow' | 'calendar' | '';
+                const newMode = selectedMode || '';
+                
+                // Update mode state
+                setShippingTimeMode({ ...shippingTimeMode, [rowIndex]: newMode });
+                
+                if (selectedMode === 'today') {
+                  const today = getToday();
+                  const todayStr = formatDate(today);
+                  updateRow(rowIndex, column.key as keyof ProductRowData, todayStr);
+                } else if (selectedMode === 'tomorrow') {
+                  const tomorrow = getTomorrow();
+                  const tomorrowStr = formatDate(tomorrow);
+                  updateRow(rowIndex, column.key as keyof ProductRowData, tomorrowStr);
+                } else if (selectedMode === 'calendar') {
+                  // Keep existing value or set to today if empty
+                  if (!shippingTimeValue) {
+                    const today = getToday();
+                    const todayStr = formatDate(today);
+                    updateRow(rowIndex, column.key as keyof ProductRowData, todayStr);
+                  }
+                } else {
+                  // Clear value when "Select shipping time" is chosen
+                  updateRow(rowIndex, column.key as keyof ProductRowData, '');
+                }
+              }}
+              className="w-full px-2 py-1.5 text-xs border-0 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded transition-all duration-150 cursor-pointer appearance-none"
+              onFocus={() => {
+                setFocusedCell({ row: rowIndex, col: column.key });
+                setSelectedRowIndex(rowIndex);
+              }}
+            >
+              <option value="">Select shipping time</option>
+              <option value="today">Today</option>
+              <option value="tomorrow">Tomorrow</option>
+              <option value="calendar">Calendar</option>
+            </select>
+            
+            {/* Show date picker only when calendar is selected */}
+            {currentMode === 'calendar' && (
+              <div className="mt-1">
+                <DatePicker
+                  selected={selectedDate}
+                  onChange={(date) => {
+                    if (date) {
+                      const dateStr = formatDate(date);
+                      updateRow(rowIndex, column.key as keyof ProductRowData, dateStr);
+                    } else {
+                      updateRow(rowIndex, column.key as keyof ProductRowData, '');
+                    }
+                  }}
+                  dateFormat="yyyy-MM-dd"
+                  className="w-full px-2 py-1.5 text-xs border-0 bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded transition-all duration-150 placeholder:text-gray-400"
+                  placeholderText="Select date"
+                  minDate={getToday()}
+                  onFocus={() => {
+                    setFocusedCell({ row: rowIndex, col: column.key });
+                    setSelectedRowIndex(rowIndex);
+                  }}
+                  wrapperClassName="w-full"
+                />
+              </div>
+            )}
           </div>
         );
 
@@ -1738,7 +2021,33 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
           </div>
 
           {/* Enhanced Rows */}
-          <div>
+          <div ref={rowsContainerRef} className="relative">
+            {/* TOTAL MOQ spanning cell - rendered once for multi-variant mode */}
+            {variantType === 'multi' && rows.length > 0 && totalMoqLeft > 0 && (() => {
+              const totalMoqCol = columns.find(col => col.key === 'totalMoq');
+              if (!totalMoqCol) return null;
+              
+              return (
+                <div
+                  ref={totalMoqCellRef}
+                  className="px-0 py-1.5 border-r border-purple-300 dark:border-purple-600 bg-purple-50 dark:bg-purple-900/30 absolute"
+                  style={{ 
+                    width: `${totalMoqCol.width}px`, 
+                    minWidth: `${totalMoqCol.width}px`,
+                    left: `${totalMoqLeft}px`,
+                    top: '0',
+                    height: totalMoqHeight > 0 ? `${totalMoqHeight}px` : `${rows.length * 40}px`,
+                    minHeight: totalMoqHeight > 0 ? `${totalMoqHeight}px` : `${rows.length * 40}px`,
+                    zIndex: 10
+                  }}
+                  title={`Total MOQ for all ${rows.length} products`}
+                >
+                  <div className="w-full h-full flex flex-col items-center justify-center px-2">
+                    {renderCell(rows[0], 0, totalMoqCol)}
+                  </div>
+                </div>
+              );
+            })()}
             {rows.map((row, rowIndex) => (
               <div
                 key={rowIndex}
@@ -1791,35 +2100,39 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
 
                 {/* Enhanced Cells */}
                 {columns.map((col) => {
-                  // For totalMoq column, only render in first row
-                  if (col.key === 'totalMoq' && rowIndex !== 0) {
-                    return null;
+                  // For totalMoq column in multi-variant mode:
+                  // - Render invisible placeholder in all rows to maintain column alignment
+                  // - The actual spanning cell is rendered outside the row loop
+                  // - Use ref on first row's placeholder to measure position
+                  if (col.key === 'totalMoq' && variantType === 'multi') {
+                    return (
+                      <div
+                        key={`${rowIndex}-${col.key}`}
+                        ref={rowIndex === 0 ? totalMoqPlaceholderRef : null}
+                        className="px-0 py-1.5 border-r border-gray-200 dark:border-gray-700"
+                        style={{ 
+                          width: `${col.width}px`, 
+                          minWidth: `${col.width}px`,
+                          visibility: 'hidden',
+                          pointerEvents: 'none'
+                        }}
+                        aria-hidden="true"
+                      />
+                    );
                   }
                   
-                  // Calculate rowspan for totalMoq column
-                  const isTotalMoqFirstRow = col.key === 'totalMoq' && rowIndex === 0;
-                  const rowspan = isTotalMoqFirstRow ? rows.length : 1;
-                  
+                  // Regular columns (not totalMoq or totalMoq in single variant)
                   return (
                     <div
-                      key={col.key}
+                      key={`${rowIndex}-${col.key}`}
                       className={`px-0 py-1.5 border-r border-gray-200 dark:border-gray-700 relative group transition-all duration-150 ${
-                        col.key === 'totalMoq' 
-                          ? 'bg-purple-50 dark:bg-purple-900/30 border-purple-300 dark:border-purple-600'
-                          : ''
-                      } ${
                         focusedCell?.row === rowIndex && focusedCell?.col === col.key
                           ? 'ring-2 ring-blue-500 ring-offset-1 z-10 bg-blue-50 dark:bg-blue-900/30 shadow-md'
                           : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
                       }`}
                       style={{ 
                         width: `${col.width}px`, 
-                        minWidth: `${col.width}px`,
-                        ...(isTotalMoqFirstRow ? { 
-                          height: `${rows.length * 40}px`,
-                          minHeight: `${rows.length * 40}px`,
-                          verticalAlign: 'middle'
-                        } : {})
+                        minWidth: `${col.width}px`
                       }}
                       onDoubleClick={() => fillAllBelow(rowIndex, col.key)}
                       title="Double-click to fill all below"

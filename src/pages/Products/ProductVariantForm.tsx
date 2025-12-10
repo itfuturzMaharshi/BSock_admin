@@ -165,8 +165,9 @@ const ProductVariantForm: React.FC = () => {
           moq: parseFloat(String(row.moqPerVariant)) || 1,
           purchaseType: row.moqPerCart ? 'partial' : 'full',
           isNegotiable: row.negotiableFixed === '1',
-          // Check if tags contains HOT DEAL (code 1)
-          isFlashDeal: row.tags && row.tags.split(',').map(t => parseInt(t.trim())).includes(1) ? 'true' : 'false',
+          // Use flashDeal field from form (code value from constants), convert to boolean string
+          // Assuming code '1' or 'true' means flash deal enabled, empty or '0'/'false' means disabled
+          isFlashDeal: row.flashDeal && (row.flashDeal === '1' || row.flashDeal === 'true' || row.flashDeal.toLowerCase() === 'yes') ? 'true' : 'false',
           startTime: cleanString(row.startTime) ? new Date(row.startTime).toISOString() : '',
           expiryTime: cleanString(row.endTime) ? new Date(row.endTime).toISOString() : '',
           groupCode: variantType === 'multi' ? `GROUP-${Date.now()}` : undefined,

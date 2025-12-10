@@ -44,6 +44,10 @@ export interface Constants {
     code: string;
     name: string;
   }>;
+  flashDeal?: Array<{
+    code: string;
+    name: string;
+  }>;
   sequenceOrder?: Array<{
     code: number;
     name: string;
