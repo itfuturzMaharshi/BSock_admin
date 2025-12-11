@@ -77,10 +77,14 @@ const ProductListingModal: React.FC<ProductListingModalProps> = ({
         // Build countryDeliverables array
         const countryDeliverables: any[] = [];
         
-        if (row.hkUsd || row.hkHkd) {
+        // For Hongkong: Create USD entry
+        if (row.hkUsd) {
           countryDeliverables.push({
             country: 'Hongkong',
-            price: parseFloat(String(row.hkUsd)) || 0,
+            currency: 'USD',
+            basePrice: parseFloat(String(row.hkUsd)) || 0,
+            exchangeRate: parseFloat(String(row.hkXe)) || null,
+            // Legacy fields
             usd: parseFloat(String(row.hkUsd)) || 0,
             xe: parseFloat(String(row.hkXe)) || 0,
             local: parseFloat(String(row.hkHkd)) || 0,
@@ -88,10 +92,14 @@ const ProductListingModal: React.FC<ProductListingModalProps> = ({
           });
         }
         
-        if (row.dubaiUsd || row.dubaiAed) {
+        // For Dubai: Create USD entry
+        if (row.dubaiUsd) {
           countryDeliverables.push({
             country: 'Dubai',
-            price: parseFloat(String(row.dubaiUsd)) || 0,
+            currency: 'USD',
+            basePrice: parseFloat(String(row.dubaiUsd)) || 0,
+            exchangeRate: parseFloat(String(row.dubaiXe)) || null,
+            // Legacy fields
             usd: parseFloat(String(row.dubaiUsd)) || 0,
             xe: parseFloat(String(row.dubaiXe)) || 0,
             local: parseFloat(String(row.dubaiAed)) || 0,
@@ -116,7 +124,6 @@ const ProductListingModal: React.FC<ProductListingModalProps> = ({
           storage: row.storage || '',
           weight: row.weight ? parseFloat(String(row.weight)) : null,
           condition: cleanString(row.condition) || null,
-          price: parseFloat(String(row.hkUsd || row.dubaiUsd || 0)),
           stock: parseFloat(String(row.totalQty)) || 0,
           country: (cleanString(row.country) || null) as string | null,
           moq: parseFloat(String(row.moqPerVariant)) || 1,
@@ -133,7 +140,18 @@ const ProductListingModal: React.FC<ProductListingModalProps> = ({
           supplierListingNumber: cleanString(row.supplierListingNumber) || '',
           packing: cleanString(row.packing) || '',
           currentLocation: cleanString(row.currentLocation) || '',
-          deliveryLocation: cleanString(row.deliveryLocation) || '',
+          deliveryLocation: Array.isArray(row.deliveryLocation) 
+            ? row.deliveryLocation 
+            : (row.deliveryLocation && typeof row.deliveryLocation === 'string' 
+                ? (() => {
+                    try {
+                      const parsed = JSON.parse(row.deliveryLocation);
+                      return Array.isArray(parsed) ? parsed : [row.deliveryLocation];
+                    } catch {
+                      return [row.deliveryLocation];
+                    }
+                  })()
+                : []),
           customMessage: cleanString(row.customMessage) || '',
           paymentTerm: cleanString(row.paymentTerm) || null,
           paymentMethod: cleanString(row.paymentMethod) || null,

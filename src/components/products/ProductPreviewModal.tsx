@@ -18,6 +18,64 @@ const ProductPreviewModal: React.FC<ProductPreviewModalProps> = ({
 }) => {
   const [expandedProduct, setExpandedProduct] = useState<number | null>(null);
 
+  // Build per-currency deliverables (USD + HKD/AED) so both show in preview
+  const expandDeliverables = (deliverables: any[]) => {
+    const expanded: any[] = [];
+    deliverables.forEach((cd) => {
+      const rate =
+        cd.exchangeRate ??
+        cd.xe ??
+        (cd.hkd && cd.basePrice ? cd.hkd / cd.basePrice : undefined) ??
+        (cd.aed && cd.basePrice ? cd.aed / cd.basePrice : undefined) ??
+        1;
+
+      // Base currency (as-is from API)
+      expanded.push({
+        ...cd,
+        currency: cd.currency || 'USD',
+      });
+
+      // HKD view when available
+      if (cd.hkd !== undefined && cd.hkd !== null) {
+        const localRate = rate || 1;
+        expanded.push({
+          ...cd,
+          currency: 'HKD',
+          basePrice: (cd.basePrice || 0) * localRate,
+          calculatedPrice: (cd.calculatedPrice || 0) * localRate,
+          margins: (cd.margins || []).map((m: any) => ({
+            ...m,
+            calculatedAmount: (m.calculatedAmount || 0) * localRate,
+          })),
+          costs: (cd.costs || []).map((c: any) => ({
+            ...c,
+            calculatedAmount: (c.calculatedAmount || 0) * localRate,
+          })),
+        });
+      }
+
+      // AED view when available
+      if (cd.aed !== undefined && cd.aed !== null) {
+        const localRate = rate || 1;
+        expanded.push({
+          ...cd,
+          currency: 'AED',
+          basePrice: (cd.basePrice || 0) * localRate,
+          calculatedPrice: (cd.calculatedPrice || 0) * localRate,
+          margins: (cd.margins || []).map((m: any) => ({
+            ...m,
+            calculatedAmount: (m.calculatedAmount || 0) * localRate,
+          })),
+          costs: (cd.costs || []).map((c: any) => ({
+            ...c,
+            calculatedAmount: (c.calculatedAmount || 0) * localRate,
+          })),
+        });
+      }
+    });
+    return expanded;
+  };
+
   if (!isOpen) return null;
 
   const toggleProduct = (index: number) => {
@@ -66,10 +124,10 @@ const ProductPreviewModal: React.FC<ProductPreviewModalProps> = ({
                       </div>
                     </div>
                     <div className="text-right">
-                      {result.countryDeliverables.map((deliverable, idx) => (
+                      {expandDeliverables(result.countryDeliverables).map((deliverable, idx) => (
                         <div key={idx} className="mb-2">
                           <div className="text-xs text-gray-500 dark:text-gray-400">
-                            {deliverable.country}
+                            {deliverable.country} ({deliverable.currency || 'USD'})
                           </div>
                           <div className="font-bold text-lg text-blue-600 dark:text-blue-400">
                             ${deliverable.calculatedPrice.toFixed(2)}
@@ -90,10 +148,10 @@ const ProductPreviewModal: React.FC<ProductPreviewModalProps> = ({
 
                 {expandedProduct === index && (
                   <div className="p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
-                    {result.countryDeliverables.map((deliverable, idx) => (
+                    {expandDeliverables(result.countryDeliverables).map((deliverable, idx) => (
                       <div key={idx} className="mb-4 last:mb-0">
                         <h4 className="font-semibold text-gray-800 dark:text-white mb-3">
-                          {deliverable.country} Details
+                          {deliverable.country} Details {deliverable.currency ? `(${deliverable.currency})` : ''}
                         </h4>
                         
                         <div className="grid grid-cols-2 gap-4">
@@ -106,6 +164,32 @@ const ProductPreviewModal: React.FC<ProductPreviewModalProps> = ({
                                 ${deliverable.basePrice.toFixed(2)}
                               </span>
                             </div>
+                              {deliverable.currency && deliverable.currency !== 'USD' && (
+                                <div className="mb-2">
+                                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                                    Currency:
+                                  </span>
+                                  <span className="ml-2 text-gray-800 dark:text-white">
+                                    {deliverable.currency}
+                                  </span>
+                                </div>
+                              )}
+                              {/* Show explicit local-currency prices if provided by backend */}
+                              {deliverable.hkd !== undefined && (
+                                <div className="text-sm text-gray-600 dark:text-gray-400">
+                                  HKD Price: {deliverable.hkd.toFixed ? deliverable.hkd.toFixed(2) : deliverable.hkd}
+                                </div>
+                              )}
+                              {deliverable.aed !== undefined && (
+                                <div className="text-sm text-gray-600 dark:text-gray-400">
+                                  AED Price: {deliverable.aed.toFixed ? deliverable.aed.toFixed(2) : deliverable.aed}
+                                </div>
+                              )}
+                              {deliverable.local !== undefined && deliverable.local !== null && (
+                                <div className="text-sm text-gray-600 dark:text-gray-400">
+                                  Local Price ({deliverable.currency || 'Local'}): {deliverable.local}
+                                </div>
+                              )}
                             
                             {deliverable.margins.length > 0 && (
                               <div className="mb-3">
@@ -148,7 +232,7 @@ const ProductPreviewModal: React.FC<ProductPreviewModalProps> = ({
                                           {cost.name} ({cost.costType === 'Percentage' ? `${cost.value}%` : `$${cost.value}`})
                                         </span>
                                         <span className="font-semibold text-green-600 dark:text-green-400">
-                                          +${cost.calculatedAmount.toFixed(2)}
+                                          +${(cost.calculatedAmount || 0).toFixed(2)}
                                         </span>
                                       </div>
                                     </div>
@@ -168,8 +252,8 @@ const ProductPreviewModal: React.FC<ProductPreviewModalProps> = ({
                               </div>
                               <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
                                 Base: ${deliverable.basePrice.toFixed(2)} + 
-                                Margins: ${deliverable.margins.reduce((sum, m) => sum + m.calculatedAmount, 0).toFixed(2)} + 
-                                Costs: ${deliverable.costs.reduce((sum, c) => sum + c.calculatedAmount, 0).toFixed(2)}
+                                Margins: ${deliverable.margins.reduce((sum, m) => sum + (m.calculatedAmount || 0), 0).toFixed(2)} + 
+                                Costs: ${deliverable.costs.reduce((sum, c) => sum + (c.calculatedAmount || 0), 0).toFixed(2)}
                               </div>
                             </div>
                           </div>

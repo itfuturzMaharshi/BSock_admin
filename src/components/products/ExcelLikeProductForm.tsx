@@ -31,14 +31,14 @@ export interface ProductRowData {
   
   // Pricing / Delivery / Payment Method Group
   packing: string;
-  currentLocation: string;
+  currentLocation: string; // Store code: "HK" or "D"
   hkUsd: number | string;
   hkXe: number | string;
   hkHkd: number | string;
   dubaiUsd: number | string;
   dubaiXe: number | string;
   dubaiAed: number | string;
-  deliveryLocation: string;
+  deliveryLocation: string[]; // Array of codes: ["HK", "D"]
   customMessage: string;
   totalQty: number | string;
   moqPerVariant: number | string;
@@ -319,7 +319,7 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
     grade: '',
     status: '', // Will be set from constants
     condition: '',
-    lockUnlock: '0',
+    lockUnlock: '',
     warranty: '',
     batteryHealth: '',
     packing: '',
@@ -330,7 +330,7 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
     dubaiUsd: '',
     dubaiXe: '',
     dubaiAed: '',
-    deliveryLocation: '',
+    deliveryLocation: [],
     customMessage: '',
     totalQty: '',
     moqPerVariant: '',
@@ -533,15 +533,17 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
     setRows(prevRows => prevRows.map(row => {
       const updatedRow = { ...row };
       
-      // Auto-calculate delivery location
+      // Auto-calculate delivery location based on pricing
       const locations: string[] = [];
-      if (row.currentLocation === 'Hong Kong' || row.hkUsd || row.hkHkd) {
-        locations.push('Hong Kong');
+      // If HK pricing exists, add HK to delivery locations
+      if (row.hkUsd || row.hkHkd) {
+        locations.push('HK');
       }
-      if (row.currentLocation === 'Dubai' || row.dubaiUsd || row.dubaiAed) {
-        locations.push('Dubai');
+      // If Dubai pricing exists, add D to delivery locations
+      if (row.dubaiUsd || row.dubaiAed) {
+        locations.push('D');
       }
-      updatedRow.deliveryLocation = locations.join(',');
+      updatedRow.deliveryLocation = locations;
       
       return updatedRow;
     }));
@@ -741,9 +743,17 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Set current time for start time if not entered
+    const currentTime = new Date().toISOString();
+    const updatedRows = rows.map(row => ({
+      ...row,
+      startTime: row.startTime || currentTime
+    }));
+    setRows(updatedRows);
+    
     // Validate required fields
     const errors: string[] = [];
-      rows.forEach((row, index) => {
+      updatedRows.forEach((row, index) => {
         if (!row.skuFamilyId) errors.push(`Row ${index + 1}: SKU Family is required`);
         if (!row.subModelName) errors.push(`Row ${index + 1}: SubModelName is required`);
         if (!row.storage) errors.push(`Row ${index + 1}: Storage is required`);
@@ -763,6 +773,7 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
         if (!row.paymentMethodUsd || row.paymentMethodUsd.trim() === '') {
           errors.push(`Row ${index + 1}: PAYMENT METHOD (USD) is required`);
         }
+        if (!row.endTime) errors.push(`Row ${index + 1}: END TIME is required`);
       });
 
     if (errors.length > 0) {
@@ -775,7 +786,7 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
       }
     }
 
-    const rowsWithListingNos = rows.map((row, index) => {
+    const rowsWithListingNos = updatedRows.map((row, index) => {
       // Ensure unique listing number is set (8-digit)
       let uniqueListingNo = row.uniqueListingNo;
       if (!uniqueListingNo && currentUniqueListingNumber !== null) {
@@ -888,10 +899,14 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
       const productsForCalculation = await Promise.all(pendingRows.map(async (row) => {
         const countryDeliverables: any[] = [];
         
-        if (row.hkUsd || row.hkHkd) {
+        // For Hongkong: Create USD entry
+        if (row.hkUsd) {
           countryDeliverables.push({
             country: 'Hongkong',
-            price: parseFloat(String(row.hkUsd)) || 0,
+            currency: 'USD',
+            basePrice: parseFloat(String(row.hkUsd)) || 0,
+            exchangeRate: parseFloat(String(row.hkXe)) || null,
+            // Legacy fields
             usd: parseFloat(String(row.hkUsd)) || 0,
             xe: parseFloat(String(row.hkXe)) || 0,
             local: parseFloat(String(row.hkHkd)) || 0,
@@ -899,10 +914,14 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
           });
         }
         
-        if (row.dubaiUsd || row.dubaiAed) {
+        // For Dubai: Create USD entry
+        if (row.dubaiUsd) {
           countryDeliverables.push({
             country: 'Dubai',
-            price: parseFloat(String(row.dubaiUsd)) || 0,
+            currency: 'USD',
+            basePrice: parseFloat(String(row.dubaiUsd)) || 0,
+            exchangeRate: parseFloat(String(row.dubaiXe)) || null,
+            // Legacy fields
             usd: parseFloat(String(row.dubaiUsd)) || 0,
             xe: parseFloat(String(row.dubaiXe)) || 0,
             local: parseFloat(String(row.dubaiAed)) || 0,
@@ -965,6 +984,9 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
             margins: cd.margins || [],
             costs: cd.costs || [],
             exchangeRate: cd.xe,
+            // Preserve local currency calculations for preview rendering
+            hkd: cd.hkd,
+            aed: cd.aed,
           })),
         }));
         
@@ -985,25 +1007,104 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
       setLoading(true);
       
       // Transform calculation results back to product format with calculated prices
+      // IMPORTANT: Each calculation result represents ONE product row, and we create ONE product per row
+      // with ALL countryDeliverables combined (USD + local currency for each country)
       const productsToCreate = calculationResults.map((result, index) => {
         const row = result.product;
         
         // Build countryDeliverables with calculated prices
-        const countryDeliverables: any[] = result.countryDeliverables.map(cd => ({
-          country: cd.country,
-          price: cd.calculatedPrice,
-          usd: cd.calculatedPrice,
-          xe: cd.exchangeRate || 0,
-          local: cd.country === 'Hongkong' 
-            ? (cd.calculatedPrice * (cd.exchangeRate || 0))
-            : (cd.calculatedPrice * (cd.exchangeRate || 0)),
-          hkd: cd.country === 'Hongkong' ? (cd.calculatedPrice * (cd.exchangeRate || 0)) : null,
-          aed: cd.country === 'Dubai' ? (cd.calculatedPrice * (cd.exchangeRate || 0)) : null,
-          basePrice: cd.basePrice,
-          calculatedPrice: cd.calculatedPrice,
-          margins: cd.margins,
-          costs: cd.costs,
-        }));
+        // Each country can have USD and local currency (HKD for Hongkong, AED for Dubai)
+        const countryDeliverables: any[] = [];
+        
+        // Track which countries we've processed to avoid duplicates
+        const processedCountries = new Set<string>();
+        
+        result.countryDeliverables.forEach(cd => {
+          const countryKey = `${cd.country}_USD`;
+          
+          // Only process each country once
+          if (processedCountries.has(countryKey)) {
+            return;
+          }
+          processedCountries.add(countryKey);
+          
+          // Add USD entry (always required)
+          const usdBasePrice = cd.basePrice || 0;
+          const usdCalculatedPrice = cd.calculatedPrice || 0;
+          
+          countryDeliverables.push({
+            country: cd.country,
+            currency: 'USD',
+            basePrice: usdBasePrice,
+            calculatedPrice: usdCalculatedPrice,
+            exchangeRate: null,
+            margins: cd.margins || [],
+            costs: cd.costs || [],
+            charges: [],
+            paymentTerm: row.paymentTermUsd || row.paymentTermHkd || row.paymentTermAed || null,
+            paymentMethod: row.paymentMethodUsd || row.paymentMethodHkd || row.paymentMethodAed || null,
+            // Legacy fields
+            usd: usdCalculatedPrice,
+            xe: cd.exchangeRate || null,
+            price: usdBasePrice,
+          });
+          
+          // Add local currency entry if exchange rate exists
+          if (cd.exchangeRate && cd.country === 'Hongkong') {
+            const hkdBasePrice = (cd.basePrice || 0) * cd.exchangeRate;
+            const hkdCalculatedPrice = (cd.calculatedPrice || 0) * cd.exchangeRate;
+            countryDeliverables.push({
+              country: 'Hongkong',
+              currency: 'HKD',
+              basePrice: hkdBasePrice,
+              calculatedPrice: hkdCalculatedPrice,
+              exchangeRate: cd.exchangeRate, // XE rate from product
+              margins: (cd.margins || []).map(m => ({
+                ...m,
+                calculatedAmount: (m.calculatedAmount || 0) * cd.exchangeRate,
+              })),
+              costs: (cd.costs || []).map(c => ({
+                ...c,
+                calculatedAmount: (c.calculatedAmount || 0) * cd.exchangeRate,
+              })),
+              charges: [],
+              paymentTerm: row.paymentTermHkd || row.paymentTermUsd || null,
+              paymentMethod: row.paymentMethodHkd || row.paymentMethodUsd || null,
+              // Legacy fields
+              hkd: hkdCalculatedPrice,
+              local: hkdCalculatedPrice,
+            });
+          } else if (cd.exchangeRate && cd.country === 'Dubai') {
+            const aedBasePrice = (cd.basePrice || 0) * cd.exchangeRate;
+            const aedCalculatedPrice = (cd.calculatedPrice || 0) * cd.exchangeRate;
+            countryDeliverables.push({
+              country: 'Dubai',
+              currency: 'AED',
+              basePrice: aedBasePrice,
+              calculatedPrice: aedCalculatedPrice,
+              exchangeRate: cd.exchangeRate, // System currency conversion rate
+              margins: (cd.margins || []).map(m => ({
+                ...m,
+                calculatedAmount: (m.calculatedAmount || 0) * cd.exchangeRate,
+              })),
+              costs: (cd.costs || []).map(c => ({
+                ...c,
+                calculatedAmount: (c.calculatedAmount || 0) * cd.exchangeRate,
+              })),
+              charges: [],
+              paymentTerm: row.paymentTermAed || row.paymentTermUsd || null,
+              paymentMethod: row.paymentMethodAed || row.paymentMethodUsd || null,
+              // Legacy fields
+              aed: aedCalculatedPrice,
+              local: aedCalculatedPrice,
+            });
+          }
+        });
+        
+        // Remove duplicates based on country + currency combination
+        const uniqueCountryDeliverables = countryDeliverables.filter((cd, index, self) =>
+          index === self.findIndex((t) => t.country === cd.country && t.currency === cd.currency)
+        );
 
         // Helper to convert empty strings to null
         const cleanString = (val: string | null | undefined): string | null => {
@@ -1022,7 +1123,6 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
           storage: row.storage || '',
           weight: row.weight ? parseFloat(String(row.weight)) : null,
           condition: cleanString(row.condition) || null,
-          price: countryDeliverables[0]?.calculatedPrice || countryDeliverables[0]?.price || 0,
           stock: parseFloat(String(row.totalQty)) || 0,
           country: (cleanString(row.country) || null) as string | null,
           moq: parseFloat(String(row.moqPerVariant)) || 1,
@@ -1033,12 +1133,23 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
           expiryTime: cleanString(row.endTime) ? new Date(row.endTime).toISOString() : '',
           groupCode: variantType === 'multi' ? `GROUP-${Date.now()}` : undefined,
           sequence: row.sequence || null,
-          countryDeliverables,
+          countryDeliverables: uniqueCountryDeliverables,
           supplierListingNumber: cleanString(row.supplierListingNumber) || '',
           customerListingNumber: cleanString(row.customerListingNumber) || '',
           packing: cleanString(row.packing) || '',
           currentLocation: cleanString(row.currentLocation) || '',
-          deliveryLocation: cleanString(row.deliveryLocation) || '',
+          deliveryLocation: Array.isArray(row.deliveryLocation) 
+            ? row.deliveryLocation 
+            : (row.deliveryLocation && typeof row.deliveryLocation === 'string' 
+                ? (() => {
+                    try {
+                      const parsed = JSON.parse(row.deliveryLocation);
+                      return Array.isArray(parsed) ? parsed : [row.deliveryLocation];
+                    } catch {
+                      return [row.deliveryLocation];
+                    }
+                  })()
+                : []),
           customMessage: cleanString(row.customMessage) || '',
           totalMoq: variantType === 'multi' && pendingTotalMoq ? parseFloat(String(pendingTotalMoq)) : null,
           paymentTerm: cleanString(row.paymentTermUsd) || cleanString(row.paymentTermHkd) || cleanString(row.paymentTermAed) || null,
@@ -1085,7 +1196,13 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
       
       toastHelper.showTost('Products created successfully!', 'success');
       setShowPreviewModal(false);
-      onSave(pendingRows, pendingTotalMoq);
+      // Products are already created in handleFinalSubmit
+      // Don't call onSave here as it would trigger handleFormSave in ProductVariantForm
+      // which would create duplicate products
+      // Navigate to products list after a short delay
+      setTimeout(() => {
+        window.location.href = '/products';
+      }, 1000);
     } catch (error: any) {
       console.error('Error creating products:', error);
       toastHelper.showTost(error.message || 'Failed to create products', 'error');
@@ -1144,7 +1261,7 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
     { key: 'tags', label: 'TAGS', width: 150, group: 'Other Info' },
     { key: 'adminCustomMessage', label: 'ADMIN CUSTOM MESSAGE', width: 180, group: 'Other Info' },
     { key: 'startTime', label: 'START TIME', width: 150, group: 'Other Info' },
-    { key: 'endTime', label: 'END TIME', width: 150, group: 'Other Info' },
+    { key: 'endTime', label: 'END TIME *', width: 150, group: 'Other Info' },
     { key: 'remark', label: 'REMARK', width: 150, group: 'Other Info' },
   ];
 
@@ -1171,6 +1288,9 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
   
   // Get currentLocation options from constants (show name, store code)
   const currentLocationOptions = constants?.currentLocation || [];
+  
+  // Get deliveryLocation options from constants (show name, store code)
+  const deliveryLocationOptions = constants?.deliveryLocation || [];
   
   const paymentTermOptions = ['on order', 'on delivery'];
   const paymentMethodOptions = ['Cash', 'TT', 'Third party'];
@@ -1619,17 +1739,45 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
         return null;
 
       case 'deliveryLocation':
+        const deliveryValue = Array.isArray(value) ? value : (value ? [value] : []);
         return (
-          <div className="relative">
-            <input
-              type="text"
-              value={value as string}
-              className="w-full px-2 py-1.5 text-xs border-0 bg-gray-200 dark:bg-gray-700 rounded text-gray-600 dark:text-gray-400 italic"
-              readOnly
-              placeholder="Auto-generated"
-            />
-            <i className="fas fa-magic absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs"></i>
-          </div>
+          <Select
+            isMulti
+            options={deliveryLocationOptions.map(opt => ({ value: opt.code, label: opt.name }))}
+            value={deliveryValue.map(code => {
+              const option = deliveryLocationOptions.find(opt => opt.code === code);
+              return option ? { value: option.code, label: option.name } : null;
+            }).filter(Boolean) as any}
+            onChange={(selected) => {
+              const codes = selected ? selected.map((s: any) => s.value) : [];
+              updateRow(rowIndex, column.key as keyof ProductRowData, codes);
+            }}
+            className="basic-select"
+            classNamePrefix="select"
+            placeholder="Select locations"
+            onFocus={() => {
+              setFocusedCell({ row: rowIndex, col: column.key });
+              setSelectedRowIndex(rowIndex);
+            }}
+            styles={{
+              control: (provided) => ({
+                ...provided,
+                minHeight: '28px',
+                fontSize: '12px',
+                border: 'none',
+                backgroundColor: 'transparent',
+                boxShadow: 'none',
+              }),
+              multiValue: (provided) => ({
+                ...provided,
+                fontSize: '11px',
+              }),
+              placeholder: (provided) => ({
+                ...provided,
+                fontSize: '12px',
+              }),
+            }}
+          />
         );
 
       case 'startTime':
@@ -1642,7 +1790,8 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
             timeFormat="HH:mm"
             dateFormat="yyyy-MM-dd HH:mm"
             className="w-full px-2 py-1.5 text-xs border-0 bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded transition-all duration-150 placeholder:text-gray-400"
-            placeholderText="Select date & time"
+            placeholderText={column.key === 'startTime' ? "Select date & time (auto: current time)" : "Select date & time *"}
+            required={column.key === 'endTime'}
             onFocus={() => {
               setFocusedCell({ row: rowIndex, col: column.key });
               setSelectedRowIndex(rowIndex);

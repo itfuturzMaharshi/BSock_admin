@@ -85,7 +85,7 @@ const FinalPreviewModal: React.FC<FinalPreviewModalProps> = ({
                         </div>
 
                         <div className="grid grid-cols-2 gap-3 text-sm text-gray-600 dark:text-gray-400">
-                          <div>Base Price: {cd.basePrice ?? cd.usd ?? cd.price ?? 0}</div>
+                          <div>Base Price: {cd.basePrice ?? cd.usd ?? 0}</div>
                           {cd.hkd && <div>HKD: {cd.hkd.toFixed ? cd.hkd.toFixed(2) : cd.hkd}</div>}
                           {cd.aed && <div>AED: {cd.aed.toFixed ? cd.aed.toFixed(2) : cd.aed}</div>}
                         </div>

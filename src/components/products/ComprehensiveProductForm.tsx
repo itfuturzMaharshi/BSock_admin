@@ -5,6 +5,7 @@ import Select from 'react-select';
 import { VariantOption } from './CascadingVariantSelector';
 import { GradeService } from '../../services/grade/grade.services';
 import { SellerService } from '../../services/seller/sellerService';
+import { ConstantsService, Constants } from '../../services/constants/constants.services';
 
 export interface ProductRowData {
   // Product Detail Group
@@ -22,14 +23,14 @@ export interface ProductRowData {
   
   // Pricing / Delivery / Payment Method Group
   packing: string;
-  currentLocation: string;
+  currentLocation: string; // Store code: "HK" or "D"
   hkUsd: number | string;
   hkXe: number | string;
   hkHkd: number | string;
   dubaiUsd: number | string;
   dubaiXe: number | string;
   dubaiAed: number | string;
-  deliveryLocation: string; // Auto-generated
+  deliveryLocation: string[]; // Array of codes: ["HK", "D"]
   customMessage: string;
   totalQty: number | string;
   moqPerVariant: number | string;
@@ -79,6 +80,7 @@ const ComprehensiveProductForm: React.FC<ComprehensiveProductFormProps> = ({
   const [rows, setRows] = useState<ProductRowData[]>([]);
   const [grades, setGrades] = useState<any[]>([]);
   const [sellers, setSellers] = useState<any[]>([]);
+  const [constants, setConstants] = useState<Constants | null>(null);
   const [loading, setLoading] = useState(false);
 
   // Initialize rows based on variant type
@@ -93,7 +95,7 @@ const ComprehensiveProductForm: React.FC<ComprehensiveProductFormProps> = ({
         version: '',
         grade: '',
         status: 'Active',
-        lockUnlock: '0',
+        lockUnlock: '',
         warranty: '',
         batteryHealth: '',
         packing: '',
@@ -104,7 +106,7 @@ const ComprehensiveProductForm: React.FC<ComprehensiveProductFormProps> = ({
         dubaiUsd: '',
         dubaiXe: '',
         dubaiAed: '',
-        deliveryLocation: '',
+        deliveryLocation: [],
         customMessage: '',
         totalQty: '',
         moqPerVariant: '',
@@ -143,7 +145,7 @@ const ComprehensiveProductForm: React.FC<ComprehensiveProductFormProps> = ({
         version: '',
         grade: '',
         status: 'Active',
-        lockUnlock: '0',
+        lockUnlock: '',
         warranty: '',
         batteryHealth: '',
         packing: '',
@@ -154,7 +156,7 @@ const ComprehensiveProductForm: React.FC<ComprehensiveProductFormProps> = ({
         dubaiUsd: '',
         dubaiXe: '',
         dubaiAed: '',
-        deliveryLocation: '',
+        deliveryLocation: [],
         customMessage: '',
         totalQty: '',
         moqPerVariant: '',
@@ -197,6 +199,10 @@ const ComprehensiveProductForm: React.FC<ComprehensiveProductFormProps> = ({
         const sellersList = await SellerService.getAllSellers();
         setSellers(sellersList || []);
         
+        // Fetch constants
+        const constantsData = await ConstantsService.getConstants();
+        setConstants(constantsData);
+        
         // Fetch costs by country (stored for potential future use)
         // const costResponse = await CostModuleService.getCostsByCountry();
         // if (costResponse.status === 200 && costResponse.data) {
@@ -212,22 +218,21 @@ const ComprehensiveProductForm: React.FC<ComprehensiveProductFormProps> = ({
     fetchData();
   }, []);
 
-  // Auto-calculate delivery location based on current location
+  // Auto-calculate delivery location based on pricing
   useEffect(() => {
     setRows(prevRows => prevRows.map(row => {
-      if (row.currentLocation) {
-        const locations: string[] = [];
-        if (row.currentLocation === 'Hong Kong' || row.hkUsd || row.hkHkd) {
-          locations.push('Hong Kong');
-        }
-        if (row.currentLocation === 'Dubai' || row.dubaiUsd || row.dubaiAed) {
-          locations.push('Dubai');
-        }
-        return { ...row, deliveryLocation: locations.join(',') };
+      const locations: string[] = [];
+      // If HK pricing exists, add HK to delivery locations
+      if (row.hkUsd || row.hkHkd) {
+        locations.push('HK');
       }
-      return row;
+      // If Dubai pricing exists, add D to delivery locations
+      if (row.dubaiUsd || row.dubaiAed) {
+        locations.push('D');
+      }
+      return { ...row, deliveryLocation: locations };
     }));
-  }, [rows.map(r => r.currentLocation).join(',')]);
+  }, [rows.map(r => `${r.hkUsd}-${r.hkHkd}-${r.dubaiUsd}-${r.dubaiAed}`).join(',')]);
 
   const updateRow = (index: number, field: keyof ProductRowData, value: any) => {
     setRows(prevRows => {
@@ -293,8 +298,31 @@ const ComprehensiveProductForm: React.FC<ComprehensiveProductFormProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Set current time for start time if not entered
+    const currentTime = new Date().toISOString();
+    const updatedRows = rows.map(row => ({
+      ...row,
+      startTime: row.startTime || currentTime
+    }));
+    setRows(updatedRows);
+    
+    // Validate required fields
+    const errors: string[] = [];
+    updatedRows.forEach((row, index) => {
+      if (!row.endTime) errors.push(`Row ${index + 1}: END TIME is required`);
+    });
+    
+    if (errors.length > 0) {
+      const errorMessage = `Please fix the following ${errors.length} error(s):\n\n${errors.slice(0, 10).join('\n')}${errors.length > 10 ? `\n\n... and ${errors.length - 10} more errors` : ''}`;
+      if (window.confirm(errorMessage + '\n\nDo you want to continue anyway?')) {
+        // User wants to continue despite errors
+      } else {
+        return;
+      }
+    }
+    
     // Generate unique listing numbers
-    const rowsWithListingNos = rows.map((row, index) => ({
+    const rowsWithListingNos = updatedRows.map((row, index) => ({
       ...row,
       uniqueListingNo: row.uniqueListingNo || `LIST-${Date.now()}-${index}`,
     }));
@@ -302,6 +330,10 @@ const ComprehensiveProductForm: React.FC<ComprehensiveProductFormProps> = ({
     onSave(rowsWithListingNos);
   };
 
+  // Get location options from constants (show name, store code)
+  const currentLocationOptions = constants?.currentLocation || [];
+  const deliveryLocationOptions = constants?.deliveryLocation || [];
+  
   const countryOptions = ['Hong Kong', 'Dubai'];
   const simOptions = ['Dual SIM', 'E-SIM', 'Physical Sim'];
   const statusOptions = ['Active', 'Non Active', 'pre owned'];
@@ -483,6 +515,7 @@ const ComprehensiveProductForm: React.FC<ComprehensiveProductFormProps> = ({
                       className="w-full px-2 py-1 text-sm border rounded bg-gray-50 dark:bg-gray-800"
                       required
                     >
+                      <option value="">Select</option>
                       {lockUnlockOptions.map(opt => (
                         <option key={opt.value} value={opt.value}>{opt.label}</option>
                       ))}
@@ -568,8 +601,8 @@ const ComprehensiveProductForm: React.FC<ComprehensiveProductFormProps> = ({
                       required
                     >
                       <option value="">Select</option>
-                      {countryOptions.map(opt => (
-                        <option key={opt} value={opt}>{opt}</option>
+                      {currentLocationOptions.map(opt => (
+                        <option key={opt.code} value={opt.code}>{opt.name}</option>
                       ))}
                     </select>
                   </td>
@@ -634,12 +667,31 @@ const ComprehensiveProductForm: React.FC<ComprehensiveProductFormProps> = ({
                     />
                   </td>
                   <td className="px-3 py-2 border">
-                    <input
-                      type="text"
-                      value={row.deliveryLocation}
-                      className="w-full px-2 py-1 text-sm border rounded bg-gray-100 dark:bg-gray-700"
-                      readOnly
-                      placeholder="Auto-generated"
+                    <Select
+                      isMulti
+                      options={deliveryLocationOptions.map(opt => ({ value: opt.code, label: opt.name }))}
+                      value={row.deliveryLocation.map(code => {
+                        const option = deliveryLocationOptions.find(opt => opt.code === code);
+                        return option ? { value: option.code, label: option.name } : null;
+                      }).filter(Boolean) as any}
+                      onChange={(selected) => {
+                        const codes = selected ? selected.map((s: any) => s.value) : [];
+                        updateRow(rowIndex, 'deliveryLocation', codes);
+                      }}
+                      className="basic-select"
+                      classNamePrefix="select"
+                      placeholder="Select delivery locations"
+                      styles={{
+                        control: (provided) => ({
+                          ...provided,
+                          minHeight: '32px',
+                          fontSize: '14px',
+                        }),
+                        multiValue: (provided) => ({
+                          ...provided,
+                          fontSize: '12px',
+                        }),
+                      }}
                     />
                   </td>
                   <td className="px-3 py-2 border">
@@ -738,7 +790,7 @@ const ComprehensiveProductForm: React.FC<ComprehensiveProductFormProps> = ({
                 <th className="px-3 py-2 text-xs font-semibold border text-left min-w-[100px]">LOW STOCK</th>
                 <th className="px-3 py-2 text-xs font-semibold border text-left min-w-[150px]">ADMIN CUSTOM MESSAGE</th>
                 <th className="px-3 py-2 text-xs font-semibold border text-left min-w-[150px]">START TIME</th>
-                <th className="px-3 py-2 text-xs font-semibold border text-left min-w-[150px]">END TIME</th>
+                <th className="px-3 py-2 text-xs font-semibold border text-left min-w-[150px]">END TIME *</th>
                 <th className="px-3 py-2 text-xs font-semibold border text-left min-w-[120px]">SUPPLIER ID*</th>
                 <th className="px-3 py-2 text-xs font-semibold border text-left min-w-[150px]">SUPPLIER LISTING NO*</th>
                 <th className="px-3 py-2 text-xs font-semibold border text-left min-w-[120px]">REMARK</th>
@@ -862,7 +914,7 @@ const ComprehensiveProductForm: React.FC<ComprehensiveProductFormProps> = ({
                       timeFormat="HH:mm"
                       dateFormat="yyyy-MM-dd HH:mm"
                       className="w-full px-2 py-1 text-sm border rounded bg-gray-50 dark:bg-gray-800"
-                      placeholderText="Select start time"
+                      placeholderText="Select start time (auto: current time)"
                     />
                   </td>
                   <td className="px-3 py-2 border">
@@ -873,7 +925,8 @@ const ComprehensiveProductForm: React.FC<ComprehensiveProductFormProps> = ({
                       timeFormat="HH:mm"
                       dateFormat="yyyy-MM-dd HH:mm"
                       className="w-full px-2 py-1 text-sm border rounded bg-gray-50 dark:bg-gray-800"
-                      placeholderText="Select end time"
+                      placeholderText="Select end time *"
+                      required
                     />
                   </td>
                   <td className="px-3 py-2 border">

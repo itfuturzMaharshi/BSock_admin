@@ -28,6 +28,10 @@ export interface Constants {
     code: string;
     name: string;
   }>;
+  deliveryLocation: Array<{
+    code: string;
+    name: string;
+  }>;
   tags: Array<{
     code: number;
     tag: string;

@@ -77,7 +77,17 @@ const CustomerCart: React.FC = () => {
           ram: d.ram,
           storage: d.storage,
           condition: d.condition,
-          price: d.price ?? d.productId?.price ?? 0,
+          price: (() => {
+            // Try to get price from cart item first
+            if (d.price) return d.price;
+            // Then try product's countryDeliverables
+            if (d.productId?.countryDeliverables && Array.isArray(d.productId.countryDeliverables) && d.productId.countryDeliverables.length > 0) {
+              const deliverable = d.productId.countryDeliverables[0];
+              return deliverable.usd || 0;
+            }
+            // Fallback to legacy price field
+            return d.productId?.price ?? 0;
+          })(),
           stock: d.stock,
           country: d.country,
           moq: d.moq,

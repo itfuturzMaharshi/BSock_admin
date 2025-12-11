@@ -134,15 +134,53 @@ const CostModuleSelectionModal: React.FC<CostModuleSelectionModalProps> = ({
 
   const isCostApplicable = (cost: any) => {
     // Check if cost is applicable based on product locations
+    // Map country to code: "Hongkong" -> "HK", "Dubai" -> "D"
+    const countryCode = country === 'Hongkong' ? 'HK' : 'D';
+    
+    // Helper function to normalize deliveryLocation to array
+    const normalizeDeliveryLocation = (deliveryLocation: any): string[] => {
+      if (Array.isArray(deliveryLocation)) {
+        return deliveryLocation;
+      }
+      if (typeof deliveryLocation === 'string') {
+        // Try to parse as JSON if it's a JSON string
+        try {
+          const parsed = JSON.parse(deliveryLocation);
+          return Array.isArray(parsed) ? parsed : [deliveryLocation];
+        } catch {
+          // If not JSON, treat as single value
+          return [deliveryLocation];
+        }
+      }
+      return [];
+    };
+    
     if (cost.isExpressDelivery) {
-      // Express delivery: show when currentLocation != deliveryLocation
-      return products.some(p => p.currentLocation && p.deliveryLocation && 
-        p.currentLocation !== p.deliveryLocation);
+      // Express delivery: show when currentLocation doesn't match any deliveryLocation
+      return products.some(p => {
+        if (!p.currentLocation) return false;
+        
+        const deliveryLocations = normalizeDeliveryLocation(p.deliveryLocation);
+        
+        // Check if currentLocation matches the country code AND is in deliveryLocation array
+        const isSameLocation = p.currentLocation === countryCode && 
+          deliveryLocations.includes(countryCode);
+        
+        // Express delivery: currentLocation matches country but NOT in deliveryLocation array
+        return p.currentLocation === countryCode && !isSameLocation;
+      });
     }
     if (cost.isSameLocationCharge) {
-      // Same location charge: show when currentLocation == deliveryLocation
-      return products.some(p => p.currentLocation && p.deliveryLocation && 
-        p.currentLocation === p.deliveryLocation);
+      // Same location charge: show when currentLocation matches country AND is in deliveryLocation array
+      return products.some(p => {
+        if (!p.currentLocation) return false;
+        
+        const deliveryLocations = normalizeDeliveryLocation(p.deliveryLocation);
+        
+        // Check if currentLocation matches the country code AND is in deliveryLocation array
+        return p.currentLocation === countryCode && 
+          deliveryLocations.includes(countryCode);
+      });
     }
     return true; // Other costs are always applicable
   };

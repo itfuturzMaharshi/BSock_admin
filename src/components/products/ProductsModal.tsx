@@ -12,7 +12,18 @@ import Select from 'react-select';
 
 interface CountryDeliverable {
   country: string;
-  price: number | string;
+  currency: 'USD' | 'HKD' | 'AED';
+  basePrice: number | string;
+  calculatedPrice?: number | string;
+  exchangeRate?: number | string;
+  paymentTerm?: string | null;
+  paymentMethod?: string | null;
+  // Legacy fields for backward compatibility
+  usd?: number | string;
+  xe?: number | string;
+  local?: number | string;
+  hkd?: number | string;
+  aed?: number | string;
   charges: Array<{
     name: string;
     value: number | string;
@@ -29,7 +40,6 @@ interface FormData {
   storage: string;
   weight: number | string;
   condition: string | null;
-  price: number | string;
   stock: number | string;
   country: string | null;
   moq: number | string;
@@ -52,7 +62,6 @@ interface ValidationErrors {
   storage?: string;
   weight?: string;
   condition?: string;
-  price?: string;
   stock?: string;
   country?: string;
   moq?: string;
@@ -61,6 +70,7 @@ interface ValidationErrors {
   expiryTime?: string;
   isNegotiable?: string;
   isFlashDeal?: string;
+  countryDeliverables?: string;
   [key: string]: string | undefined;
 }
 
@@ -106,7 +116,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
     storage: "",
     weight: "",
     condition: "",
-    price: 0,
     stock: 0,
     country: "",
     moq: 0,
@@ -143,7 +152,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
   const [skuError, setSkuError] = useState<string | null>(null);
   const [dateError, setDateError] = useState<string | null>(null);
   const [moqError, setMoqError] = useState<string | null>(null);
-  const [priceError, setPriceError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>(
     {}
   );
@@ -155,7 +163,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
     storage: false,
     weight: false,
     condition: false,
-    price: false,
     stock: false,
     country: false,
     moq: false,
@@ -309,7 +316,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
           storage: editItem.storage,
           weight: (editItem as any).weight || "",
           condition: editItem.condition || null,
-          price: editItem.price,
           stock: editItem.stock,
           country: editItem.country || null,
           moq: editItem.moq,
@@ -319,7 +325,12 @@ const ProductModal: React.FC<ProductModalProps> = ({
           startTime: (editItem as any).startTime || "",
           expiryTime: editItem.expiryTime || "",
           groupCode: (editItem as any).groupCode || "",
-          countryDeliverables: (editItem as any).countryDeliverables || [],
+          countryDeliverables: ((editItem as any).countryDeliverables || []).map((cd: any) => ({
+            ...cd,
+            currency: cd.currency || (cd.country === 'Hongkong' ? (cd.hkd ? 'HKD' : 'USD') : (cd.aed ? 'AED' : 'USD')),
+            basePrice: cd.basePrice || cd.usd || cd.hkd || cd.aed || 0,
+            exchangeRate: cd.exchangeRate || cd.xe || null,
+          })),
         });
       } else {
         setFormData({
@@ -346,7 +357,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
   });
       }
       setDateError(null);
-      setPriceError(null);
     }
   }, [isOpen, editItem]);
 
@@ -356,7 +366,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
       ...prev,
       countryDeliverables: [
         ...prev.countryDeliverables,
-        { country: "", price: 0, charges: [] }
+        { country: "", currency: "USD" as const, basePrice: 0, charges: [] }
       ]
     }));
   };
@@ -544,7 +554,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
   };
 
   const handleNumericChange = (
-    name: "price" | "stock" | "moq",
+    name: "stock" | "moq",
     e: React.ChangeEvent<HTMLInputElement>,
     allowDecimal: boolean
   ) => {
@@ -576,15 +586,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
 
       return next;
     });
-
-    if (name === "price") {
-      const numeric = parseFloat(value) || 0;
-      if (value !== "" && numeric <= 0) {
-        setPriceError("Price must be greater than 0");
-      } else {
-        setPriceError(null);
-      }
-    }
   };
 
   const validateField = (
@@ -611,15 +612,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
         return undefined;
       case "condition":
         return !value ? "Condition is required" : undefined;
-      case "price":
-        if (value === "" || value === null || value === undefined)
-          return "Price is required";
-        const numericPrice = parseFloat(String(value));
-        return isNaN(numericPrice)
-          ? "Price must be a valid number"
-          : numericPrice <= 0
-          ? "Price must be greater than 0"
-          : undefined;
       case "stock":
         if (value === "" || value === null || value === undefined)
           return "Stock is required";
@@ -662,12 +654,49 @@ const ProductModal: React.FC<ProductModalProps> = ({
       "ram",
       "storage",
       "condition",
-      "price",
       "stock",
       "country",
       "moq",
       "purchaseType",
     ];
+
+    // Validate that at least one countryDeliverable has USD base price
+    if (!formData.countryDeliverables || formData.countryDeliverables.length === 0) {
+      errors.countryDeliverables = "At least one country deliverable is required";
+      isValid = false;
+    } else {
+      // Check for USD base price
+      const hasUsdPricing = formData.countryDeliverables.some(cd => {
+        if (cd.currency === 'USD') {
+          const basePrice = typeof cd.basePrice === 'string' ? parseFloat(cd.basePrice) : cd.basePrice;
+          return basePrice && basePrice > 0;
+        }
+        // Fallback: check legacy usd field
+        const usd = typeof cd.usd === 'string' ? parseFloat(cd.usd) : cd.usd;
+        return usd && usd > 0;
+      });
+      if (!hasUsdPricing) {
+        errors.countryDeliverables = "At least one country deliverable must have USD base price";
+        isValid = false;
+      }
+      
+      // Validate each deliverable has required fields
+      formData.countryDeliverables.forEach((cd, index) => {
+        if (!cd.country) {
+          errors.countryDeliverables = `Country deliverable ${index + 1}: Country is required`;
+          isValid = false;
+        }
+        if (!cd.currency) {
+          errors.countryDeliverables = `Country deliverable ${index + 1}: Currency is required`;
+          isValid = false;
+        }
+        const basePrice = typeof cd.basePrice === 'string' ? parseFloat(cd.basePrice) : cd.basePrice;
+        if (!basePrice || basePrice <= 0) {
+          errors.countryDeliverables = `Country deliverable ${index + 1}: Base price must be greater than 0`;
+          isValid = false;
+        }
+      });
+    }
 
     requiredFields.forEach((fieldName) => {
       const error = validateField(fieldName, formData[fieldName]);
@@ -724,7 +753,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
       ram: true,
       storage: true,
       condition: true,
-      price: true,
       stock: true,
       country: true,
       moq: true,
@@ -747,7 +775,57 @@ const ProductModal: React.FC<ProductModalProps> = ({
     }
 
     console.log("Form is valid, submitting...");
-    onSave(formData);
+    
+    // Transform countryDeliverables to ensure all required fields are present
+    const transformedFormData = {
+      ...formData,
+      countryDeliverables: (formData.countryDeliverables || []).map((cd: any) => {
+        // Ensure currency is set
+        let currency = cd.currency;
+        if (!currency) {
+          if (cd.country === 'Hongkong') {
+            currency = cd.hkd ? 'HKD' : 'USD';
+          } else if (cd.country === 'Dubai') {
+            currency = cd.aed ? 'AED' : 'USD';
+          } else {
+            currency = 'USD';
+          }
+        }
+        
+        // Ensure basePrice is set (can be 0)
+        let basePrice = cd.basePrice;
+        if (basePrice === undefined || basePrice === null) {
+          if (currency === 'USD') {
+            basePrice = cd.usd !== undefined && cd.usd !== null ? cd.usd : 0;
+          } else if (currency === 'HKD') {
+            basePrice = cd.hkd !== undefined && cd.hkd !== null ? cd.hkd : 0;
+          } else if (currency === 'AED') {
+            basePrice = cd.aed !== undefined && cd.aed !== null ? cd.aed : 0;
+          } else {
+            basePrice = 0;
+          }
+        }
+        
+        // Convert basePrice to number
+        const numericBasePrice = typeof basePrice === 'string' ? parseFloat(basePrice) : (basePrice || 0);
+        
+        return {
+          country: cd.country,
+          currency: currency,
+          basePrice: isNaN(numericBasePrice) ? 0 : numericBasePrice,
+          calculatedPrice: cd.calculatedPrice ? (typeof cd.calculatedPrice === 'string' ? parseFloat(cd.calculatedPrice) : cd.calculatedPrice) : null,
+          exchangeRate: cd.exchangeRate || cd.xe || null,
+          margins: Array.isArray(cd.margins) ? cd.margins : [],
+          costs: Array.isArray(cd.costs) ? cd.costs : [],
+          charges: Array.isArray(cd.charges) ? cd.charges : [],
+          paymentTerm: cd.paymentTerm || null,
+          paymentMethod: cd.paymentMethod || null,
+        };
+      }).filter((cd: any) => cd.country && cd.currency && (cd.basePrice !== undefined && cd.basePrice !== null)), // Filter out invalid entries
+    };
+    
+    console.log("Transformed form data:", transformedFormData);
+    onSave(transformedFormData);
   };
 
   if (!isOpen) return null;
@@ -1152,8 +1230,8 @@ const ProductModal: React.FC<ProductModalProps> = ({
               </div>
             </div>
 
-            {/* Storage, Weight, Condition, and Price Row */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* Storage, Weight, and Condition Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                   Storage
@@ -1244,36 +1322,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
                 {touched.condition && validationErrors.condition && (
                   <p className="mt-1 text-xs text-red-600 dark:text-red-400">
                     {validationErrors.condition}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                  Price
-                </label>
-                <input
-                  type="text"
-                  name="price"
-                  value={formData.price}
-                  onChange={(e) => handleNumericChange("price", e, true)}
-                  onBlur={handleBlur}
-                  inputMode="decimal"
-                  className={`w-full p-2.5 bg-gray-50 dark:bg-gray-800 border rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm ${
-                    touched.price && validationErrors.price
-                      ? "border-red-500 focus:ring-red-500"
-                      : "border-gray-200 dark:border-gray-700"
-                  }`}
-                  placeholder="Enter Price"
-                  required
-                />
-                {touched.price && validationErrors.price && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {validationErrors.price}
-                  </p>
-                )}
-                {priceError && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {priceError}
                   </p>
                 )}
               </div>
@@ -1508,7 +1556,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
             <div className="mt-6 border-t border-gray-200 dark:border-gray-700 pt-6">
               <div className="flex items-center justify-between mb-4">
                 <label className="block text-sm font-semibold text-gray-950 dark:text-gray-200">
-                  Country Deliverables
+                  Country Deliverables <span className="text-red-500">*</span>
                 </label>
                 <button
                   type="button"
@@ -1544,14 +1592,25 @@ const ProductModal: React.FC<ProductModalProps> = ({
                         </button>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                             Country <span className="text-red-500">*</span>
                           </label>
                           <select
                             value={deliverable.country}
-                            onChange={(e) => updateCountryDeliverable(index, 'country', e.target.value)}
+                            onChange={(e) => {
+                              const country = e.target.value;
+                              // Auto-set currency based on country
+                              let currency: 'USD' | 'HKD' | 'AED' = 'USD';
+                              if (country === 'Hongkong') {
+                                currency = deliverable.currency === 'HKD' ? 'HKD' : 'USD';
+                              } else if (country === 'Dubai') {
+                                currency = deliverable.currency === 'AED' ? 'AED' : 'USD';
+                              }
+                              updateCountryDeliverable(index, 'country', country);
+                              updateCountryDeliverable(index, 'currency', currency);
+                            }}
                             className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm"
                           >
                             <option value="">Select Country</option>
@@ -1562,16 +1621,51 @@ const ProductModal: React.FC<ProductModalProps> = ({
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                            Price <span className="text-red-500">*</span>
+                            Currency <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            value={deliverable.currency || 'USD'}
+                            onChange={(e) => updateCountryDeliverable(index, 'currency', e.target.value)}
+                            className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm"
+                            disabled={!deliverable.country}
+                          >
+                            {deliverable.country === 'Hongkong' && (
+                              <>
+                                <option value="USD">USD</option>
+                                <option value="HKD">HKD</option>
+                              </>
+                            )}
+                            {deliverable.country === 'Dubai' && (
+                              <>
+                                <option value="USD">USD</option>
+                                <option value="AED">AED</option>
+                              </>
+                            )}
+                            {!deliverable.country && (
+                              <option value="USD">USD</option>
+                            )}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                            Base Price <span className="text-red-500">*</span>
                           </label>
                           <input
                             type="number"
-                            value={deliverable.price}
-                            onChange={(e) => updateCountryDeliverable(index, 'price', parseFloat(e.target.value) || 0)}
-                            placeholder="Enter price"
+                            value={deliverable.basePrice || deliverable.usd || ''}
+                            onChange={(e) => {
+                              const value = parseFloat(e.target.value) || 0;
+                              updateCountryDeliverable(index, 'basePrice', value);
+                              // Also update legacy usd field for backward compatibility
+                              if (deliverable.currency === 'USD') {
+                                updateCountryDeliverable(index, 'usd', value);
+                              }
+                            }}
+                            placeholder="Enter base price"
                             className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm"
                             step="0.01"
                             min="0"
+                            required
                           />
                         </div>
                       </div>
@@ -1653,9 +1747,45 @@ const ProductModal: React.FC<ProductModalProps> = ({
                           </div>
                         )}
                       </div>
+
+                      {/* Payment Terms and Method Section */}
+                      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                            Payment Term
+                          </label>
+                          <select
+                            value={deliverable.paymentTerm || ''}
+                            onChange={(e) => updateCountryDeliverable(index, 'paymentTerm', e.target.value || null)}
+                            className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm"
+                          >
+                            <option value="">Select Payment Term</option>
+                            <option value="on order">On Order</option>
+                            <option value="on delivery">On Delivery</option>
+                            <option value="as in conformation">As in Conformation</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                            Payment Method
+                          </label>
+                          <input
+                            type="text"
+                            value={deliverable.paymentMethod || ''}
+                            onChange={(e) => updateCountryDeliverable(index, 'paymentMethod', e.target.value || null)}
+                            placeholder="Enter payment method"
+                            className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm"
+                          />
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
+              )}
+              {validationErrors.countryDeliverables && (
+                <p className="mt-2 text-xs text-red-600 dark:text-red-400">
+                  {validationErrors.countryDeliverables}
+                </p>
               )}
             </div>
           </form>

@@ -177,12 +177,61 @@ const navigate = useNavigate();
 
   const handleSave = async (productData: any) => {
     try {
+      // Transform countryDeliverables to ensure currency and basePrice are present
+      const transformedCountryDeliverables = (productData.countryDeliverables || []).map((cd: any) => {
+        // If currency and basePrice are missing, try to infer from legacy fields
+        let currency = cd.currency;
+        let basePrice = cd.basePrice;
+        
+        if (!currency) {
+          // Infer currency from country and existing fields
+          if (cd.country === 'Hongkong') {
+            currency = cd.hkd ? 'HKD' : 'USD';
+          } else if (cd.country === 'Dubai') {
+            currency = cd.aed ? 'AED' : 'USD';
+          } else {
+            currency = 'USD'; // Default
+          }
+        }
+        
+        // Ensure basePrice is set (can be 0)
+        if (basePrice === undefined || basePrice === null) {
+          // Infer basePrice from currency
+          if (currency === 'USD') {
+            basePrice = cd.usd !== undefined && cd.usd !== null ? cd.usd : (cd.price !== undefined && cd.price !== null ? cd.price : 0);
+          } else if (currency === 'HKD') {
+            basePrice = cd.hkd !== undefined && cd.hkd !== null ? cd.hkd : (cd.local !== undefined && cd.local !== null ? cd.local : 0);
+          } else if (currency === 'AED') {
+            basePrice = cd.aed !== undefined && cd.aed !== null ? cd.aed : (cd.local !== undefined && cd.local !== null ? cd.local : 0);
+          } else {
+            basePrice = cd.usd !== undefined && cd.usd !== null ? cd.usd : (cd.price !== undefined && cd.price !== null ? cd.price : 0);
+          }
+        }
+        
+        // Convert basePrice to number
+        const numericBasePrice = typeof basePrice === 'string' ? parseFloat(basePrice) : (basePrice || 0);
+        
+        return {
+          country: cd.country,
+          currency: currency,
+          basePrice: isNaN(numericBasePrice) ? 0 : numericBasePrice,
+          calculatedPrice: cd.calculatedPrice ? (typeof cd.calculatedPrice === 'string' ? parseFloat(cd.calculatedPrice) : cd.calculatedPrice) : null,
+          exchangeRate: cd.exchangeRate || cd.xe || null,
+          margins: Array.isArray(cd.margins) ? cd.margins : [],
+          costs: Array.isArray(cd.costs) ? cd.costs : [],
+          charges: Array.isArray(cd.charges) ? cd.charges : [],
+          paymentTerm: cd.paymentTerm || null,
+          paymentMethod: cd.paymentMethod || null,
+        };
+      });
+      
+      // Filter out invalid entries (must have country, currency, and basePrice)
+      const validCountryDeliverables = transformedCountryDeliverables.filter((cd: any) => 
+        cd.country && cd.currency && (cd.basePrice !== undefined && cd.basePrice !== null)
+      );
+      
       const processedData = {
         ...productData,
-        price:
-          typeof productData.price === "string"
-            ? parseFloat(productData.price)
-            : productData.price,
         stock:
           typeof productData.stock === "string"
             ? parseInt(productData.stock)
@@ -191,7 +240,10 @@ const navigate = useNavigate();
           typeof productData.moq === "string"
             ? parseInt(productData.moq)
             : productData.moq,
+        countryDeliverables: validCountryDeliverables,
       };
+      
+      console.log('Processed data for API:', JSON.stringify(processedData, null, 2));
 
       if (editProduct && editProduct._id) {
         await ProductService.updateProduct(editProduct._id, processedData);
@@ -634,23 +686,12 @@ const navigate = useNavigate();
   };
 
   const getCountryPrice = (product: Product, country: "Hongkong" | "Dubai"): string => {
-    // Prefer structured countryDeliverables if present
+    // Get price from countryDeliverables
     if (Array.isArray(product.countryDeliverables) && product.countryDeliverables.length > 0) {
       const entry = product.countryDeliverables.find((cd) => cd.country === country);
-      if (entry) {
-        const usd = entry.usd ?? entry.price;
-        if (usd !== undefined && usd !== null) {
-          return `$${formatPrice(usd)}`;
-        }
+      if (entry && entry.usd !== undefined && entry.usd !== null) {
+        return `$${formatPrice(entry.usd)}`;
       }
-    }
-
-    // Fallback to legacy fields for backward compatibility
-    if (country === "Hongkong" && product.country === "Hongkong") {
-      return `$${formatPrice(product.price)}`;
-    }
-    if (country === "Dubai" && product.country === "Dubai") {
-      return `$${formatPrice(product.price)}`;
     }
 
     return "-";
@@ -1362,11 +1403,27 @@ const navigate = useNavigate();
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Price
+                      Pricing (by Country)
                     </label>
-                    <p className="text-lg text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md font-semibold">
-                      ${formatPrice(selectedProduct.price)}
-                    </p>
+                    <div className="space-y-2">
+                      {Array.isArray(selectedProduct.countryDeliverables) && selectedProduct.countryDeliverables.length > 0 ? (
+                        selectedProduct.countryDeliverables.map((cd, idx) => (
+                          <div key={idx} className="bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{cd.country}:</p>
+                            <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                              ${formatPrice(cd.usd || 0)} USD
+                            </p>
+                            {cd.local && (
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                Local: {formatPrice(cd.local)} {cd.country === 'Hongkong' ? 'HKD' : 'AED'}
+                              </p>
+                            )}
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-gray-500 dark:text-gray-400 italic">No pricing information available</p>
+                      )}
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">

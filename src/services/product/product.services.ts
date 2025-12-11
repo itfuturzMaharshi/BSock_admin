@@ -11,7 +11,6 @@ export interface Product {
   ram: string;
   storage: string;
   condition: string | null;
-  price: number | string;
   stock: number | string;
   country: string | null;
   moq: number | string;
@@ -34,11 +33,11 @@ export interface Product {
   // Optional per-country delivery pricing details (e.g. Hongkong, Dubai)
   countryDeliverables?: Array<{
     country: string;
-    // For backward compatibility, backend may send either price or usd/local
-    price?: number;
     usd?: number;
     xe?: number;
     local?: number;
+    hkd?: number;
+    aed?: number;
     charges?: Array<{
       name: string;
       value: number;
@@ -79,10 +78,86 @@ export class ProductService {
     const url = `${baseUrl}/api/${adminRoute}/product/create`;
 
     try {
+      // Transform countryDeliverables to ensure currency and basePrice are present
+      const transformedCountryDeliverables = (productData.countryDeliverables || []).map((cd: any) => {
+        // If currency and basePrice are missing, try to infer from legacy fields
+        let currency = cd.currency;
+        let basePrice = cd.basePrice;
+        
+        if (!currency) {
+          // Infer currency from country and existing fields
+          if (cd.country === 'Hongkong') {
+            currency = cd.hkd ? 'HKD' : 'USD';
+          } else if (cd.country === 'Dubai') {
+            currency = cd.aed ? 'AED' : 'USD';
+          } else {
+            currency = 'USD'; // Default
+          }
+        }
+        
+        // Ensure basePrice is set (can be 0)
+        if (basePrice === undefined || basePrice === null) {
+          // Infer basePrice from currency
+          if (currency === 'USD') {
+            basePrice = cd.usd !== undefined && cd.usd !== null ? cd.usd : (cd.price !== undefined && cd.price !== null ? cd.price : 0);
+          } else if (currency === 'HKD') {
+            basePrice = cd.hkd !== undefined && cd.hkd !== null ? cd.hkd : (cd.local !== undefined && cd.local !== null ? cd.local : 0);
+          } else if (currency === 'AED') {
+            basePrice = cd.aed !== undefined && cd.aed !== null ? cd.aed : (cd.local !== undefined && cd.local !== null ? cd.local : 0);
+          } else {
+            basePrice = cd.usd !== undefined && cd.usd !== null ? cd.usd : (cd.price !== undefined && cd.price !== null ? cd.price : 0);
+          }
+        }
+        
+        // Ensure basePrice is a number
+        const numericBasePrice = typeof basePrice === 'string' ? parseFloat(basePrice) : (basePrice || 0);
+        if (isNaN(numericBasePrice)) {
+          console.warn('Invalid basePrice for countryDeliverable:', cd);
+        }
+        
+        return {
+          ...cd,
+          country: cd.country || null,
+          currency: currency,
+          basePrice: isNaN(numericBasePrice) ? 0 : numericBasePrice,
+          calculatedPrice: cd.calculatedPrice ? (typeof cd.calculatedPrice === 'string' ? parseFloat(cd.calculatedPrice) : cd.calculatedPrice) : null,
+          exchangeRate: cd.exchangeRate || cd.xe || null,
+          margins: Array.isArray(cd.margins) ? cd.margins : [],
+          costs: Array.isArray(cd.costs) ? cd.costs : [],
+          charges: Array.isArray(cd.charges) ? cd.charges : [],
+          paymentTerm: cd.paymentTerm || null,
+          paymentMethod: cd.paymentMethod || null,
+          // Legacy fields for backward compatibility
+          usd: cd.usd !== undefined ? cd.usd : (currency === 'USD' ? numericBasePrice : null),
+          hkd: cd.hkd !== undefined ? cd.hkd : (currency === 'HKD' ? numericBasePrice : null),
+          aed: cd.aed !== undefined ? cd.aed : (currency === 'AED' ? numericBasePrice : null),
+          local: cd.local !== undefined ? cd.local : (currency !== 'USD' ? numericBasePrice : null),
+          xe: cd.xe || cd.exchangeRate || null,
+          price: cd.price !== undefined ? cd.price : (currency === 'USD' ? numericBasePrice : null),
+        };
+      });
+      
+      // Deduplicate by country+currency to avoid duplicate entries
+      const uniqueCountryDeliverables: any[] = [];
+      const seen = new Set<string>();
+      transformedCountryDeliverables.forEach((cd: any) => {
+        const key = `${cd.country || ''}-${cd.currency || ''}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          uniqueCountryDeliverables.push(cd);
+        }
+      });
+
+      // Log transformed data for debugging
+      if (uniqueCountryDeliverables.length > 0) {
+        console.log('Transformed countryDeliverables:', JSON.stringify(uniqueCountryDeliverables, null, 2));
+      }
+      
       // Ensure subSkuFamilyId is included in the request data
       const requestData = {
         ...productData,
-        subSkuFamilyId: productData.subSkuFamilyId || null
+        subSkuFamilyId: productData.subSkuFamilyId || null,
+        countryDeliverables: uniqueCountryDeliverables,
       };
       
       const res = await api.post(url, requestData);
@@ -123,7 +198,6 @@ export class ProductService {
         ram: productData.ram || null,
         storage: productData.storage || null,
         condition: productData.condition || null,
-        price: typeof productData.price === 'string' ? parseFloat(productData.price) : productData.price,
         stock: typeof productData.stock === 'string' ? parseInt(productData.stock, 10) : productData.stock,
         country: productData.country || null,
         moq: typeof productData.moq === 'string' ? parseInt(productData.moq, 10) : productData.moq,

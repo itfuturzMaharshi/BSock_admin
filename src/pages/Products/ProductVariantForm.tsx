@@ -178,7 +178,18 @@ const ProductVariantForm: React.FC = () => {
           customerListingNumber: cleanString(row.customerListingNumber) || '',
           packing: cleanString(row.packing) || '',
           currentLocation: cleanString(row.currentLocation) || '',
-          deliveryLocation: cleanString(row.deliveryLocation) || '',
+          deliveryLocation: Array.isArray(row.deliveryLocation) 
+            ? row.deliveryLocation 
+            : (row.deliveryLocation && typeof row.deliveryLocation === 'string' 
+                ? (() => {
+                    try {
+                      const parsed = JSON.parse(row.deliveryLocation);
+                      return Array.isArray(parsed) ? parsed : [row.deliveryLocation];
+                    } catch {
+                      return [row.deliveryLocation];
+                    }
+                  })()
+                : []),
           customMessage: cleanString(row.customMessage) || '',
           totalMoq: variantType === 'multi' && totalMoq ? parseFloat(String(totalMoq)) : null,
           paymentTerm: cleanString(row.paymentTermUsd) || cleanString(row.paymentTermHkd) || cleanString(row.paymentTermAed) || null,
