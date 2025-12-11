@@ -105,6 +105,9 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [selectedRowIndex, setSelectedRowIndex] = useState<number | null>(null);
+  // State for row-specific SKU Family search
+  const [rowSkuFamilySearch, setRowSkuFamilySearch] = useState<{ rowIndex: number; query: string; showResults: boolean } | null>(null);
+  const [rowSkuFamilySearchResults, setRowSkuFamilySearchResults] = useState<any[]>([]);
   const [openSupplierDropdown, setOpenSupplierDropdown] = useState<{ row: number; isOpen: boolean } | null>(null);
   const [supplierSearchQuery, setSupplierSearchQuery] = useState<{ row: number; query: string } | null>(null);
   const [currentCustomerListingNumber, setCurrentCustomerListingNumber] = useState<number | null>(null);
@@ -450,7 +453,7 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
     return options;
   };
 
-  // Search functionality
+  // Search functionality for top search
   useEffect(() => {
     if (!searchQuery.trim()) {
       setSearchResults([]);
@@ -470,7 +473,32 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
     setShowSearchResults(filtered.length > 0);
   }, [searchQuery, skuFamilies]);
 
-  // Handle selection from search results
+  // Search functionality for row-specific SKU Family search
+  useEffect(() => {
+    if (!rowSkuFamilySearch) {
+      setRowSkuFamilySearchResults([]);
+      return;
+    }
+
+    const allOptions = getFlattenedSkuFamilyOptions();
+    
+    // If query is empty, show all options; otherwise filter
+    if (!rowSkuFamilySearch.query.trim()) {
+      setRowSkuFamilySearchResults(allOptions);
+      setRowSkuFamilySearch(prev => prev ? { ...prev, showResults: allOptions.length > 0 } : null);
+    } else {
+      const query = rowSkuFamilySearch.query.toLowerCase().trim();
+      const filtered = allOptions.filter((option) => {
+        const searchText = `${option.skuFamilyName} ${option.subModelName} ${option.storage} ${option.colour} ${option.ram}`.toLowerCase();
+        return searchText.includes(query);
+      });
+
+      setRowSkuFamilySearchResults(filtered);
+      setRowSkuFamilySearch(prev => prev ? { ...prev, showResults: filtered.length > 0 } : null);
+    }
+  }, [rowSkuFamilySearch?.query, skuFamilies]);
+
+  // Handle selection from search results (top search)
   const handleSearchSelect = (option: any, rowIndex: number) => {
     updateRow(rowIndex, 'skuFamilyId', option.skuFamilyId);
     updateRow(rowIndex, 'subModelName', option.subModelName);
@@ -482,6 +510,19 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
     setSearchQuery('');
     setShowSearchResults(false);
     setSelectedRowIndex(null);
+  };
+
+  // Handle selection from row-specific SKU Family search
+  const handleRowSkuFamilySearchSelect = (option: any, rowIndex: number) => {
+    updateRow(rowIndex, 'skuFamilyId', option.skuFamilyId);
+    updateRow(rowIndex, 'subModelName', option.subModelName);
+    updateRow(rowIndex, 'storage', option.storage);
+    updateRow(rowIndex, 'colour', option.colour);
+    if (option.ram) {
+      updateRow(rowIndex, 'ram', option.ram);
+    }
+    setRowSkuFamilySearch(null);
+    setRowSkuFamilySearchResults([]);
   };
 
   // Keyboard shortcuts
@@ -1201,7 +1242,7 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
       // which would create duplicate products
       // Navigate to products list after a short delay
       setTimeout(() => {
-        window.location.href = '/products';
+        window.location.href = '/adminapp/#/products';
       }, 1000);
     } catch (error: any) {
       console.error('Error creating products:', error);
@@ -1216,7 +1257,7 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
     { key: 'supplierId', label: 'SUPPLIER ID*', width: 130, group: 'Supplier Info' },
     { key: 'supplierListingNumber', label: 'SUPPLIER LISTING NO*', width: 180, group: 'Supplier Info' },
     { key: 'customerListingNumber', label: 'CUSTOMER LISTING NO*', width: 180, group: 'Supplier Info' },
-    { key: 'skuFamilyId', label: 'SKU Family*', width: 150, group: 'Product Detail' },
+    { key: 'skuFamilyId', label: 'SKU Family*', width: 200, group: 'Product Detail' },
     { key: 'subModelName', label: 'SubModelName*', width: 150, group: 'Product Detail' },
     { key: 'storage', label: 'Storage*', width: 100, group: 'Product Detail' },
     { key: 'colour', label: 'Colour*', width: 100, group: 'Product Detail' },
@@ -1313,45 +1354,84 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
 
     switch (column.key) {
       case 'skuFamilyId':
+        const selectedSkuFamily = skuFamilies.find(sku => sku._id === value);
+        const displayValue = selectedSkuFamily?.name || '';
+        const isRowSearchActive = rowSkuFamilySearch?.rowIndex === rowIndex;
+        const rowSearchQuery = isRowSearchActive ? rowSkuFamilySearch.query : '';
+        
         return (
-          <div className="min-w-[150px]" onFocus={() => setFocusedCell({ row: rowIndex, col: column.key })}>
-            <Select
-              options={skuFamilies.map(sku => ({ value: sku._id, label: sku.name }))}
-              value={skuFamilies.find(sku => sku._id === value) ? { value: value as string, label: skuFamilies.find(sku => sku._id === value)?.name } : null}
-              onChange={(opt) => {
-                updateRow(rowIndex, column.key as keyof ProductRowData, opt?.value || '');
-                // Auto-fill related fields if SKU Family has subSkuFamilies
-                if (opt?.value) {
-                  const selectedSku = skuFamilies.find(sku => sku._id === opt.value);
-                  if (selectedSku && selectedSku.subSkuFamilies && selectedSku.subSkuFamilies.length > 0) {
-                    // If SKU Family has subSkuFamilies, don't auto-fill (let user select via search)
-                    // The search functionality will handle filling these fields
-                  } else if (selectedSku) {
-                    // If no subSkuFamilies, fill basic info
-                    updateRow(rowIndex, 'subModelName', selectedSku.name);
+          <div className="min-w-[150px] relative" onFocus={() => setFocusedCell({ row: rowIndex, col: column.key })}>
+            <div className="relative">
+              <input
+                ref={(el) => { cellRefs.current[cellId] = el; }}
+                type="text"
+                value={isRowSearchActive ? rowSearchQuery : displayValue}
+                onChange={(e) => {
+                  const query = e.target.value;
+                  setRowSkuFamilySearch({ rowIndex, query, showResults: true });
+                }}
+                onFocus={() => {
+                  setFocusedCell({ row: rowIndex, col: column.key });
+                  setSelectedRowIndex(rowIndex);
+                  if (!isRowSearchActive) {
+                    // Start with empty query to show all options or current value
+                    setRowSkuFamilySearch({ rowIndex, query: '', showResults: false });
                   }
-                }
-              }}
-              className="text-xs"
-              classNamePrefix="select"
-              isSearchable
-              placeholder="Select SKU Family"
-              styles={{
-                control: (provided, state) => ({ 
-                  ...provided, 
-                  minHeight: '32px', 
-                  fontSize: '12px', 
-                  border: 'none', 
-                  boxShadow: state.isFocused ? '0 0 0 2px rgba(59, 130, 246, 0.5)' : 'none',
-                  backgroundColor: 'transparent',
-                  '&:hover': { border: 'none' }
-                }),
-                valueContainer: (provided) => ({ ...provided, padding: '4px 8px' }),
-                input: (provided) => ({ ...provided, margin: '0', padding: '0' }),
-                indicatorsContainer: (provided) => ({ ...provided, height: '32px' }),
-                menu: (provided) => ({ ...provided, zIndex: 9999, boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }),
-              }}
-            />
+                }}
+                onBlur={() => {
+                  // Delay hiding to allow click on results
+                  setTimeout(() => {
+                    if (rowSkuFamilySearch?.rowIndex === rowIndex) {
+                      setRowSkuFamilySearch(null);
+                    }
+                  }, 200);
+                }}
+                placeholder="Click to search SKU Family..."
+                className="w-full px-2 py-1.5 text-xs border-0 bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded transition-all duration-150 placeholder:text-gray-400"
+              />
+              {isRowSearchActive && (
+                <i className="fas fa-search absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs"></i>
+              )}
+            </div>
+            {/* Row-specific Search Results Dropdown */}
+            {isRowSearchActive && rowSkuFamilySearch?.showResults && rowSkuFamilySearchResults.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border-2 w-[270px] border-gray-300 dark:border-gray-600 rounded-lg shadow-xl max-h-96 overflow-y-auto z-[100]">
+                <div className="px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border-b border-gray-200 dark:border-gray-700">
+                  <div className="text-xs font-semibold text-blue-700 dark:text-blue-300">
+                    Row {rowIndex + 1} - Select SKU Family
+                  </div>
+                </div>
+                {rowSkuFamilySearchResults.map((option, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => handleRowSkuFamilySearchSelect(option, rowIndex)}
+                    className="px-4 py-3 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer border-b border-gray-200 dark:border-gray-700 last:border-b-0 transition-colors"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="font-semibold text-sm text-gray-800 dark:text-gray-200">
+                          {option.skuFamilyName}
+                        </div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                          {option.subModelName && <span className="mr-2">Model: {option.subModelName}</span>}
+                          {option.storage && <span className="mr-2">Storage: {option.storage}</span>}
+                          {option.colour && <span className="mr-2">Color: {option.colour}</span>}
+                          {option.ram && <span>RAM: {option.ram}</span>}
+                        </div>
+                      </div>
+                      <i className="fas fa-arrow-right text-blue-500 text-xs mt-1"></i>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {isRowSearchActive && rowSearchQuery && rowSkuFamilySearch?.showResults && rowSkuFamilySearchResults.length === 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg shadow-xl p-4 z-[100]">
+                <div className="text-sm text-gray-500 dark:text-gray-400 text-center">
+                  No results found
+                </div>
+              </div>
+            )}
           </div>
         );
 
@@ -1740,44 +1820,37 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
 
       case 'deliveryLocation':
         const deliveryValue = Array.isArray(value) ? value : (value ? [value] : []);
+        const deliveryDisplayNames = deliveryValue
+          .map(code => {
+            const option = deliveryLocationOptions.find(opt => opt.code === code);
+            return option ? option.name : code;
+          })
+          .filter(Boolean);
+        
         return (
-          <Select
-            isMulti
-            options={deliveryLocationOptions.map(opt => ({ value: opt.code, label: opt.name }))}
-            value={deliveryValue.map(code => {
-              const option = deliveryLocationOptions.find(opt => opt.code === code);
-              return option ? { value: option.code, label: option.name } : null;
-            }).filter(Boolean) as any}
-            onChange={(selected) => {
-              const codes = selected ? selected.map((s: any) => s.value) : [];
-              updateRow(rowIndex, column.key as keyof ProductRowData, codes);
-            }}
-            className="basic-select"
-            classNamePrefix="select"
-            placeholder="Select locations"
+          <div 
+            className="w-full px-2 py-1.5 min-h-[32px] flex items-center"
             onFocus={() => {
               setFocusedCell({ row: rowIndex, col: column.key });
               setSelectedRowIndex(rowIndex);
             }}
-            styles={{
-              control: (provided) => ({
-                ...provided,
-                minHeight: '28px',
-                fontSize: '12px',
-                border: 'none',
-                backgroundColor: 'transparent',
-                boxShadow: 'none',
-              }),
-              multiValue: (provided) => ({
-                ...provided,
-                fontSize: '11px',
-              }),
-              placeholder: (provided) => ({
-                ...provided,
-                fontSize: '12px',
-              }),
-            }}
-          />
+          >
+            {deliveryDisplayNames.length > 0 ? (
+              deliveryDisplayNames.map((name, idx) => (
+                <span
+                  key={idx}
+                  className="inline-flex items-center rounded-md text-xs font-medium text-blue-800 dark:text-blue-300"
+                >
+                  {/* <i className="fas fa-map-marker-alt mr-1.5 text-[10px]"></i> */}
+                  {name}{idx < deliveryDisplayNames.length - 1 ? ',' : ''} 
+                </span>
+              ))
+            ) : (
+              <span className="text-xs text-gray-400 dark:text-gray-500 italic">
+                Auto-calculated
+              </span>
+            )}
+          </div>
         );
 
       case 'startTime':
@@ -2209,7 +2282,7 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
           </div>
           <div className="h-8 w-px bg-gray-300 dark:bg-gray-600 mx-1"></div>
           {/* SKU Family Search Field */}
-          <div className="relative flex-1 max-w-md">
+          {/* <div className="relative flex-1 max-w-md">
             <div className="relative">
               <input
                 type="text"
@@ -2244,7 +2317,6 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
                 </button>
               )}
             </div>
-            {/* Search Results Dropdown */}
             {showSearchResults && searchResults.length > 0 && (
               <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg shadow-xl max-h-96 overflow-y-auto z-50">
                 <div className="px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border-b border-gray-200 dark:border-gray-700">
@@ -2290,8 +2362,8 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
                 </div>
               </div>
             )}
-          </div>
-          <div className="h-8 w-px bg-gray-300 dark:bg-gray-600 mx-1"></div>
+          </div> */}
+          {/* <div className="h-8 w-px bg-gray-300 dark:bg-gray-600 mx-1"></div> */}
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
               <i className="fas fa-table text-blue-500 text-sm"></i>
@@ -2593,14 +2665,17 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
                   return (
                     <div
                       key={`${rowIndex}-${col.key}`}
-                      className={`px-0 py-1.5 border-r border-gray-200 dark:border-gray-700 relative group transition-all duration-150 ${
+                      className={`px-0 py-1.5 border-r border-gray-200 dark:border-gray-700 relative group transition-all duration-150 flex ${
                         focusedCell?.row === rowIndex && focusedCell?.col === col.key
-                          ? 'ring-2 ring-blue-500 ring-offset-1 z-10 bg-blue-50 dark:bg-blue-900/30 shadow-md'
+                          // ? 'ring-2 ring-blue-500 ring-offset-1 z-10 bg-blue-50 dark:bg-blue-900/30 shadow-md'
+                          ? ''
                           : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
                       }`}
                       style={{ 
                         width: `${col.width}px`, 
-                        minWidth: `${col.width}px`
+                        minWidth: `${col.width}px`,
+                        justifyContent:'center',
+                        alignItems:'center'
                       }}
                       onDoubleClick={() => fillAllBelow(rowIndex, col.key)}
                       title="Double-click to fill all below"
