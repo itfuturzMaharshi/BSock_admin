@@ -40,6 +40,58 @@ const CostSelectionModal: React.FC<CostSelectionModalProps> = ({
 }) => {
   const [localSelected, setLocalSelected] = useState<Record<string, string[]>>(selectedCosts);
 
+  // Helper function to check if cost is applicable based on product locations
+  const isCostApplicable = (cost: CostCharge, country: string) => {
+    // Map country name to code: "Hongkong" -> "HK", "Dubai" -> "D"
+    const countryCode = country === 'Hongkong' ? 'HK' : 'D';
+    
+    // Helper function to normalize deliveryLocation to array
+    const normalizeDeliveryLocation = (deliveryLocation: any): string[] => {
+      if (Array.isArray(deliveryLocation)) {
+        return deliveryLocation;
+      }
+      if (typeof deliveryLocation === 'string') {
+        try {
+          const parsed = JSON.parse(deliveryLocation);
+          return Array.isArray(parsed) ? parsed : [deliveryLocation];
+        } catch {
+          return [deliveryLocation];
+        }
+      }
+      return [];
+    };
+    
+    if (cost.isExpressDelivery) {
+      // Express delivery: show when currentLocation and deliveryLocation are NOT the same
+      return products.some(p => {
+        if (!p.currentLocation) return false;
+        
+        const deliveryLocations = normalizeDeliveryLocation(p.deliveryLocation);
+        
+        // Express delivery applies when locations don't match
+        const isSameLocation = p.currentLocation === countryCode && 
+          deliveryLocations.includes(countryCode);
+        
+        return !isSameLocation;
+      });
+    }
+    
+    if (cost.isSameLocationCharge) {
+      // Same location charge: show when currentLocation matches country AND country is in deliveryLocation
+      return products.some(p => {
+        if (!p.currentLocation) return false;
+        
+        const deliveryLocations = normalizeDeliveryLocation(p.deliveryLocation);
+        
+        // Same location applies when currentLocation matches country AND country is in deliveryLocation
+        return p.currentLocation === countryCode && 
+          deliveryLocations.includes(countryCode);
+      });
+    }
+    
+    return true; // Other costs are always applicable
+  };
+
   // Helper: ensure only one express cost per country
   const toggleCost = (country: string, cost: CostCharge) => {
     setLocalSelected((prev) => {
@@ -114,7 +166,7 @@ const CostSelectionModal: React.FC<CostSelectionModalProps> = ({
                   <p className="text-gray-500 dark:text-gray-400">No costs available for this country.</p>
                 ) : (
                   <div className="space-y-2">
-                    {charges.map((cost) => {
+                    {charges.filter(cost => isCostApplicable(cost, country)).map((cost) => {
                       const isSelected = selected.has(cost._id);
                       const isSameLocation = cost.isSameLocationCharge;
                       const isExpress = cost.isExpressDelivery;

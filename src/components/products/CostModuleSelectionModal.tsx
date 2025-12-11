@@ -156,28 +156,31 @@ const CostModuleSelectionModal: React.FC<CostModuleSelectionModalProps> = ({
     };
     
     if (cost.isExpressDelivery) {
-      // Express delivery: show when currentLocation doesn't match any deliveryLocation
+      // Express delivery: show when currentLocation and deliveryLocation are NOT the same
+      // i.e., currentLocation != countryCode OR countryCode is NOT in deliveryLocation
       return products.some(p => {
         if (!p.currentLocation) return false;
         
         const deliveryLocations = normalizeDeliveryLocation(p.deliveryLocation);
         
-        // Check if currentLocation matches the country code AND is in deliveryLocation array
+        // Express delivery applies when:
+        // 1. currentLocation does NOT match the country code, OR
+        // 2. currentLocation matches country code BUT country code is NOT in deliveryLocation
         const isSameLocation = p.currentLocation === countryCode && 
           deliveryLocations.includes(countryCode);
         
-        // Express delivery: currentLocation matches country but NOT in deliveryLocation array
-        return p.currentLocation === countryCode && !isSameLocation;
+        return !isSameLocation;
       });
     }
     if (cost.isSameLocationCharge) {
-      // Same location charge: show when currentLocation matches country AND is in deliveryLocation array
+      // Same location charge: show when currentLocation matches country AND country is in deliveryLocation
       return products.some(p => {
         if (!p.currentLocation) return false;
         
         const deliveryLocations = normalizeDeliveryLocation(p.deliveryLocation);
         
-        // Check if currentLocation matches the country code AND is in deliveryLocation array
+        // Same location applies when:
+        // currentLocation matches the country code AND country code IS in deliveryLocation array
         return p.currentLocation === countryCode && 
           deliveryLocations.includes(countryCode);
       });
