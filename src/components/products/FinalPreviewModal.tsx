@@ -90,11 +90,11 @@ const FinalPreviewModal: React.FC<FinalPreviewModalProps> = ({
                           {cd.aed && <div>AED: {cd.aed.toFixed ? cd.aed.toFixed(2) : cd.aed}</div>}
                         </div>
 
-                        {cd.margins?.filter((m: any) => m.type !== 'customerCategory').length > 0 && (
+                        {cd.margins?.length > 0 && (
                           <div className="mt-2">
                             <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Margins</div>
                             <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
-                              {cd.margins.filter((m: any) => m.type !== 'customerCategory').map((m: any, mi: number) => (
+                              {cd.margins.map((m: any, mi: number) => (
                                 <div key={mi} className="flex justify-between">
                                   <span>{m.type}: {m.marginValue}{m.marginType === "percentage" ? "%" : ""}</span>
                                   <span>+{m.calculatedAmount?.toFixed?.(2) ?? m.calculatedAmount}</span>

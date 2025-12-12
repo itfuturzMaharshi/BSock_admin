@@ -17,8 +17,8 @@ interface CountryDeliverable {
   basePrice: number | string;
   calculatedPrice?: number | string;
   exchangeRate?: number | string;
-  paymentTerm?: string | null;
-  paymentMethod?: string | null;
+  paymentTerm?: string[] | null;
+  paymentMethod?: string[] | null;
   // Legacy fields for backward compatibility
   usd?: number | string;
   xe?: number | string;
@@ -51,6 +51,8 @@ interface FormData {
   expiryTime: string; // ISO string (e.g., "2025-10-30T03:30:00.000Z")
   groupCode: string;
   countryDeliverables: CountryDeliverable[];
+  paymentTerm?: string[];
+  paymentMethod?: string[];
 }
 
 interface ValidationErrors {
@@ -127,6 +129,8 @@ const ProductModal: React.FC<ProductModalProps> = ({
     expiryTime: "",
     groupCode: "",
     countryDeliverables: [],
+    paymentTerm: [],
+    paymentMethod: [],
   });
   const [costsByCountry, setCostsByCountry] = useState<Record<string, Array<{ _id: string; name: string; costType: string; value: number }>>>({});
   const [skuFamilies, setSkuFamilies] = useState<
@@ -344,6 +348,30 @@ const ProductModal: React.FC<ProductModalProps> = ({
             basePrice: cd.basePrice || cd.usd || cd.hkd || cd.aed || 0,
             exchangeRate: cd.exchangeRate || cd.xe || null,
           })),
+          paymentTerm: (() => {
+            // Check top level first, then fall back to first countryDeliverable for backward compatibility
+            if ((editItem as any).paymentTerm) {
+              return Array.isArray((editItem as any).paymentTerm) 
+                ? (editItem as any).paymentTerm 
+                : (typeof (editItem as any).paymentTerm === 'string' ? [(editItem as any).paymentTerm] : []);
+            } else if ((editItem as any).countryDeliverables && (editItem as any).countryDeliverables.length > 0 && (editItem as any).countryDeliverables[0].paymentTerm) {
+              const cdPaymentTerm = (editItem as any).countryDeliverables[0].paymentTerm;
+              return Array.isArray(cdPaymentTerm) ? cdPaymentTerm : (typeof cdPaymentTerm === 'string' ? [cdPaymentTerm] : []);
+            }
+            return [];
+          })(),
+          paymentMethod: (() => {
+            // Check top level first, then fall back to first countryDeliverable for backward compatibility
+            if ((editItem as any).paymentMethod) {
+              return Array.isArray((editItem as any).paymentMethod) 
+                ? (editItem as any).paymentMethod 
+                : (typeof (editItem as any).paymentMethod === 'string' ? [(editItem as any).paymentMethod] : []);
+            } else if ((editItem as any).countryDeliverables && (editItem as any).countryDeliverables.length > 0 && (editItem as any).countryDeliverables[0].paymentMethod) {
+              const cdPaymentMethod = (editItem as any).countryDeliverables[0].paymentMethod;
+              return Array.isArray(cdPaymentMethod) ? cdPaymentMethod : (typeof cdPaymentMethod === 'string' ? [cdPaymentMethod] : []);
+            }
+            return [];
+          })(),
         });
       } else {
         setFormData({
@@ -366,6 +394,8 @@ const ProductModal: React.FC<ProductModalProps> = ({
     expiryTime: "",
     groupCode: "",
     countryDeliverables: [],
+    paymentTerm: [],
+    paymentMethod: [],
   });
       }
       setDateError(null);
@@ -822,7 +852,8 @@ const ProductModal: React.FC<ProductModalProps> = ({
         // Convert basePrice to number
         const numericBasePrice = typeof basePrice === 'string' ? parseFloat(basePrice) : (basePrice || 0);
         
-        return {
+        // Create a clean countryDeliverable object without paymentTerm and paymentMethod
+        const cleanCd: any = {
           country: cd.country,
           currency: currency,
           basePrice: isNaN(numericBasePrice) ? 0 : numericBasePrice,
@@ -831,10 +862,34 @@ const ProductModal: React.FC<ProductModalProps> = ({
           margins: Array.isArray(cd.margins) ? cd.margins : [],
           costs: Array.isArray(cd.costs) ? cd.costs : [],
           charges: Array.isArray(cd.charges) ? cd.charges : [],
-          paymentTerm: cd.paymentTerm || null,
-          paymentMethod: cd.paymentMethod || null,
         };
+        // Explicitly exclude paymentTerm and paymentMethod
+        return cleanCd;
       }).filter((cd: any) => cd.country && cd.currency && (cd.basePrice !== undefined && cd.basePrice !== null)), // Filter out invalid entries
+      
+      // Extract paymentTerm and paymentMethod from formData (top level or from first countryDeliverable for backward compatibility)
+      paymentTerm: (() => {
+        if (formData.paymentTerm) {
+          return Array.isArray(formData.paymentTerm) 
+            ? formData.paymentTerm 
+            : (formData.paymentTerm ? [formData.paymentTerm] : []);
+        } else if (formData.countryDeliverables && formData.countryDeliverables.length > 0 && formData.countryDeliverables[0].paymentTerm) {
+          const cdPaymentTerm = formData.countryDeliverables[0].paymentTerm;
+          return Array.isArray(cdPaymentTerm) ? cdPaymentTerm : (cdPaymentTerm ? [cdPaymentTerm] : []);
+        }
+        return [];
+      })(),
+      paymentMethod: (() => {
+        if (formData.paymentMethod) {
+          return Array.isArray(formData.paymentMethod) 
+            ? formData.paymentMethod 
+            : (formData.paymentMethod ? [formData.paymentMethod] : []);
+        } else if (formData.countryDeliverables && formData.countryDeliverables.length > 0 && formData.countryDeliverables[0].paymentMethod) {
+          const cdPaymentMethod = formData.countryDeliverables[0].paymentMethod;
+          return Array.isArray(cdPaymentMethod) ? cdPaymentMethod : (cdPaymentMethod ? [cdPaymentMethod] : []);
+        }
+        return [];
+      })(),
     };
     
     console.log("Transformed form data:", transformedFormData);
@@ -1760,122 +1815,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
                           </div>
                         )}
                       </div>
-
-                      {/* Payment Terms and Method Section */}
-                      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                            Payment Term
-                          </label>
-                          <div className="min-w-[200px]">
-                            <Select
-                              isMulti
-                              options={(constants?.paymentTerm || []).map(opt => ({ value: opt.code, label: opt.name }))}
-                              value={
-                                deliverable.paymentTerm
-                                  ? deliverable.paymentTerm.split(',').map(t => t.trim()).filter(t => t)
-                                      .map(code => {
-                                        const opt = constants?.paymentTerm?.find(p => p.code === code);
-                                        return opt ? { value: opt.code, label: opt.name } : null;
-                                      })
-                                      .filter(Boolean) as { value: string; label: string }[]
-                                  : []
-                              }
-                              onChange={(selected) => {
-                                const selectedValues = selected ? selected.map(opt => opt.value).join(', ') : '';
-                                updateCountryDeliverable(index, 'paymentTerm', selectedValues || null);
-                              }}
-                              className="text-sm"
-                              classNamePrefix="select"
-                              isSearchable={false}
-                              placeholder="Select payment terms..."
-                              styles={{
-                                control: (provided) => ({
-                                  ...provided,
-                                  minHeight: '40px',
-                                  minWidth: '200px',
-                                  fontSize: '14px',
-                                  backgroundColor: 'rgb(249 250 251)',
-                                }),
-                                menu: (provided) => ({ ...provided, zIndex: 9999 }),
-                                multiValue: (provided) => ({
-                                  ...provided,
-                                  backgroundColor: '#dbeafe',
-                                }),
-                                multiValueLabel: (provided) => ({
-                                  ...provided,
-                                  color: '#1e40af',
-                                  fontWeight: '500',
-                                }),
-                                multiValueRemove: (provided) => ({
-                                  ...provided,
-                                  color: '#1e40af',
-                                  ':hover': {
-                                    backgroundColor: '#93c5fd',
-                                    color: '#fff',
-                                  },
-                                }),
-                              }}
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
-                            Payment Method
-                          </label>
-                          <div className="min-w-[200px]">
-                            <Select
-                              isMulti
-                              options={(constants?.paymentMethod || []).map(opt => ({ value: opt.code, label: opt.name }))}
-                              value={
-                                deliverable.paymentMethod
-                                  ? deliverable.paymentMethod.split(',').map(m => m.trim()).filter(m => m)
-                                      .map(code => {
-                                        const opt = constants?.paymentMethod?.find(p => p.code === code);
-                                        return opt ? { value: opt.code, label: opt.name } : null;
-                                      })
-                                      .filter(Boolean) as { value: string; label: string }[]
-                                  : []
-                              }
-                              onChange={(selected) => {
-                                const selectedValues = selected ? selected.map(opt => opt.value).join(', ') : '';
-                                updateCountryDeliverable(index, 'paymentMethod', selectedValues || null);
-                              }}
-                              className="text-sm"
-                              classNamePrefix="select"
-                              isSearchable={false}
-                              placeholder="Select payment methods..."
-                              styles={{
-                                control: (provided) => ({
-                                  ...provided,
-                                  minHeight: '40px',
-                                  minWidth: '200px',
-                                  fontSize: '14px',
-                                  backgroundColor: 'rgb(249 250 251)',
-                                }),
-                                menu: (provided) => ({ ...provided, zIndex: 9999 }),
-                                multiValue: (provided) => ({
-                                  ...provided,
-                                  backgroundColor: '#dbeafe',
-                                }),
-                                multiValueLabel: (provided) => ({
-                                  ...provided,
-                                  color: '#1e40af',
-                                  fontWeight: '500',
-                                }),
-                                multiValueRemove: (provided) => ({
-                                  ...provided,
-                                  color: '#1e40af',
-                                  ':hover': {
-                                    backgroundColor: '#93c5fd',
-                                    color: '#fff',
-                                  },
-                                }),
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
                     </div>
                   ))}
                 </div>
@@ -1885,6 +1824,140 @@ const ProductModal: React.FC<ProductModalProps> = ({
                   {validationErrors.countryDeliverables}
                 </p>
               )}
+
+              {/* Payment Terms and Method Section - Top Level */}
+              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                    Payment Term
+                  </label>
+                  <div className="min-w-[200px]">
+                    <Select
+                      isMulti
+                      options={(constants?.paymentTerm || []).map(opt => ({ value: opt.code, label: opt.name }))}
+                      value={
+                        formData.paymentTerm && Array.isArray(formData.paymentTerm)
+                          ? formData.paymentTerm
+                              .map(code => {
+                                const opt = constants?.paymentTerm?.find(p => p.code === code);
+                                return opt ? { value: opt.code, label: opt.name } : null;
+                              })
+                              .filter(Boolean) as { value: string; label: string }[]
+                          : formData.paymentTerm
+                          ? (typeof formData.paymentTerm === 'string' 
+                              ? formData.paymentTerm.split(',').map(t => t.trim()).filter(t => t)
+                                  .map(code => {
+                                    const opt = constants?.paymentTerm?.find(p => p.code === code);
+                                    return opt ? { value: opt.code, label: opt.name } : null;
+                                  })
+                                  .filter(Boolean) as { value: string; label: string }[]
+                              : [])
+                          : []
+                      }
+                      onChange={(selected) => {
+                        const selectedValues = selected ? selected.map(opt => opt.value) : [];
+                        setFormData(prev => ({ ...prev, paymentTerm: selectedValues }));
+                      }}
+                      className="text-sm"
+                      classNamePrefix="select"
+                      isSearchable={false}
+                      placeholder="Select payment terms..."
+                      styles={{
+                        control: (provided) => ({
+                          ...provided,
+                          minHeight: '40px',
+                          minWidth: '200px',
+                          fontSize: '14px',
+                          backgroundColor: 'rgb(249 250 251)',
+                        }),
+                        menu: (provided) => ({ ...provided, zIndex: 9999 }),
+                        multiValue: (provided) => ({
+                          ...provided,
+                          backgroundColor: '#dbeafe',
+                        }),
+                        multiValueLabel: (provided) => ({
+                          ...provided,
+                          color: '#1e40af',
+                          fontWeight: '500',
+                        }),
+                        multiValueRemove: (provided) => ({
+                          ...provided,
+                          color: '#1e40af',
+                          ':hover': {
+                            backgroundColor: '#93c5fd',
+                            color: '#fff',
+                          },
+                        }),
+                      }}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
+                    Payment Method
+                  </label>
+                  <div className="min-w-[200px]">
+                    <Select
+                      isMulti
+                      options={(constants?.paymentMethod || []).map(opt => ({ value: opt.code, label: opt.name }))}
+                      value={
+                        formData.paymentMethod && Array.isArray(formData.paymentMethod)
+                          ? formData.paymentMethod
+                              .map(code => {
+                                const opt = constants?.paymentMethod?.find(p => p.code === code);
+                                return opt ? { value: opt.code, label: opt.name } : null;
+                              })
+                              .filter(Boolean) as { value: string; label: string }[]
+                          : formData.paymentMethod
+                          ? (typeof formData.paymentMethod === 'string' 
+                              ? formData.paymentMethod.split(',').map(m => m.trim()).filter(m => m)
+                                  .map(code => {
+                                    const opt = constants?.paymentMethod?.find(p => p.code === code);
+                                    return opt ? { value: opt.code, label: opt.name } : null;
+                                  })
+                                  .filter(Boolean) as { value: string; label: string }[]
+                              : [])
+                          : []
+                      }
+                      onChange={(selected) => {
+                        const selectedValues = selected ? selected.map(opt => opt.value) : [];
+                        setFormData(prev => ({ ...prev, paymentMethod: selectedValues }));
+                      }}
+                      className="text-sm"
+                      classNamePrefix="select"
+                      isSearchable={false}
+                      placeholder="Select payment methods..."
+                      styles={{
+                        control: (provided) => ({
+                          ...provided,
+                          minHeight: '40px',
+                          minWidth: '200px',
+                          fontSize: '14px',
+                          backgroundColor: 'rgb(249 250 251)',
+                        }),
+                        menu: (provided) => ({ ...provided, zIndex: 9999 }),
+                        multiValue: (provided) => ({
+                          ...provided,
+                          backgroundColor: '#dbeafe',
+                        }),
+                        multiValueLabel: (provided) => ({
+                          ...provided,
+                          color: '#1e40af',
+                          fontWeight: '500',
+                        }),
+                        multiValueRemove: (provided) => ({
+                          ...provided,
+                          color: '#1e40af',
+                          ':hover': {
+                            backgroundColor: '#93c5fd',
+                            color: '#fff',
+                          },
+                        }),
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </form>
         </div>
