@@ -60,7 +60,11 @@ const CascadingVariantSelector: React.FC<CascadingVariantSelectorProps> = ({
           StorageService.getStorageList(1, 1000).catch(() => ({ data: { docs: [] } }))
         ]);
         setSkuFamilies(skuList);
-        setAllStorages(storageList?.data?.docs || []);
+        // Filter and map storages to ensure _id exists
+        const validStorages = (storageList?.data?.docs || [])
+          .filter((s: any) => s && s._id && s.title)
+          .map((s: any) => ({ _id: s._id, title: s.title }));
+        setAllStorages(validStorages);
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -115,8 +119,9 @@ const CascadingVariantSelector: React.FC<CascadingVariantSelectorProps> = ({
         if (typeof sku.storageId === 'object' && sku.storageId.title) {
           storageSet.add(sku.storageId.title);
         } else if (typeof sku.storageId === 'string') {
-          const storage = allStorages.find(s => s._id === sku.storageId);
-          if (storage && storage.title) {
+          const storageIdString = sku.storageId;
+          const storage = allStorages.find(s => s._id === storageIdString);
+          if (storage?.title) {
             storageSet.add(storage.title);
           }
         }

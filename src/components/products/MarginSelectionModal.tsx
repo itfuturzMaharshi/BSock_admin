@@ -1,9 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { BrandService } from '../../services/brand/brand.services';
-import { ProductCategoryService } from '../../services/productCategory/productCategory.services';
-import { ConditionCategoryService } from '../../services/conditionCategory/conditionCategory.services';
-import { SellerCategoryService } from '../../services/sellerCategory/sellerCategory.services';
-import { CustomerCategoryService } from '../../services/customerCategory/customerCategory.services';
 import toastHelper from '../../utils/toastHelper';
 
 export interface MarginSelection {
@@ -34,7 +29,6 @@ const MarginSelectionModal: React.FC<MarginSelectionModalProps> = ({
     sellerCategory: false,
     customerCategory: false,
   });
-  const [loading, setLoading] = useState(false);
   const [hasSellerCode, setHasSellerCode] = useState(false);
 
   useEffect(() => {

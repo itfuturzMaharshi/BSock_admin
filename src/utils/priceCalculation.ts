@@ -40,9 +40,7 @@ export interface ProductCalculationResult {
  */
 export const calculateMargins = async (
   product: any,
-  marginSelection: MarginSelection,
-  basePrice: number,
-  country: 'Hongkong' | 'Dubai'
+  marginSelection: MarginSelection
 ): Promise<CalculatedMargin[]> => {
   const margins: CalculatedMargin[] = [];
 
@@ -194,7 +192,7 @@ export const calculateAllProducts = async (
     // Process Hongkong deliverables
     if (product.hkUsd) {
       const basePrice = parseFloat(String(product.hkUsd)) || 0;
-      const margins = await calculateMargins(product, marginSelection, basePrice, 'Hongkong');
+      const margins = await calculateMargins(product, marginSelection);
       const costs = calculateCosts(product, hkCosts, basePrice, 'Hongkong', exchangeRates.hkd);
       const calculatedPrice = calculateFinalPrice(basePrice, margins, costs);
 
@@ -211,7 +209,7 @@ export const calculateAllProducts = async (
     // Process Dubai deliverables
     if (product.dubaiUsd) {
       const basePrice = parseFloat(String(product.dubaiUsd)) || 0;
-      const margins = await calculateMargins(product, marginSelection, basePrice, 'Dubai');
+      const margins = await calculateMargins(product, marginSelection);
       const costs = calculateCosts(product, dubaiCosts, basePrice, 'Dubai', exchangeRates.aed);
       const calculatedPrice = calculateFinalPrice(basePrice, margins, costs);
 

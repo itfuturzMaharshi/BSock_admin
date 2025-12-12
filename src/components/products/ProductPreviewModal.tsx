@@ -197,7 +197,7 @@ const ProductPreviewModal: React.FC<ProductPreviewModalProps> = ({
                                   Margins:
                                 </div>
                                 <div className="space-y-1">
-                                  {deliverable.margins.map((margin, mIdx) => (
+                                  {deliverable.margins.map((margin: any, mIdx: number) => (
                                     <div
                                       key={mIdx}
                                       className="text-sm bg-blue-50 dark:bg-blue-900/20 p-2 rounded"
@@ -222,7 +222,7 @@ const ProductPreviewModal: React.FC<ProductPreviewModalProps> = ({
                                   Costs:
                                 </div>
                                 <div className="space-y-1">
-                                  {deliverable.costs.map((cost, cIdx) => (
+                                  {deliverable.costs.map((cost: any, cIdx: number) => (
                                     <div
                                       key={cIdx}
                                       className="text-sm bg-green-50 dark:bg-green-900/20 p-2 rounded"
@@ -252,8 +252,8 @@ const ProductPreviewModal: React.FC<ProductPreviewModalProps> = ({
                               </div>
                               <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
                                 Base: ${deliverable.basePrice.toFixed(2)} + 
-                                Margins: ${deliverable.margins.reduce((sum, m) => sum + (m.calculatedAmount || 0), 0).toFixed(2)} + 
-                                Costs: ${deliverable.costs.reduce((sum, c) => sum + (c.calculatedAmount || 0), 0).toFixed(2)}
+                                Margins: ${deliverable.margins.reduce((sum: number, m: any) => sum + (m.calculatedAmount || 0), 0).toFixed(2)} + 
+                                Costs: ${deliverable.costs.reduce((sum: number, c: any) => sum + (c.calculatedAmount || 0), 0).toFixed(2)}
                               </div>
                             </div>
                           </div>

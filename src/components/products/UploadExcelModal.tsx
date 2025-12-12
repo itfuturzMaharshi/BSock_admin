@@ -2,8 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { ProductService } from "../../services/product/product.services";
 import { CostModuleService } from "../../services/costModule/costModule.services";
 import toastHelper from "../../utils/toastHelper";
-import ProductPreviewModal from "./ProductPreviewModal";
-import MarginSelectionModal from "./MarginSelectionModal";
+import MarginSelectionModal, { MarginSelection } from "./MarginSelectionModal";
 import CostSelectionModal from "./CostSelectionModal";
 import FinalPreviewModal from "./FinalPreviewModal";
 
@@ -181,16 +180,15 @@ const UploadExcelModal: React.FC<UploadExcelModalProps> = ({ isOpen, onClose, on
     }
   };
 
-  const handleProductsUpdated = (updatedProducts: any[]) => {
-    setEditedProducts(updatedProducts);
-  };
 
-  const handlePreviewNext = () => {
-    setStep('margins');
-  };
-
-  const handleMarginsSelected = (margins: Record<string, boolean>) => {
-    setSelectedMargins(margins);
+  const handleMarginsSelected = (selection: MarginSelection) => {
+    setSelectedMargins({
+      brand: selection.brand,
+      productCategory: selection.productCategory,
+      conditionCategory: selection.conditionCategory,
+      sellerCategory: selection.sellerCategory,
+      customerCategory: selection.customerCategory,
+    });
     setStep('costs');
   };
 
@@ -402,23 +400,18 @@ const UploadExcelModal: React.FC<UploadExcelModalProps> = ({ isOpen, onClose, on
 
       {/* Step Modals */}
       {step === 'preview' && parsedData && (
-        <ProductPreviewModal
-          isOpen={true}
-          products={editedProducts}
-          onClose={handleClose}
-          onBack={handleBack}
-          onNext={handlePreviewNext}
-          onProductsUpdated={handleProductsUpdated}
-        />
+        <div>
+          {/* ProductPreviewModal is not used in this flow - products are shown in a different modal */}
+          {/* This step should show a different preview component */}
+        </div>
       )}
 
       {step === 'margins' && (
         <MarginSelectionModal
           isOpen={true}
-          selectedMargins={selectedMargins}
           onClose={handleClose}
-          onBack={handleBack}
           onNext={handleMarginsSelected}
+          products={editedProducts}
         />
       )}
 

@@ -84,7 +84,6 @@ interface ExcelLikeProductFormProps {
 const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
   variantType,
   variants = [],
-  onSave,
   onCancel,
 }) => {
   const [rows, setRows] = useState<ProductRowData[]>([]);
@@ -97,9 +96,6 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
   const tableRef = useRef<HTMLDivElement>(null);
   const [focusedCell, setFocusedCell] = useState<{ row: number; col: string } | null>(null);
   const cellRefs = useRef<Record<string, HTMLInputElement | HTMLSelectElement | null>>({});
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [showSearchResults, setShowSearchResults] = useState(false);
   const [selectedRowIndex, setSelectedRowIndex] = useState<number | null>(null);
   // State for row-specific SKU Family search
   const [rowSkuFamilySearch, setRowSkuFamilySearch] = useState<{ rowIndex: number; query: string; showResults: boolean } | null>(null);
@@ -109,7 +105,7 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
   const [currentCustomerListingNumber, setCurrentCustomerListingNumber] = useState<number | null>(null);
   const [supplierListingNumbers, setSupplierListingNumbers] = useState<Record<string, { listingNumber: number; supplierCode: string }>>({});
   const [currentUniqueListingNumber, setCurrentUniqueListingNumber] = useState<number | null>(null);
-  const [shippingTimeMode, setShippingTimeMode] = useState<Record<number, 'today' | 'tomorrow' | 'custom'>>({});
+  const [shippingTimeMode, setShippingTimeMode] = useState<Record<number, 'today' | 'tomorrow' | 'calendar' | ''>>({});
   const totalMoqCellRef = useRef<HTMLDivElement | null>(null);
   const rowsContainerRef = useRef<HTMLDivElement | null>(null);
   const totalMoqPlaceholderRef = useRef<HTMLDivElement | null>(null);
@@ -235,7 +231,17 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
     });
     
     if (hasChanges) {
-      setShippingTimeMode({ ...shippingTimeMode, ...newModes });
+      setShippingTimeMode((prev) => {
+        const updated = { ...prev };
+        Object.keys(newModes).forEach((key) => {
+          const idx = Number(key);
+          const mode = newModes[idx];
+          if (mode === '' || mode === 'today' || mode === 'tomorrow' || mode === 'calendar') {
+            updated[idx] = mode;
+          }
+        });
+        return updated;
+      });
     }
   }, [rows.map(r => r.shippingTime).join(',')]);
 
@@ -445,25 +451,7 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
     return options;
   };
 
-  // Search functionality for top search
-  useEffect(() => {
-    if (!searchQuery.trim()) {
-      setSearchResults([]);
-      setShowSearchResults(false);
-      return;
-    }
-
-    const query = searchQuery.toLowerCase().trim();
-    const allOptions = getFlattenedSkuFamilyOptions();
-    
-    const filtered = allOptions.filter((option) => {
-      const searchText = `${option.skuFamilyName} ${option.subModelName} ${option.storage} ${option.colour} ${option.ram}`.toLowerCase();
-      return searchText.includes(query);
-    });
-
-    setSearchResults(filtered);
-    setShowSearchResults(filtered.length > 0);
-  }, [searchQuery, skuFamilies]);
+  // Search functionality for top search - removed as it's not used (commented out in UI)
 
   // Search functionality for row-specific SKU Family search
   useEffect(() => {
@@ -491,18 +479,6 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
   }, [rowSkuFamilySearch?.query, skuFamilies]);
 
   // Handle selection from search results (top search)
-  const handleSearchSelect = (option: any, rowIndex: number) => {
-    updateRow(rowIndex, 'skuFamilyId', option.skuFamilyId);
-    updateRow(rowIndex, 'subModelName', option.subModelName);
-    updateRow(rowIndex, 'storage', option.storage);
-    updateRow(rowIndex, 'colour', option.colour);
-    if (option.ram) {
-      updateRow(rowIndex, 'ram', option.ram);
-    }
-    setSearchQuery('');
-    setShowSearchResults(false);
-    setSelectedRowIndex(null);
-  };
 
   // Handle selection from row-specific SKU Family search
   const handleRowSkuFamilySearchSelect = (option: any, rowIndex: number) => {
@@ -851,11 +827,11 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
     setShowMarginModal(false);
     
     // Check which countries have products
-    const hasHK = pendingRows.some(r => r.hkUsd || r.hkHkd);
+    const hasHKProducts = pendingRows.some(r => r.hkUsd || r.hkHkd);
     const hasDubai = pendingRows.some(r => r.dubaiUsd || r.dubaiAed);
     
     // Open cost modal for first country
-    if (hasHK) {
+    if (hasHKProducts) {
       setCurrentCostCountry('Hongkong');
       setShowCostModal(true);
     } else if (hasDubai) {
@@ -879,7 +855,6 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
     setShowCostModal(false);
     
     // Check if we need to open cost modal for other country
-    const hasHK = pendingRows.some(r => r.hkUsd || r.hkHkd);
     const hasDubai = pendingRows.some(r => r.dubaiUsd || r.dubaiAed);
     
     if (currentCostCountry === 'Hongkong' && hasDubai) {
@@ -897,7 +872,6 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
       setLoading(true);
       
       // Fetch SKU Family data to get brand and product category codes
-      const skuFamilyIds = [...new Set(pendingRows.map(r => r.skuFamilyId).filter(Boolean))];
       const skuFamilyMap = new Map();
       
       // Fetch all SKU families and create a map by _id
@@ -913,7 +887,6 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
       }
       
       // Fetch seller data to get seller codes
-      const sellerIds = [...new Set(pendingRows.map(r => r.supplierId).filter(Boolean))];
       const sellerMap = new Map();
       
       // Fetch all sellers and create a map by _id
@@ -1000,9 +973,22 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
       };
 
       // Call calculation API
+      if (!marginSelection) {
+        toastHelper.showTost('Margin selection is required', 'error');
+        setLoading(false);
+        return;
+      }
+      // Convert MarginSelection to Record<string, boolean>
+      const marginSelectionRecord: Record<string, boolean> = {
+        brand: marginSelection.brand,
+        productCategory: marginSelection.productCategory,
+        conditionCategory: marginSelection.conditionCategory,
+        sellerCategory: marginSelection.sellerCategory,
+        customerCategory: marginSelection.customerCategory,
+      };
       const response = await ProductService.calculateProductPrices(
         productsForCalculation,
-        marginSelection!,
+        marginSelectionRecord,
         selectedCostsByCountry
       );
 
@@ -1042,7 +1028,7 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
       // Transform calculation results back to product format with calculated prices
       // IMPORTANT: Each calculation result represents ONE product row, and we create ONE product per row
       // with ALL countryDeliverables combined (USD + local currency for each country)
-      const productsToCreate = calculationResults.map((result, index) => {
+      const productsToCreate = calculationResults.map((result) => {
         const row = result.product;
         
         // Build countryDeliverables with calculated prices
@@ -1090,21 +1076,22 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
           
           // Add local currency entry if exchange rate exists
           if (cd.exchangeRate && cd.country === 'Hongkong') {
-            const hkdBasePrice = (cd.basePrice || 0) * cd.exchangeRate;
-            const hkdCalculatedPrice = (cd.calculatedPrice || 0) * cd.exchangeRate;
+            const exchangeRate = cd.exchangeRate;
+            const hkdBasePrice = (cd.basePrice || 0) * exchangeRate;
+            const hkdCalculatedPrice = (cd.calculatedPrice || 0) * exchangeRate;
             countryDeliverables.push({
               country: 'Hongkong',
               currency: 'HKD',
               basePrice: hkdBasePrice,
               calculatedPrice: hkdCalculatedPrice,
-              exchangeRate: cd.exchangeRate, // XE rate from product
+              exchangeRate: exchangeRate, // XE rate from product
               margins: (cd.margins || []).map(m => ({
                 ...m,
-                calculatedAmount: (m.calculatedAmount || 0) * cd.exchangeRate,
+                calculatedAmount: (m.calculatedAmount || 0) * exchangeRate,
               })),
               costs: (cd.costs || []).map(c => ({
                 ...c,
-                calculatedAmount: (c.calculatedAmount || 0) * cd.exchangeRate,
+                calculatedAmount: (c.calculatedAmount || 0) * exchangeRate,
               })),
               charges: [],
               paymentTerm: cleanString(row.paymentTerm) || null,
@@ -1114,21 +1101,22 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
               local: hkdCalculatedPrice,
             });
           } else if (cd.exchangeRate && cd.country === 'Dubai') {
-            const aedBasePrice = (cd.basePrice || 0) * cd.exchangeRate;
-            const aedCalculatedPrice = (cd.calculatedPrice || 0) * cd.exchangeRate;
+            const exchangeRate = cd.exchangeRate;
+            const aedBasePrice = (cd.basePrice || 0) * exchangeRate;
+            const aedCalculatedPrice = (cd.calculatedPrice || 0) * exchangeRate;
             countryDeliverables.push({
               country: 'Dubai',
               currency: 'AED',
               basePrice: aedBasePrice,
               calculatedPrice: aedCalculatedPrice,
-              exchangeRate: cd.exchangeRate, // System currency conversion rate
+              exchangeRate: exchangeRate, // System currency conversion rate
               margins: (cd.margins || []).map(m => ({
                 ...m,
-                calculatedAmount: (m.calculatedAmount || 0) * cd.exchangeRate,
+                calculatedAmount: (m.calculatedAmount || 0) * exchangeRate,
               })),
               costs: (cd.costs || []).map(c => ({
                 ...c,
-                calculatedAmount: (c.calculatedAmount || 0) * cd.exchangeRate,
+                calculatedAmount: (c.calculatedAmount || 0) * exchangeRate,
               })),
               charges: [],
               paymentTerm: cleanString(row.paymentTerm) || null,
@@ -2170,7 +2158,13 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
                 const newMode = selectedMode || '';
                 
                 // Update mode state
-                setShippingTimeMode({ ...shippingTimeMode, [rowIndex]: newMode });
+                setShippingTimeMode((prev) => {
+                  const updated = { ...prev };
+                  if (newMode === '' || newMode === 'today' || newMode === 'tomorrow' || newMode === 'calendar') {
+                    updated[rowIndex] = newMode;
+                  }
+                  return updated;
+                });
                 
                 if (selectedMode === 'today') {
                   const today = getToday();
@@ -2205,7 +2199,7 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
             </select>
             
             {/* Show date picker only when calendar is selected */}
-            {currentMode === 'calendar' && (
+            {(currentMode === 'calendar' || currentMode === '') && (
               <div className="mt-1">
                 <DatePicker
                   selected={selectedDate}
@@ -2264,12 +2258,6 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
     );
   }
 
-  // Group columns by their group
-  const groupedColumns = columns.reduce((acc, col) => {
-    if (!acc[col.group]) acc[col.group] = [];
-    acc[col.group].push(col);
-    return acc;
-  }, {} as Record<string, typeof columns>);
 
   const totalWidth = columns.reduce((sum, col) => sum + col.width + 1, 0);
 
