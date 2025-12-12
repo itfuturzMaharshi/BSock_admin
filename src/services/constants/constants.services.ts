@@ -56,6 +56,14 @@ export interface Constants {
     code: number;
     name: string;
   }>;
+  paymentTerm?: Array<{
+    code: string;
+    name: string;
+  }>;
+  paymentMethod?: Array<{
+    code: string;
+    name: string;
+  }>;
 }
 
 export class ConstantsService {

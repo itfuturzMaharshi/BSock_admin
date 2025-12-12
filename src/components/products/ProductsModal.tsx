@@ -6,6 +6,7 @@ import {
 import { GradeService } from "../../services/grade/grade.services";
 import { CostModuleService } from "../../services/costModule/costModule.services";
 import { SellerService } from "../../services/seller/sellerService";
+import { ConstantsService, Constants } from "../../services/constants/constants.services";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import Select from 'react-select';
@@ -152,6 +153,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
   const [skuError, setSkuError] = useState<string | null>(null);
   const [dateError, setDateError] = useState<string | null>(null);
   const [moqError, setMoqError] = useState<string | null>(null);
+  const [constants, setConstants] = useState<Constants | null>(null);
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>(
     {}
   );
@@ -177,12 +179,22 @@ const ProductModal: React.FC<ProductModalProps> = ({
   const countryOptions = ["Hongkong", "Dubai"];
   const simOptions = ["E-Sim", "Physical Sim"];
 
-  // Fetch costs by country when modal opens
+  // Fetch costs by country and constants when modal opens
   useEffect(() => {
     if (isOpen) {
       fetchCostsByCountry();
+      fetchConstants();
     }
   }, [isOpen]);
+
+  const fetchConstants = async () => {
+    try {
+      const constantsData = await ConstantsService.getConstants();
+      setConstants(constantsData);
+    } catch (error) {
+      console.error("Failed to fetch constants:", error);
+    }
+  };
 
   const fetchCostsByCountry = async () => {
     try {
@@ -1754,28 +1766,113 @@ const ProductModal: React.FC<ProductModalProps> = ({
                           <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                             Payment Term
                           </label>
-                          <select
-                            value={deliverable.paymentTerm || ''}
-                            onChange={(e) => updateCountryDeliverable(index, 'paymentTerm', e.target.value || null)}
-                            className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm"
-                          >
-                            <option value="">Select Payment Term</option>
-                            <option value="on order">On Order</option>
-                            <option value="on delivery">On Delivery</option>
-                            <option value="as in conformation">As in Conformation</option>
-                          </select>
+                          <div className="min-w-[200px]">
+                            <Select
+                              isMulti
+                              options={(constants?.paymentTerm || []).map(opt => ({ value: opt.code, label: opt.name }))}
+                              value={
+                                deliverable.paymentTerm
+                                  ? deliverable.paymentTerm.split(',').map(t => t.trim()).filter(t => t)
+                                      .map(code => {
+                                        const opt = constants?.paymentTerm?.find(p => p.code === code);
+                                        return opt ? { value: opt.code, label: opt.name } : null;
+                                      })
+                                      .filter(Boolean) as { value: string; label: string }[]
+                                  : []
+                              }
+                              onChange={(selected) => {
+                                const selectedValues = selected ? selected.map(opt => opt.value).join(', ') : '';
+                                updateCountryDeliverable(index, 'paymentTerm', selectedValues || null);
+                              }}
+                              className="text-sm"
+                              classNamePrefix="select"
+                              isSearchable={false}
+                              placeholder="Select payment terms..."
+                              styles={{
+                                control: (provided) => ({
+                                  ...provided,
+                                  minHeight: '40px',
+                                  minWidth: '200px',
+                                  fontSize: '14px',
+                                  backgroundColor: 'rgb(249 250 251)',
+                                }),
+                                menu: (provided) => ({ ...provided, zIndex: 9999 }),
+                                multiValue: (provided) => ({
+                                  ...provided,
+                                  backgroundColor: '#dbeafe',
+                                }),
+                                multiValueLabel: (provided) => ({
+                                  ...provided,
+                                  color: '#1e40af',
+                                  fontWeight: '500',
+                                }),
+                                multiValueRemove: (provided) => ({
+                                  ...provided,
+                                  color: '#1e40af',
+                                  ':hover': {
+                                    backgroundColor: '#93c5fd',
+                                    color: '#fff',
+                                  },
+                                }),
+                              }}
+                            />
+                          </div>
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-950 dark:text-gray-200 mb-2">
                             Payment Method
                           </label>
-                          <input
-                            type="text"
-                            value={deliverable.paymentMethod || ''}
-                            onChange={(e) => updateCountryDeliverable(index, 'paymentMethod', e.target.value || null)}
-                            placeholder="Enter payment method"
-                            className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-sm"
-                          />
+                          <div className="min-w-[200px]">
+                            <Select
+                              isMulti
+                              options={(constants?.paymentMethod || []).map(opt => ({ value: opt.code, label: opt.name }))}
+                              value={
+                                deliverable.paymentMethod
+                                  ? deliverable.paymentMethod.split(',').map(m => m.trim()).filter(m => m)
+                                      .map(code => {
+                                        const opt = constants?.paymentMethod?.find(p => p.code === code);
+                                        return opt ? { value: opt.code, label: opt.name } : null;
+                                      })
+                                      .filter(Boolean) as { value: string; label: string }[]
+                                  : []
+                              }
+                              onChange={(selected) => {
+                                const selectedValues = selected ? selected.map(opt => opt.value).join(', ') : '';
+                                updateCountryDeliverable(index, 'paymentMethod', selectedValues || null);
+                              }}
+                              className="text-sm"
+                              classNamePrefix="select"
+                              isSearchable={false}
+                              placeholder="Select payment methods..."
+                              styles={{
+                                control: (provided) => ({
+                                  ...provided,
+                                  minHeight: '40px',
+                                  minWidth: '200px',
+                                  fontSize: '14px',
+                                  backgroundColor: 'rgb(249 250 251)',
+                                }),
+                                menu: (provided) => ({ ...provided, zIndex: 9999 }),
+                                multiValue: (provided) => ({
+                                  ...provided,
+                                  backgroundColor: '#dbeafe',
+                                }),
+                                multiValueLabel: (provided) => ({
+                                  ...provided,
+                                  color: '#1e40af',
+                                  fontWeight: '500',
+                                }),
+                                multiValueRemove: (provided) => ({
+                                  ...provided,
+                                  color: '#1e40af',
+                                  ':hover': {
+                                    backgroundColor: '#93c5fd',
+                                    color: '#fff',
+                                  },
+                                }),
+                              }}
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>

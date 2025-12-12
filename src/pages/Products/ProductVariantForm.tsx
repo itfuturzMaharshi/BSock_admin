@@ -120,6 +120,12 @@ const ProductVariantForm: React.FC = () => {
         // Build countryDeliverables array
         const countryDeliverables: any[] = [];
         
+        // Helper to convert empty strings to null
+        const cleanString = (val: string | null | undefined): string | null => {
+          if (!val || val === '' || (typeof val === 'string' && val.trim() === '')) return null;
+          return val;
+        };
+        
         if (row.hkUsd || row.hkHkd) {
           countryDeliverables.push({
             country: 'Hongkong',
@@ -128,6 +134,8 @@ const ProductVariantForm: React.FC = () => {
             xe: parseFloat(String(row.hkXe)) || 0,
             local: parseFloat(String(row.hkHkd)) || 0,
             hkd: parseFloat(String(row.hkHkd)) || 0,
+            paymentTerm: cleanString(row.paymentTerm) || null,
+            paymentMethod: cleanString(row.paymentMethod) || null,
           });
         }
         
@@ -139,14 +147,10 @@ const ProductVariantForm: React.FC = () => {
             xe: parseFloat(String(row.dubaiXe)) || 0,
             local: parseFloat(String(row.dubaiAed)) || 0,
             aed: parseFloat(String(row.dubaiAed)) || 0,
+            paymentTerm: cleanString(row.paymentTerm) || null,
+            paymentMethod: cleanString(row.paymentMethod) || null,
           });
         }
-
-        // Helper to convert empty strings to null
-        const cleanString = (val: string | null | undefined): string | null => {
-          if (!val || val === '' || (typeof val === 'string' && val.trim() === '')) return null;
-          return val;
-        };
 
         return {
           skuFamilyId: row.skuFamilyId, // Already validated above - required field
@@ -192,19 +196,8 @@ const ProductVariantForm: React.FC = () => {
                 : []),
           customMessage: cleanString(row.customMessage) || '',
           totalMoq: variantType === 'multi' && totalMoq ? parseFloat(String(totalMoq)) : null,
-          paymentTerm: cleanString(row.paymentTermUsd) || cleanString(row.paymentTermHkd) || cleanString(row.paymentTermAed) || null,
-          paymentMethod: cleanString(row.paymentMethodUsd) || cleanString(row.paymentMethodHkd) || cleanString(row.paymentMethodAed) || null,
-          // Store payment details by currency
-          paymentTermDetails: {
-            usd: cleanString(row.paymentTermUsd) || null,
-            hkd: cleanString(row.paymentTermHkd) || null,
-            aed: cleanString(row.paymentTermAed) || null,
-          },
-          paymentMethodDetails: {
-            usd: cleanString(row.paymentMethodUsd) || null,
-            hkd: cleanString(row.paymentMethodHkd) || null,
-            aed: cleanString(row.paymentMethodAed) || null,
-          },
+          paymentTerm: cleanString(row.paymentTerm) || null,
+          paymentMethod: cleanString(row.paymentMethod) || null,
           shippingTime: cleanString(row.shippingTime) || '',
           deliveryTime: cleanString(row.deliveryTime) || '',
           vendor: cleanString(row.vendor) || null,

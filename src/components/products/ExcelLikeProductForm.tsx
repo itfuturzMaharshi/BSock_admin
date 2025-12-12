@@ -43,14 +43,10 @@ export interface ProductRowData {
   totalQty: number | string;
   moqPerVariant: number | string;
   weight: number | string;
-  // Payment Term - grouped by currency
-  paymentTermUsd: string;
-  paymentTermHkd: string;
-  paymentTermAed: string;
-  // Payment Method - grouped by currency (stored as comma-separated string)
-  paymentMethodUsd: string;
-  paymentMethodHkd: string;
-  paymentMethodAed: string;
+  // Payment Term - single field (from constants)
+  paymentTerm: string;
+  // Payment Method - single field (from constants, stored as comma-separated string for multiple selection)
+  paymentMethod: string;
   
   // Other Information Group
   negotiableFixed: string;
@@ -338,12 +334,8 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
     totalQty: '',
     moqPerVariant: '',
     weight: '',
-    paymentTermUsd: '',
-    paymentTermHkd: '',
-    paymentTermAed: '',
-    paymentMethodUsd: '',
-    paymentMethodHkd: '',
-    paymentMethodAed: '',
+    paymentTerm: '',
+    paymentMethod: '',
     negotiableFixed: '0',
     tags: '',
     flashDeal: '',
@@ -810,9 +802,9 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
         if (!row.moqPerVariant) errors.push(`Row ${index + 1}: MOQ/VARIANT is required`);
         if (!row.supplierId) errors.push(`Row ${index + 1}: SUPPLIER ID is required`);
         if (!row.supplierListingNumber) errors.push(`Row ${index + 1}: SUPPLIER LISTING NO is required`);
-        if (!row.paymentTermUsd) errors.push(`Row ${index + 1}: PAYMENT TERM (USD) is required`);
-        if (!row.paymentMethodUsd || row.paymentMethodUsd.trim() === '') {
-          errors.push(`Row ${index + 1}: PAYMENT METHOD (USD) is required`);
+        if (!row.paymentTerm) errors.push(`Row ${index + 1}: PAYMENT TERM is required`);
+        if (!row.paymentMethod || row.paymentMethod.trim() === '') {
+          errors.push(`Row ${index + 1}: PAYMENT METHOD is required`);
         }
         if (!row.endTime) errors.push(`Row ${index + 1}: END TIME is required`);
       });
@@ -1055,6 +1047,12 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
         
         // Build countryDeliverables with calculated prices
         // Each country can have USD and local currency (HKD for Hongkong, AED for Dubai)
+        // Helper to convert empty strings to null
+        const cleanString = (val: string | null | undefined): string | null => {
+          if (!val || val === '' || (typeof val === 'string' && val.trim() === '')) return null;
+          return val;
+        };
+        
         const countryDeliverables: any[] = [];
         
         // Track which countries we've processed to avoid duplicates
@@ -1082,8 +1080,8 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
             margins: cd.margins || [],
             costs: cd.costs || [],
             charges: [],
-            paymentTerm: row.paymentTermUsd || row.paymentTermHkd || row.paymentTermAed || null,
-            paymentMethod: row.paymentMethodUsd || row.paymentMethodHkd || row.paymentMethodAed || null,
+            paymentTerm: cleanString(row.paymentTerm) || null,
+            paymentMethod: cleanString(row.paymentMethod) || null,
             // Legacy fields
             usd: usdCalculatedPrice,
             xe: cd.exchangeRate || null,
@@ -1109,8 +1107,8 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
                 calculatedAmount: (c.calculatedAmount || 0) * cd.exchangeRate,
               })),
               charges: [],
-              paymentTerm: row.paymentTermHkd || row.paymentTermUsd || null,
-              paymentMethod: row.paymentMethodHkd || row.paymentMethodUsd || null,
+              paymentTerm: cleanString(row.paymentTerm) || null,
+              paymentMethod: cleanString(row.paymentMethod) || null,
               // Legacy fields
               hkd: hkdCalculatedPrice,
               local: hkdCalculatedPrice,
@@ -1133,8 +1131,8 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
                 calculatedAmount: (c.calculatedAmount || 0) * cd.exchangeRate,
               })),
               charges: [],
-              paymentTerm: row.paymentTermAed || row.paymentTermUsd || null,
-              paymentMethod: row.paymentMethodAed || row.paymentMethodUsd || null,
+              paymentTerm: cleanString(row.paymentTerm) || null,
+              paymentMethod: cleanString(row.paymentMethod) || null,
               // Legacy fields
               aed: aedCalculatedPrice,
               local: aedCalculatedPrice,
@@ -1146,12 +1144,6 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
         const uniqueCountryDeliverables = countryDeliverables.filter((cd, index, self) =>
           index === self.findIndex((t) => t.country === cd.country && t.currency === cd.currency)
         );
-
-        // Helper to convert empty strings to null
-        const cleanString = (val: string | null | undefined): string | null => {
-          if (!val || val === '' || (typeof val === 'string' && val.trim() === '')) return null;
-          return val;
-        };
 
         return {
           skuFamilyId: row.skuFamilyId,
@@ -1193,18 +1185,8 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
                 : []),
           customMessage: cleanString(row.customMessage) || '',
           totalMoq: variantType === 'multi' && pendingTotalMoq ? parseFloat(String(pendingTotalMoq)) : null,
-          paymentTerm: cleanString(row.paymentTermUsd) || cleanString(row.paymentTermHkd) || cleanString(row.paymentTermAed) || null,
-          paymentMethod: cleanString(row.paymentMethodUsd) || cleanString(row.paymentMethodHkd) || cleanString(row.paymentMethodAed) || null,
-          paymentTermDetails: {
-            usd: cleanString(row.paymentTermUsd) || null,
-            hkd: cleanString(row.paymentTermHkd) || null,
-            aed: cleanString(row.paymentTermAed) || null,
-          },
-          paymentMethodDetails: {
-            usd: cleanString(row.paymentMethodUsd) || null,
-            hkd: cleanString(row.paymentMethodHkd) || null,
-            aed: cleanString(row.paymentMethodAed) || null,
-          },
+          paymentTerm: cleanString(row.paymentTerm) || null,
+          paymentMethod: cleanString(row.paymentMethod) || null,
           shippingTime: cleanString(row.shippingTime) || '',
           deliveryTime: cleanString(row.deliveryTime) || '',
           vendor: cleanString(row.vendor) || null,
@@ -1284,12 +1266,8 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
     { key: 'moqPerVariant', label: 'MOQ/VARIANT*', width: 120, group: 'Pricing/Delivery' },
     { key: 'weight', label: 'WEIGHT', width: 100, group: 'Pricing/Delivery' },
     ...(variantType === 'multi' ? [{ key: 'totalMoq', label: 'MOQ PER CART*', width: 150, group: 'Pricing/Delivery' }] : []),
-    { key: 'paymentTermUsd', label: 'USD*', width: 120, group: 'PAYMENT TERM', subgroup: 'PAYMENT_TERM' },
-    { key: 'paymentTermHkd', label: 'HKD', width: 120, group: 'PAYMENT TERM', subgroup: 'PAYMENT_TERM' },
-    { key: 'paymentTermAed', label: 'AED', width: 120, group: 'PAYMENT TERM', subgroup: 'PAYMENT_TERM' },
-    { key: 'paymentMethodUsd', label: 'USD*', width: 130, group: 'PAYMENT METHOD', subgroup: 'PAYMENT_METHOD' },
-    { key: 'paymentMethodHkd', label: 'HKD', width: 130, group: 'PAYMENT METHOD', subgroup: 'PAYMENT_METHOD' },
-    { key: 'paymentMethodAed', label: 'AED', width: 130, group: 'PAYMENT METHOD', subgroup: 'PAYMENT_METHOD' },
+    { key: 'paymentTerm', label: 'PAYMENT TERM*', width: 200, group: 'Payment' },
+    { key: 'paymentMethod', label: 'PAYMENT METHOD*', width: 200, group: 'Payment' },
     { key: 'negotiableFixed', label: 'NEGOTIABLE/FIXED', width: 150, group: 'Other Info' },
     { key: 'flashDeal', label: 'FLASH DEAL', width: 130, group: 'Other Info' },
     { key: 'shippingTime', label: 'SHIPPING TIME', width: 130, group: 'Other Info' },
@@ -1333,8 +1311,9 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
   // Get deliveryLocation options from constants (show name, store code)
   const deliveryLocationOptions = constants?.deliveryLocation || [];
   
-  const paymentTermOptions = ['on order', 'on delivery'];
-  const paymentMethodOptions = ['Cash', 'TT', 'Third party'];
+  // Get paymentTerm and paymentMethod options from constants
+  const paymentTermOptions = constants?.paymentTerm || [];
+  const paymentMethodOptions = constants?.paymentMethod || [];
   
   // NegotiableStatus - using negotiableStatus from constants
   const negotiableFixedOptions = constants?.negotiableStatus || [];
@@ -1658,44 +1637,21 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
           </select>
         );
 
-      case 'paymentTermUsd':
-      case 'paymentTermHkd':
-      case 'paymentTermAed':
-        return (
-          <select
-            value={value as string}
-            onChange={(e) => updateRow(rowIndex, column.key as keyof ProductRowData, e.target.value)}
-            className="w-full px-2 py-1.5 text-xs border-0 bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded transition-all duration-150 cursor-pointer appearance-none"
-            required={column.key === 'paymentTermUsd'}
-            onFocus={() => {
-              setFocusedCell({ row: rowIndex, col: column.key });
-              setSelectedRowIndex(rowIndex);
-            }}
-          >
-            <option value="">Select</option>
-            {paymentTermOptions.map(opt => (
-              <option key={opt} value={opt} className="bg-white dark:bg-gray-800">{opt}</option>
-            ))}
-          </select>
-        );
-
-      case 'paymentMethodUsd':
-      case 'paymentMethodHkd':
-      case 'paymentMethodAed':
+      case 'paymentTerm':
         // Convert comma-separated string to array for react-select
-        const selectedMethods = (value as string) 
-          ? (value as string).split(',').map(m => m.trim()).filter(m => m)
+        const selectedTerms = (value as string) 
+          ? (value as string).split(',').map(t => t.trim()).filter(t => t)
           : [];
-        const selectedOptions = paymentMethodOptions
-          .filter(opt => selectedMethods.includes(opt))
-          .map(opt => ({ value: opt, label: opt }));
+        const selectedTermOptions = paymentTermOptions
+          .filter(opt => selectedTerms.includes(opt.code))
+          .map(opt => ({ value: opt.code, label: opt.name }));
         
         return (
-          <div className="min-w-[130px]" onFocus={() => setFocusedCell({ row: rowIndex, col: column.key })}>
+          <div className="min-w-[200px]" onFocus={() => setFocusedCell({ row: rowIndex, col: column.key })}>
             <Select
               isMulti
-              options={paymentMethodOptions.map(opt => ({ value: opt, label: opt }))}
-              value={selectedOptions}
+              options={paymentTermOptions.map(opt => ({ value: opt.code, label: opt.name }))}
+              value={selectedTermOptions}
               onChange={(selected) => {
                 const selectedValues = selected ? selected.map(opt => opt.value).join(', ') : '';
                 updateRow(rowIndex, column.key as keyof ProductRowData, selectedValues);
@@ -1703,11 +1659,12 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
               className="text-xs"
               classNamePrefix="select"
               isSearchable={false}
-              placeholder="Select methods..."
+              placeholder="Select terms..."
               styles={{
                 control: (provided, state) => ({ 
                   ...provided, 
                   minHeight: '32px', 
+                  minWidth: '200px',
                   fontSize: '12px', 
                   border: 'none', 
                   boxShadow: state.isFocused ? '0 0 0 2px rgba(59, 130, 246, 0.5)' : 'none',
@@ -1741,7 +1698,73 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
                 setFocusedCell({ row: rowIndex, col: column.key });
                 setSelectedRowIndex(rowIndex);
               }}
-              required={column.key === 'paymentMethodUsd'}
+              required
+            />
+          </div>
+        );
+
+      case 'paymentMethod':
+        // Convert comma-separated string to array for react-select
+        const selectedMethods = (value as string) 
+          ? (value as string).split(',').map(m => m.trim()).filter(m => m)
+          : [];
+        const selectedOptions = paymentMethodOptions
+          .filter(opt => selectedMethods.includes(opt.code))
+          .map(opt => ({ value: opt.code, label: opt.name }));
+        
+        return (
+          <div className="min-w-[200px]" onFocus={() => setFocusedCell({ row: rowIndex, col: column.key })}>
+            <Select
+              isMulti
+              options={paymentMethodOptions.map(opt => ({ value: opt.code, label: opt.name }))}
+              value={selectedOptions}
+              onChange={(selected) => {
+                const selectedValues = selected ? selected.map(opt => opt.value).join(', ') : '';
+                updateRow(rowIndex, column.key as keyof ProductRowData, selectedValues);
+              }}
+              className="text-xs"
+              classNamePrefix="select"
+              isSearchable={false}
+              placeholder="Select methods..."
+              styles={{
+                control: (provided, state) => ({ 
+                  ...provided, 
+                  minHeight: '32px', 
+                  minWidth: '200px',
+                  fontSize: '12px', 
+                  border: 'none', 
+                  boxShadow: state.isFocused ? '0 0 0 2px rgba(59, 130, 246, 0.5)' : 'none',
+                  backgroundColor: 'transparent',
+                  '&:hover': { border: 'none' }
+                }),
+                valueContainer: (provided) => ({ ...provided, padding: '4px 8px', minHeight: '32px' }),
+                input: (provided) => ({ ...provided, margin: '0', padding: '0' }),
+                indicatorsContainer: (provided) => ({ ...provided, height: '32px' }),
+                menu: (provided) => ({ ...provided, zIndex: 9999, boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }),
+                multiValue: (provided) => ({
+                  ...provided,
+                  backgroundColor: '#dbeafe',
+                  fontSize: '11px',
+                }),
+                multiValueLabel: (provided) => ({
+                  ...provided,
+                  color: '#1e40af',
+                  fontWeight: '500',
+                }),
+                multiValueRemove: (provided) => ({
+                  ...provided,
+                  color: '#1e40af',
+                  ':hover': {
+                    backgroundColor: '#93c5fd',
+                    color: '#fff',
+                  },
+                }),
+              }}
+              onFocus={() => {
+                setFocusedCell({ row: rowIndex, col: column.key });
+                setSelectedRowIndex(rowIndex);
+              }}
+              required
             />
           </div>
         );
