@@ -40,35 +40,40 @@ export interface ProductCalculationResult {
  */
 export const calculateMargins = async (
   product: any,
-  marginSelection: MarginSelection
+  marginSelection: MarginSelection,
+  basePrice: number,
+  country: 'Hongkong' | 'Dubai'
 ): Promise<CalculatedMargin[]> => {
   const margins: CalculatedMargin[] = [];
 
-  // Apply seller margin if enabled
+  // If seller margin is off, return empty
+  if (!marginSelection.sellerCategory) {
+    return margins;
+  }
+
+  // Fetch margin data for each selected type
+  if (marginSelection.brand && product.skuFamilyId) {
+    // Fetch brand from SKU Family
+    // This would need to be implemented based on your SKU Family structure
+    // For now, assuming brand margin is available
+  }
+
+  if (marginSelection.productCategory && product.skuFamilyId) {
+    // Fetch product category from SKU Family
+  }
+
+  if (marginSelection.conditionCategory && product.condition) {
+    // Fetch condition category margin
+  }
+
   if (marginSelection.sellerCategory && product.supplierId) {
     // Fetch seller category margin from seller
   }
 
-  // Apply other margins only if seller margin is enabled
-  if (marginSelection.sellerCategory) {
-    // Fetch margin data for each selected type
-    if (marginSelection.brand && product.skuFamilyId) {
-      // Fetch brand from SKU Family
-      // This would need to be implemented based on your SKU Family structure
-      // For now, assuming brand margin is available
-    }
-
-    if (marginSelection.productCategory && product.skuFamilyId) {
-      // Fetch product category from SKU Family
-    }
-
-    if (marginSelection.conditionCategory && product.condition) {
-      // Fetch condition category margin
-    }
+  if (marginSelection.customerCategory) {
+    // Customer category margin - this might be applied at order time, not product time
+    // For now, we'll skip it in product calculation
   }
-
-  // Note: Customer category margin is NOT calculated during product creation
-  // It will be applied dynamically when customers view products based on their category and currency conversion
 
   return margins;
 };
@@ -189,7 +194,7 @@ export const calculateAllProducts = async (
     // Process Hongkong deliverables
     if (product.hkUsd) {
       const basePrice = parseFloat(String(product.hkUsd)) || 0;
-      const margins = await calculateMargins(product, marginSelection);
+      const margins = await calculateMargins(product, marginSelection, basePrice, 'Hongkong');
       const costs = calculateCosts(product, hkCosts, basePrice, 'Hongkong', exchangeRates.hkd);
       const calculatedPrice = calculateFinalPrice(basePrice, margins, costs);
 
@@ -206,7 +211,7 @@ export const calculateAllProducts = async (
     // Process Dubai deliverables
     if (product.dubaiUsd) {
       const basePrice = parseFloat(String(product.dubaiUsd)) || 0;
-      const margins = await calculateMargins(product, marginSelection);
+      const margins = await calculateMargins(product, marginSelection, basePrice, 'Dubai');
       const costs = calculateCosts(product, dubaiCosts, basePrice, 'Dubai', exchangeRates.aed);
       const calculatedPrice = calculateFinalPrice(basePrice, margins, costs);
 
