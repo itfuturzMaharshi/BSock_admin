@@ -44,34 +44,31 @@ export const calculateMargins = async (
 ): Promise<CalculatedMargin[]> => {
   const margins: CalculatedMargin[] = [];
 
-  // If seller margin is off, return empty
-  if (!marginSelection.sellerCategory) {
-    return margins;
-  }
-
-  // Fetch margin data for each selected type
-  if (marginSelection.brand && product.skuFamilyId) {
-    // Fetch brand from SKU Family
-    // This would need to be implemented based on your SKU Family structure
-    // For now, assuming brand margin is available
-  }
-
-  if (marginSelection.productCategory && product.skuFamilyId) {
-    // Fetch product category from SKU Family
-  }
-
-  if (marginSelection.conditionCategory && product.condition) {
-    // Fetch condition category margin
-  }
-
+  // Apply seller margin if enabled
   if (marginSelection.sellerCategory && product.supplierId) {
     // Fetch seller category margin from seller
   }
 
-  if (marginSelection.customerCategory) {
-    // Customer category margin - this might be applied at order time, not product time
-    // For now, we'll skip it in product calculation
+  // Apply other margins only if seller margin is enabled
+  if (marginSelection.sellerCategory) {
+    // Fetch margin data for each selected type
+    if (marginSelection.brand && product.skuFamilyId) {
+      // Fetch brand from SKU Family
+      // This would need to be implemented based on your SKU Family structure
+      // For now, assuming brand margin is available
+    }
+
+    if (marginSelection.productCategory && product.skuFamilyId) {
+      // Fetch product category from SKU Family
+    }
+
+    if (marginSelection.conditionCategory && product.condition) {
+      // Fetch condition category margin
+    }
   }
+
+  // Note: Customer category margin is NOT calculated during product creation
+  // It will be applied dynamically when customers view products based on their category and currency conversion
 
   return margins;
 };
