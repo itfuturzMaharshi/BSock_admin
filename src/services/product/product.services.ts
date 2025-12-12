@@ -782,4 +782,87 @@ export class ProductService {
       throw new Error(errorMessage);
     }
   };
+
+  // Get seller product requests (for admin panel)
+  static getSellerProductRequests = async (
+    page: number = 1,
+    limit: number = 10,
+    search: string = ''
+  ): Promise<ListResponse> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/product/seller-requests`;
+
+    try {
+      const res = await api.post(url, { page, limit, search });
+      if (res.data?.status !== 200) {
+        throw new Error(res.data?.message || 'Failed to fetch seller product requests');
+      }
+      return res.data;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to fetch seller product requests';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
+
+  // Create seller product request (for seller panel)
+  static createSellerProductRequest = async (productData: Omit<Product, '_id'>): Promise<any> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const sellerRoute = import.meta.env.VITE_SELLER_ROUTE || 'seller';
+    const url = `${baseUrl}/api/${sellerRoute}/product/create-request`;
+
+    try {
+      const res = await api.post(url, productData);
+      if (res.data?.status !== 200) {
+        throw new Error(res.data?.message || 'Failed to create product request');
+      }
+      toastHelper.showTost(res.data.message || 'Product request submitted successfully!', 'success');
+      return res.data;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to create product request';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
+
+  // Update seller product request (for admin review)
+  static updateSellerProductRequest = async (id: string, productData: Partial<Product>): Promise<any> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/product/update-seller-request`;
+
+    try {
+      const res = await api.post(url, { id, ...productData });
+      if (res.data?.status !== 200) {
+        throw new Error(res.data?.message || 'Failed to update seller product request');
+      }
+      toastHelper.showTost(res.data.message || 'Product request updated successfully!', 'success');
+      return res.data;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to update seller product request';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
+
+  // Reject seller product request
+  static rejectSellerProductRequest = async (id: string, reason?: string): Promise<any> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/product/reject-seller-request`;
+
+    try {
+      const res = await api.post(url, { id, reason });
+      if (res.data?.status !== 200) {
+        throw new Error(res.data?.message || 'Failed to reject product request');
+      }
+      toastHelper.showTost(res.data.message || 'Product request rejected successfully!', 'success');
+      return res.data;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to reject product request';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
 }
