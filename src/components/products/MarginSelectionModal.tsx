@@ -6,7 +6,6 @@ export interface MarginSelection {
   productCategory: boolean;
   conditionCategory: boolean;
   sellerCategory: boolean;
-  customerCategory: boolean;
 }
 
 interface MarginSelectionModalProps {
@@ -27,7 +26,6 @@ const MarginSelectionModal: React.FC<MarginSelectionModalProps> = ({
     productCategory: false,
     conditionCategory: false,
     sellerCategory: false,
-    customerCategory: false,
   });
   const [hasSellerCode, setHasSellerCode] = useState(false);
 
@@ -44,7 +42,6 @@ const MarginSelectionModal: React.FC<MarginSelectionModalProps> = ({
           brand: false,
           productCategory: false,
           conditionCategory: false,
-          customerCategory: false,
         }));
       }
     }
@@ -55,16 +52,22 @@ const MarginSelectionModal: React.FC<MarginSelectionModalProps> = ({
       setSelection(prev => ({
         ...prev,
         [key]: !prev[key],
-        // If seller margin is turned off, turn off all others
+        // If seller margin is turned off, turn off all others except customer margin
         ...(prev[key] ? {
           brand: false,
           productCategory: false,
           conditionCategory: false,
-          customerCategory: false,
+          // customerCategory is kept as is - it can remain enabled
         } : {}),
       }));
+    } else if (key === 'customerCategory') {
+      // Customer margin can be toggled independently
+      setSelection(prev => ({
+        ...prev,
+        [key]: !prev[key],
+      }));
     } else {
-      // If seller margin is off, don't allow others to be selected
+      // If seller margin is off, don't allow others (except customer) to be selected
       if (!selection.sellerCategory) {
         toastHelper.showTost('Please enable Seller Category margin first', 'warning');
         return;
@@ -186,15 +189,14 @@ const MarginSelectionModal: React.FC<MarginSelectionModalProps> = ({
                   type="checkbox"
                   checked={selection.customerCategory}
                   onChange={() => handleToggle('customerCategory')}
-                  disabled={!selection.sellerCategory}
-                  className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
                 />
-                <span className={`ml-3 text-lg font-medium ${!selection.sellerCategory ? 'text-gray-400' : 'text-gray-800 dark:text-white'}`}>
+                <span className="ml-3 text-lg font-medium text-gray-800 dark:text-white">
                   Customer Category Margin
                 </span>
               </label>
               <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 ml-8">
-                Apply margin based on customer category.
+                Apply margin based on customer category. Can be enabled independently of seller margin.
               </p>
             </div>
           </div>

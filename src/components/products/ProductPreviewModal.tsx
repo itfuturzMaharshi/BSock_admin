@@ -43,7 +43,7 @@ const ProductPreviewModal: React.FC<ProductPreviewModalProps> = ({
           currency: 'HKD',
           basePrice: (cd.basePrice || 0) * localRate,
           calculatedPrice: (cd.calculatedPrice || 0) * localRate,
-          margins: (cd.margins || []).map((m: any) => ({
+          margins: (cd.margins || []).filter((m: any) => m.type !== 'customerCategory').map((m: any) => ({
             ...m,
             calculatedAmount: (m.calculatedAmount || 0) * localRate,
           })),
@@ -62,7 +62,7 @@ const ProductPreviewModal: React.FC<ProductPreviewModalProps> = ({
           currency: 'AED',
           basePrice: (cd.basePrice || 0) * localRate,
           calculatedPrice: (cd.calculatedPrice || 0) * localRate,
-          margins: (cd.margins || []).map((m: any) => ({
+          margins: (cd.margins || []).filter((m: any) => m.type !== 'customerCategory').map((m: any) => ({
             ...m,
             calculatedAmount: (m.calculatedAmount || 0) * localRate,
           })),
@@ -191,13 +191,13 @@ const ProductPreviewModal: React.FC<ProductPreviewModalProps> = ({
                                 </div>
                               )}
                             
-                            {deliverable.margins.length > 0 && (
+                            {deliverable.margins.filter((m: any) => m.type !== 'customerCategory').length > 0 && (
                               <div className="mb-3">
                                 <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
                                   Margins:
                                 </div>
                                 <div className="space-y-1">
-                                  {deliverable.margins.map((margin: any, mIdx: number) => (
+                                  {deliverable.margins.filter((m: any) => m.type !== 'customerCategory').map((margin: any, mIdx: number) => (
                                     <div
                                       key={mIdx}
                                       className="text-sm bg-blue-50 dark:bg-blue-900/20 p-2 rounded"
@@ -252,7 +252,7 @@ const ProductPreviewModal: React.FC<ProductPreviewModalProps> = ({
                               </div>
                               <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
                                 Base: ${deliverable.basePrice.toFixed(2)} + 
-                                Margins: ${deliverable.margins.reduce((sum: number, m: any) => sum + (m.calculatedAmount || 0), 0).toFixed(2)} + 
+                                Margins: ${deliverable.margins.filter((m: any) => m.type !== 'customerCategory').reduce((sum: number, m: any) => sum + (m.calculatedAmount || 0), 0).toFixed(2)} + 
                                 Costs: ${deliverable.costs.reduce((sum: number, c: any) => sum + (c.calculatedAmount || 0), 0).toFixed(2)}
                               </div>
                             </div>
