@@ -43,10 +43,10 @@ export interface ProductRowData {
   totalQty: number | string;
   moqPerVariant: number | string;
   weight: number | string;
-  // Payment Term - single field (from constants)
-  paymentTerm: string;
-  // Payment Method - single field (from constants, stored as comma-separated string for multiple selection)
-  paymentMethod: string;
+  // Payment Term - array of strings
+  paymentTerm: string[];
+  // Payment Method - array of strings
+  paymentMethod: string[];
   
   // Other Information Group
   negotiableFixed: string;
@@ -340,8 +340,8 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
     totalQty: '',
     moqPerVariant: '',
     weight: '',
-    paymentTerm: '',
-    paymentMethod: '',
+    paymentTerm: [],
+    paymentMethod: [],
     negotiableFixed: '0',
     tags: '',
     flashDeal: '',
@@ -778,8 +778,10 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
         if (!row.moqPerVariant) errors.push(`Row ${index + 1}: MOQ/VARIANT is required`);
         if (!row.supplierId) errors.push(`Row ${index + 1}: SUPPLIER ID is required`);
         if (!row.supplierListingNumber) errors.push(`Row ${index + 1}: SUPPLIER LISTING NO is required`);
-        if (!row.paymentTerm) errors.push(`Row ${index + 1}: PAYMENT TERM is required`);
-        if (!row.paymentMethod || row.paymentMethod.trim() === '') {
+        if (!row.paymentTerm || (Array.isArray(row.paymentTerm) && row.paymentTerm.length === 0)) {
+          errors.push(`Row ${index + 1}: PAYMENT TERM is required`);
+        }
+        if (!row.paymentMethod || (Array.isArray(row.paymentMethod) && row.paymentMethod.length === 0)) {
           errors.push(`Row ${index + 1}: PAYMENT METHOD is required`);
         }
         if (!row.endTime) errors.push(`Row ${index + 1}: END TIME is required`);
@@ -1066,8 +1068,6 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
             margins: cd.margins || [],
             costs: cd.costs || [],
             charges: [],
-            paymentTerm: cleanString(row.paymentTerm) || null,
-            paymentMethod: cleanString(row.paymentMethod) || null,
             // Legacy fields
             usd: usdCalculatedPrice,
             xe: cd.exchangeRate || null,
@@ -1094,8 +1094,6 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
                 calculatedAmount: (c.calculatedAmount || 0) * exchangeRate,
               })),
               charges: [],
-              paymentTerm: cleanString(row.paymentTerm) || null,
-              paymentMethod: cleanString(row.paymentMethod) || null,
               // Legacy fields
               hkd: hkdCalculatedPrice,
               local: hkdCalculatedPrice,
@@ -1119,8 +1117,6 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
                 calculatedAmount: (c.calculatedAmount || 0) * exchangeRate,
               })),
               charges: [],
-              paymentTerm: cleanString(row.paymentTerm) || null,
-              paymentMethod: cleanString(row.paymentMethod) || null,
               // Legacy fields
               aed: aedCalculatedPrice,
               local: aedCalculatedPrice,
@@ -1173,8 +1169,22 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
                 : []),
           customMessage: cleanString(row.customMessage) || '',
           totalMoq: variantType === 'multi' && pendingTotalMoq ? parseFloat(String(pendingTotalMoq)) : null,
-          paymentTerm: cleanString(row.paymentTerm) || null,
-          paymentMethod: cleanString(row.paymentMethod) || null,
+          paymentTerm: (() => {
+            if (!row.paymentTerm) return [];
+            if (Array.isArray(row.paymentTerm)) return row.paymentTerm;
+            if (typeof row.paymentTerm === 'string') {
+              return row.paymentTerm.trim() ? [row.paymentTerm.trim()] : [];
+            }
+            return [];
+          })(),
+          paymentMethod: (() => {
+            if (!row.paymentMethod) return [];
+            if (Array.isArray(row.paymentMethod)) return row.paymentMethod;
+            if (typeof row.paymentMethod === 'string') {
+              return row.paymentMethod.trim() ? [row.paymentMethod.trim()] : [];
+            }
+            return [];
+          })(),
           shippingTime: cleanString(row.shippingTime) || '',
           deliveryTime: cleanString(row.deliveryTime) || '',
           vendor: cleanString(row.vendor) || null,
@@ -1626,10 +1636,12 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
         );
 
       case 'paymentTerm':
-        // Convert comma-separated string to array for react-select
-        const selectedTerms = (value as string) 
-          ? (value as string).split(',').map(t => t.trim()).filter(t => t)
-          : [];
+        // Handle array of strings
+        const selectedTerms = Array.isArray(value) 
+          ? value.filter(t => t && t.trim() !== '')
+          : (typeof value === 'string' && value.trim()
+              ? value.split(',').map(t => t.trim()).filter(t => t)
+              : []);
         const selectedTermOptions = paymentTermOptions
           .filter(opt => selectedTerms.includes(opt.code))
           .map(opt => ({ value: opt.code, label: opt.name }));
@@ -1641,7 +1653,7 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
               options={paymentTermOptions.map(opt => ({ value: opt.code, label: opt.name }))}
               value={selectedTermOptions}
               onChange={(selected) => {
-                const selectedValues = selected ? selected.map(opt => opt.value).join(', ') : '';
+                const selectedValues = selected ? selected.map(opt => opt.value) : [];
                 updateRow(rowIndex, column.key as keyof ProductRowData, selectedValues);
               }}
               className="text-xs"
@@ -1692,10 +1704,12 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
         );
 
       case 'paymentMethod':
-        // Convert comma-separated string to array for react-select
-        const selectedMethods = (value as string) 
-          ? (value as string).split(',').map(m => m.trim()).filter(m => m)
-          : [];
+        // Handle array of strings
+        const selectedMethods = Array.isArray(value) 
+          ? value.filter(m => m && m.trim() !== '')
+          : (typeof value === 'string' && value.trim()
+              ? value.split(',').map(m => m.trim()).filter(m => m)
+              : []);
         const selectedOptions = paymentMethodOptions
           .filter(opt => selectedMethods.includes(opt.code))
           .map(opt => ({ value: opt.code, label: opt.name }));
@@ -1707,7 +1721,7 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
               options={paymentMethodOptions.map(opt => ({ value: opt.code, label: opt.name }))}
               value={selectedOptions}
               onChange={(selected) => {
-                const selectedValues = selected ? selected.map(opt => opt.value).join(', ') : '';
+                const selectedValues = selected ? selected.map(opt => opt.value) : [];
                 updateRow(rowIndex, column.key as keyof ProductRowData, selectedValues);
               }}
               className="text-xs"

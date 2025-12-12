@@ -134,8 +134,6 @@ const ProductVariantForm: React.FC = () => {
             xe: parseFloat(String(row.hkXe)) || 0,
             local: parseFloat(String(row.hkHkd)) || 0,
             hkd: parseFloat(String(row.hkHkd)) || 0,
-            paymentTerm: cleanString(row.paymentTerm) || null,
-            paymentMethod: cleanString(row.paymentMethod) || null,
           });
         }
         
@@ -147,8 +145,6 @@ const ProductVariantForm: React.FC = () => {
             xe: parseFloat(String(row.dubaiXe)) || 0,
             local: parseFloat(String(row.dubaiAed)) || 0,
             aed: parseFloat(String(row.dubaiAed)) || 0,
-            paymentTerm: cleanString(row.paymentTerm) || null,
-            paymentMethod: cleanString(row.paymentMethod) || null,
           });
         }
 
@@ -196,8 +192,22 @@ const ProductVariantForm: React.FC = () => {
                 : []),
           customMessage: cleanString(row.customMessage) || '',
           totalMoq: variantType === 'multi' && totalMoq ? parseFloat(String(totalMoq)) : null,
-          paymentTerm: cleanString(row.paymentTerm) || null,
-          paymentMethod: cleanString(row.paymentMethod) || null,
+          paymentTerm: (() => {
+            if (!row.paymentTerm) return [];
+            if (Array.isArray(row.paymentTerm)) return row.paymentTerm;
+            if (typeof row.paymentTerm === 'string') {
+              return row.paymentTerm.trim() ? [row.paymentTerm.trim()] : [];
+            }
+            return [];
+          })(),
+          paymentMethod: (() => {
+            if (!row.paymentMethod) return [];
+            if (Array.isArray(row.paymentMethod)) return row.paymentMethod;
+            if (typeof row.paymentMethod === 'string') {
+              return row.paymentMethod.trim() ? [row.paymentMethod.trim()] : [];
+            }
+            return [];
+          })(),
           shippingTime: cleanString(row.shippingTime) || '',
           deliveryTime: cleanString(row.deliveryTime) || '',
           vendor: cleanString(row.vendor) || null,

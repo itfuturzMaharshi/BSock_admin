@@ -35,8 +35,8 @@ export interface ProductRowData {
   totalQty: number | string;
   moqPerVariant: number | string;
   weight: number | string;
-  paymentTerm: string;
-  paymentMethod: string;
+  paymentTerm: string[]; // Array of strings
+  paymentMethod: string[]; // Array of strings
   
   // Other Information Group
   negotiableFixed: string; // '1' for negotiable, '0' for fixed
@@ -111,8 +111,8 @@ const ComprehensiveProductForm: React.FC<ComprehensiveProductFormProps> = ({
         totalQty: '',
         moqPerVariant: '',
         weight: '',
-        paymentTerm: '',
-        paymentMethod: '',
+        paymentTerm: [],
+        paymentMethod: [],
         negotiableFixed: '0',
         shippingTime: '',
         deliveryTime: '',
@@ -161,8 +161,8 @@ const ComprehensiveProductForm: React.FC<ComprehensiveProductFormProps> = ({
         totalQty: '',
         moqPerVariant: '',
         weight: '',
-        paymentTerm: '',
-        paymentMethod: '',
+        paymentTerm: [],
+        paymentMethod: [],
         negotiableFixed: '0',
         shippingTime: '',
         deliveryTime: '',
@@ -734,28 +734,54 @@ const ComprehensiveProductForm: React.FC<ComprehensiveProductFormProps> = ({
                     />
                   </td>
                   <td className="px-3 py-2 border">
-                    <select
-                      value={row.paymentTerm}
-                      onChange={(e) => updateRow(rowIndex, 'paymentTerm', e.target.value)}
-                      className="w-full px-2 py-1 text-sm border rounded bg-gray-50 dark:bg-gray-800"
-                    >
-                      <option value="">Select</option>
-                      {paymentTermOptions.map(opt => (
-                        <option key={opt} value={opt}>{opt}</option>
-                      ))}
-                    </select>
+                    <Select
+                      isMulti
+                      options={paymentTermOptions.map(opt => ({ value: opt, label: opt }))}
+                      value={row.paymentTerm.map(term => ({ value: term, label: term }))}
+                      onChange={(selected) => {
+                        const values = selected ? selected.map((s: any) => s.value) : [];
+                        updateRow(rowIndex, 'paymentTerm', values);
+                      }}
+                      className="basic-select"
+                      classNamePrefix="select"
+                      placeholder="Select payment terms"
+                      styles={{
+                        control: (provided) => ({
+                          ...provided,
+                          minHeight: '32px',
+                          fontSize: '14px',
+                        }),
+                        multiValue: (provided) => ({
+                          ...provided,
+                          fontSize: '12px',
+                        }),
+                      }}
+                    />
                   </td>
                   <td className="px-3 py-2 border">
-                    <select
-                      value={row.paymentMethod}
-                      onChange={(e) => updateRow(rowIndex, 'paymentMethod', e.target.value)}
-                      className="w-full px-2 py-1 text-sm border rounded bg-gray-50 dark:bg-gray-800"
-                    >
-                      <option value="">Select</option>
-                      {paymentMethodOptions.map(opt => (
-                        <option key={opt} value={opt}>{opt}</option>
-                      ))}
-                    </select>
+                    <Select
+                      isMulti
+                      options={paymentMethodOptions.map(opt => ({ value: opt, label: opt }))}
+                      value={row.paymentMethod.map(method => ({ value: method, label: method }))}
+                      onChange={(selected) => {
+                        const values = selected ? selected.map((s: any) => s.value) : [];
+                        updateRow(rowIndex, 'paymentMethod', values);
+                      }}
+                      className="basic-select"
+                      classNamePrefix="select"
+                      placeholder="Select payment methods"
+                      styles={{
+                        control: (provided) => ({
+                          ...provided,
+                          minHeight: '32px',
+                          fontSize: '14px',
+                        }),
+                        multiValue: (provided) => ({
+                          ...provided,
+                          fontSize: '12px',
+                        }),
+                      }}
+                    />
                   </td>
                 </tr>
               ))}

@@ -211,7 +211,8 @@ const navigate = useNavigate();
         // Convert basePrice to number
         const numericBasePrice = typeof basePrice === 'string' ? parseFloat(basePrice) : (basePrice || 0);
         
-        return {
+        // Create a clean countryDeliverable object without paymentTerm and paymentMethod
+        const cleanCd: any = {
           country: cd.country,
           currency: currency,
           basePrice: isNaN(numericBasePrice) ? 0 : numericBasePrice,
@@ -220,15 +221,39 @@ const navigate = useNavigate();
           margins: Array.isArray(cd.margins) ? cd.margins : [],
           costs: Array.isArray(cd.costs) ? cd.costs : [],
           charges: Array.isArray(cd.charges) ? cd.charges : [],
-          paymentTerm: cd.paymentTerm || null,
-          paymentMethod: cd.paymentMethod || null,
         };
+        // Explicitly exclude paymentTerm and paymentMethod
+        return cleanCd;
       });
       
       // Filter out invalid entries (must have country, currency, and basePrice)
       const validCountryDeliverables = transformedCountryDeliverables.filter((cd: any) => 
         cd.country && cd.currency && (cd.basePrice !== undefined && cd.basePrice !== null)
       );
+      
+      // Extract paymentTerm and paymentMethod from productData (top level or from first countryDeliverable for backward compatibility)
+      let paymentTerm: string[] = [];
+      let paymentMethod: string[] = [];
+      
+      if (productData.paymentTerm) {
+        paymentTerm = Array.isArray(productData.paymentTerm) 
+          ? productData.paymentTerm 
+          : (productData.paymentTerm ? [productData.paymentTerm] : []);
+      } else if (productData.countryDeliverables && productData.countryDeliverables.length > 0 && productData.countryDeliverables[0].paymentTerm) {
+        // Backward compatibility: extract from first countryDeliverable
+        const cdPaymentTerm = productData.countryDeliverables[0].paymentTerm;
+        paymentTerm = Array.isArray(cdPaymentTerm) ? cdPaymentTerm : (cdPaymentTerm ? [cdPaymentTerm] : []);
+      }
+      
+      if (productData.paymentMethod) {
+        paymentMethod = Array.isArray(productData.paymentMethod) 
+          ? productData.paymentMethod 
+          : (productData.paymentMethod ? [productData.paymentMethod] : []);
+      } else if (productData.countryDeliverables && productData.countryDeliverables.length > 0 && productData.countryDeliverables[0].paymentMethod) {
+        // Backward compatibility: extract from first countryDeliverable
+        const cdPaymentMethod = productData.countryDeliverables[0].paymentMethod;
+        paymentMethod = Array.isArray(cdPaymentMethod) ? cdPaymentMethod : (cdPaymentMethod ? [cdPaymentMethod] : []);
+      }
       
       const processedData = {
         ...productData,
@@ -241,6 +266,8 @@ const navigate = useNavigate();
             ? parseInt(productData.moq)
             : productData.moq,
         countryDeliverables: validCountryDeliverables,
+        paymentTerm: paymentTerm,
+        paymentMethod: paymentMethod,
       };
       
       console.log('Processed data for API:', JSON.stringify(processedData, null, 2));
