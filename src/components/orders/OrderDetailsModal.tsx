@@ -35,10 +35,16 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
   const getStatusBadge = (status: string) => {
     const statusStyles: { [key: string]: string } = {
       requested: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-700",
-      approved: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-700",
-      accepted: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-700",
-      ready_to_pickup: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 border border-purple-200 dark:border-purple-700",
-      out_for_delivery: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border border-orange-200 dark:border-orange-700",
+      rejected: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border border-red-200 dark:border-red-700",
+      verify: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-700",
+      approved: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-700",
+      confirm: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-700",
+      waiting_for_payment: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border border-orange-200 dark:border-orange-700",
+      payment_received: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-700",
+      packing: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-700",
+      ready_to_ship: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-700",
+      on_the_way: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 border border-purple-200 dark:border-purple-700",
+      ready_to_pick: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-700",
       delivered: "bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-400 border border-teal-200 dark:border-teal-700",
       cancelled: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border border-red-200 dark:border-red-700",
     };
@@ -174,6 +180,26 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
                   )}
                 </tbody>
                 <tfoot>
+                  {order.otherCharges && order.otherCharges > 0 && (
+                    <tr className="bg-gray-50 dark:bg-gray-700">
+                      <td colSpan={3} className="px-4 py-2 text-right text-sm text-gray-700 dark:text-gray-300">
+                        Other Charges:
+                      </td>
+                      <td className="px-4 py-2 text-right text-sm text-gray-900 dark:text-gray-100">
+                        ${formatPrice(order.otherCharges)}
+                      </td>
+                    </tr>
+                  )}
+                  {order.appliedCharges && order.appliedCharges.length > 0 && (
+                    <tr className="bg-gray-50 dark:bg-gray-700">
+                      <td colSpan={3} className="px-4 py-2 text-right text-sm text-gray-700 dark:text-gray-300">
+                        Applied Charges:
+                      </td>
+                      <td className="px-4 py-2 text-right text-sm text-gray-900 dark:text-gray-100">
+                        ${formatPrice(order.appliedCharges.reduce((sum: number, charge: any) => sum + (charge.calculatedAmount || 0), 0))}
+                      </td>
+                    </tr>
+                  )}
                   <tr className="bg-gray-50 dark:bg-gray-700 font-semibold">
                     <td colSpan={3} className="px-4 py-2 text-right text-sm text-gray-900 dark:text-gray-100">
                       Total Amount:
@@ -488,6 +514,61 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          )}
+
+          {/* Location & Currency */}
+          {(order.currentLocation || order.deliveryLocation || order.currency) && (
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                Location & Currency
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {order.currentLocation && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Current Location
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-gray-100">
+                      {order.currentLocation === 'HK' ? 'Hong Kong' : 'Dubai'}
+                    </p>
+                  </div>
+                )}
+                {order.deliveryLocation && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Delivery Location
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-gray-100">
+                      {order.deliveryLocation === 'HK' ? 'Hong Kong' : 'Dubai'}
+                    </p>
+                  </div>
+                )}
+                {order.currency && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Currency
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-gray-100 font-semibold">
+                      {order.currency}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Other Charges */}
+          {order.otherCharges && order.otherCharges > 0 && (
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                Other Charges
+              </h3>
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4">
+                <p className="text-lg font-semibold text-yellow-800 dark:text-yellow-300">
+                  ${formatPrice(order.otherCharges)}
+                </p>
               </div>
             </div>
           )}

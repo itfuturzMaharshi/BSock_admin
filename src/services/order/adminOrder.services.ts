@@ -3,7 +3,7 @@ import toastHelper from '../../utils/toastHelper';
 import api from '../api/api';
 
 export interface OrderItem {
-  productId: { _id: string; name: string; price: number };
+  productId: { _id: string; name: string; price: number; moq?: number; stock?: number };
   skuFamilyId: { _id: string; name: string };
   quantity: number;
   price: number;
@@ -33,11 +33,15 @@ export interface Order {
   cartItems: OrderItem[];
   billingAddress?: Address;
   shippingAddress?: Address;
+  currentLocation?: string;
+  deliveryLocation?: string;
+  currency?: string;
+  otherCharges?: number | null;
   status: string;
   totalAmount: number;
   createdAt: string;
-  verifiedBy?: string;
-  approvedBy?: string;
+  verifiedBy?: { _id: string; name?: string; email?: string } | string | null;
+  approvedBy?: { _id: string; name?: string; email?: string } | string | null;
   canVerify?: boolean;
   canApprove?: boolean;
   tracking?: TrackingItem[];
@@ -45,6 +49,7 @@ export interface Order {
   paymentDetails?: PaymentDetails;
   appliedCharges?: any[];
   adminSelectedPaymentMethod?: string;
+  orderTrackingIds?: string[];
 }
 
 export interface TrackingItem {
@@ -53,6 +58,7 @@ export interface TrackingItem {
   userType: string;
   changedAt: string;
   message?: string;
+  images?: string[];
 }
 
 export interface ListResponse {
@@ -119,42 +125,116 @@ export class AdminOrderService {
     status: string,
     cartItems?: OrderItem[],
     message?: string,
-    paymentMethod?: string
+    paymentMethod?: string,
+    otherCharges?: number | null,
+    images?: File[]
   ): Promise<any> => {
     const baseUrl = import.meta.env.VITE_BASE_URL;
     const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
     const url = `${baseUrl}/api/${adminRoute}/order/update-status`;
 
-    const body: any = { orderId, status };
+    let res;
     
-    if (cartItems && cartItems.length > 0) {
-      body.cartItems = cartItems.map(item => ({
-        productId: item.productId._id,
-        skuFamilyId: item.skuFamilyId._id,
-        quantity: item.quantity,
-        price: item.price,
-      }));
-    }
-    if (message) {
-      body.message = message;
-    }
-    if (paymentMethod) {
-      body.paymentMethod = paymentMethod;
+    // If images are provided, use FormData
+    if (images && images.length > 0) {
+      const formData = new FormData();
+      formData.append('orderId', orderId);
+      formData.append('status', status);
+      
+      if (cartItems && cartItems.length > 0) {
+        formData.append('cartItems', JSON.stringify(cartItems.map(item => ({
+          productId: item.productId._id,
+          skuFamilyId: item.skuFamilyId._id,
+          quantity: item.quantity,
+          price: item.price,
+        }))));
+      }
+      if (message) {
+        formData.append('message', message);
+      }
+      if (paymentMethod) {
+        formData.append('paymentMethod', paymentMethod);
+      }
+      if (otherCharges !== undefined && otherCharges !== null) {
+        formData.append('otherCharges', otherCharges.toString());
+      }
+      
+      // Add images
+      images.forEach((file) => {
+        formData.append('images', file);
+      });
+
+      try {
+        res = await api.post(url, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+      } catch (err: any) {
+        const errorMessage = err.response?.data?.message || 'Failed to update order status';
+        toastHelper.showTost(errorMessage, 'error');
+        throw new Error(errorMessage);
+      }
+    } else {
+      // Regular JSON request
+      const body: any = { orderId, status };
+      
+      if (cartItems && cartItems.length > 0) {
+        body.cartItems = cartItems.map(item => ({
+          productId: item.productId._id,
+          skuFamilyId: item.skuFamilyId._id,
+          quantity: item.quantity,
+          price: item.price,
+        }));
+      }
+      if (message) {
+        body.message = message;
+      }
+      if (paymentMethod) {
+        body.paymentMethod = paymentMethod;
+      }
+      if (otherCharges !== undefined && otherCharges !== null) {
+        body.otherCharges = otherCharges;
+      }
+
+      try {
+        res = await api.post(url, body);
+      } catch (err: any) {
+        const errorMessage = err.response?.data?.message || 'Failed to update order status';
+        toastHelper.showTost(errorMessage, 'error');
+        throw new Error(errorMessage);
+      }
     }
 
+    if (res.status === 200 && res.data.data) {
+      toastHelper.showTost(res.data.message || `Order status updated to ${status}!`, 'success');
+      return res.data;
+    } else {
+      toastHelper.showTost(res.data.message || 'Failed to update order status', 'warning');
+      return false;
+    }
+  };
+
+  static getOrderStages = async (
+    currentLocation: string,
+    deliveryLocation: string,
+    currency: string
+  ): Promise<string[]> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/order/get-stages`;
+
     try {
-      const res = await api.post(url, body);
-      if (res.status === 200 && res.data.data) {
-        toastHelper.showTost(res.data.message || `Order status updated to ${status}!`, 'success');
-        return res.data;
-      } else {
-        toastHelper.showTost(res.data.message || 'Failed to update order status', 'warning');
-        return false;
+      const res = await api.post(url, { currentLocation, deliveryLocation, currency });
+      if (res.data?.data?.stages) {
+        return res.data.data.stages;
       }
+      // Fallback to default stages
+      return ['requested', 'rejected', 'verify', 'approved', 'confirm', 'waiting_for_payment', 'payment_received', 'packing', 'ready_to_ship', 'on_the_way', 'ready_to_pick', 'delivered', 'cancelled'];
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || 'Failed to update order status';
-      toastHelper.showTost(errorMessage, 'error');
-      throw new Error(errorMessage);
+      console.error('Failed to fetch order stages:', err);
+      // Return default stages on error
+      return ['requested', 'rejected', 'verify', 'approved', 'confirm', 'waiting_for_payment', 'payment_received', 'packing', 'ready_to_ship', 'on_the_way', 'ready_to_pick', 'delivered', 'cancelled'];
     }
   };
 
