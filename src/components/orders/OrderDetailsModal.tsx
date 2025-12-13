@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { Order } from "../../services/order/adminOrder.services";
+import { Order, TrackingItem, AdminOrderService } from "../../services/order/adminOrder.services";
 
 interface OrderDetailsModalProps {
   isOpen: boolean;
@@ -13,6 +13,31 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
   onClose,
   order,
 }) => {
+  const [trackingData, setTrackingData] = useState<TrackingItem[]>([]);
+  const [loadingTracking, setLoadingTracking] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && order?._id) {
+      fetchTrackingData();
+    }
+  }, [isOpen, order?._id]);
+
+  const fetchTrackingData = async () => {
+    if (!order?._id) return;
+    
+    try {
+      setLoadingTracking(true);
+      const response = await AdminOrderService.getOrderTracking(order._id);
+      if (response?.data?.docs) {
+        setTrackingData(response.data.docs);
+      }
+    } catch (error) {
+      console.error('Error fetching tracking data:', error);
+    } finally {
+      setLoadingTracking(false);
+    }
+  };
+
   if (!isOpen || !order) return null;
 
   const formatPrice = (price: number | string): string => {
@@ -573,6 +598,82 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
             </div>
           )}
 
+          {/* Order Tracking Images */}
+          {loadingTracking ? (
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+              <div className="text-center py-4">
+                <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Loading tracking images...</p>
+              </div>
+            </div>
+          ) : trackingData && trackingData.length > 0 && trackingData.some(track => track.images && track.images.length > 0) ? (
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                Tracking Images
+              </h3>
+              <div className="space-y-4">
+                {trackingData.map((track: TrackingItem, trackIndex: number) => {
+                  if (!track.images || track.images.length === 0) return null;
+                  
+                  return (
+                    <div key={trackIndex} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {track.status?.charAt(0).toUpperCase() + track.status?.slice(1).replace(/_/g, ' ')}
+                        </span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          ({formatDate(track.changedAt)})
+                        </span>
+                        {track.userType && (
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            by {track.userType}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-3">
+                        {track.images.map((img: string, imgIndex: number) => {
+                          const baseUrl = import.meta.env.VITE_BASE_URL || '';
+                          // Handle different path formats
+                          let imageUrl = img;
+                          if (!img.startsWith('http')) {
+                            if (img.startsWith('uploads/')) {
+                              imageUrl = `/${img}`;
+                            } else if (!img.startsWith('/')) {
+                              imageUrl = `/uploads/${img}`;
+                            } else {
+                              imageUrl = img;
+                            }
+                          }
+                          const fullImageUrl = imageUrl.startsWith('http') ? imageUrl : `${baseUrl}${imageUrl}`;
+                          
+                          return (
+                            <div key={imgIndex} className="relative group">
+                              <a
+                                href={fullImageUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block"
+                              >
+                                <img
+                                  src={fullImageUrl}
+                                  alt={`Tracking image ${imgIndex + 1}`}
+                                  className="w-24 h-24 object-cover rounded-lg border-2 border-gray-200 dark:border-gray-600 hover:border-blue-500 dark:hover:border-blue-400 transition-colors cursor-pointer"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/100?text=Image+Not+Found';
+                                  }}
+                                />
+                              </a>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+
           {/* Order Information */}
           <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
@@ -593,7 +694,7 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
                     Verified By
                   </label>
                   <p className="text-sm text-gray-900 dark:text-gray-100">
-                    {order.verifiedBy || "-"}
+                    {typeof order.verifiedBy === 'object' ? order.verifiedBy.name || order.verifiedBy.email : order.verifiedBy}
                   </p>
                 </div>
               )}
@@ -603,7 +704,7 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
                     Approved By
                   </label>
                   <p className="text-sm text-gray-900 dark:text-gray-100">
-                    {order.approvedBy || "-"}
+                    {typeof order.approvedBy === 'object' ? order.approvedBy.name || order.approvedBy.email : order.approvedBy}
                   </p>
                 </div>
               )}

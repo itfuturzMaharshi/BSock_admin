@@ -271,6 +271,30 @@ const OrdersTable: React.FC = () => {
       }
     }
     
+    // IMPORTANT: Hide "verify" option if order was modified but customer hasn't confirmed yet
+    // Admin can only verify AFTER customer confirms (isConfirmedByCustomer must be true)
+    // Check if order was modified (has token) and customer hasn't confirmed
+    if (order.modificationConfirmationToken !== null && order.modificationConfirmationToken !== undefined) {
+      if (!order.isConfirmedByCustomer) {
+        const verifyIndex = availableStatuses.indexOf("verify");
+        if (verifyIndex >= 0) {
+          availableStatuses.splice(verifyIndex, 1);
+          console.log('✅ Removed "verify" option - Customer has not confirmed order modifications yet (isConfirmedByCustomer is false)', {
+            hasToken: !!order.modificationConfirmationToken,
+            isConfirmed: order.isConfirmedByCustomer
+          });
+        }
+      }
+    }
+    // Also check if quantities were modified but no token sent yet (quantitiesModified flag)
+    if (order.quantitiesModified && !order.modificationConfirmationToken) {
+      const verifyIndex = availableStatuses.indexOf("verify");
+      if (verifyIndex >= 0) {
+        availableStatuses.splice(verifyIndex, 1);
+        console.log('✅ Removed "verify" option - Quantities were modified but confirmation email not sent yet');
+      }
+    }
+    
     return [...new Set(availableStatuses)];
   };
 
@@ -445,6 +469,34 @@ const OrdersTable: React.FC = () => {
               style="width: 100%; margin:0px; padding: 10px; font-size: 14px; border: 1px solid #D1D5DB; border-radius: 6px; background-color: #F9FAFB; color: #1F2937; min-height: 100px; resize: vertical; outline: none; transition: border-color 0.2s;"
             ></textarea>
           </div>
+          <div id="deliveredWarningContainer" style="display: none; margin-top: 20px; padding: 12px; background-color: #FEF3C7; border-left: 4px solid #F59E0B; border-radius: 6px;">
+            <p style="margin: 0; font-size: 13px; color: #92400E; font-weight: 500;">
+              <strong>⚠️ Important:</strong> To change status to DELIVERED, you must:
+            </p>
+            <ul style="margin: 8px 0 0 0; padding-left: 20px; font-size: 12px; color: #92400E;">
+              <li>Ensure customer has added receiver details (name & mobile)</li>
+              <li>Send OTP to receiver mobile number</li>
+              <li>Verify the OTP successfully</li>
+            </ul>
+            ${order.receiverDetails?.mobile ? `
+              <p style="margin: 8px 0 0 0; font-size: 12px; color: #92400E;">
+                <strong>Receiver Mobile:</strong> ${order.receiverDetails.mobile}
+              </p>
+            ` : ''}
+            ${order.deliveryOTPVerified ? `
+              <p style="margin: 8px 0 0 0; font-size: 12px; color: #059669; font-weight: 600;">
+                ✅ OTP Verified - Ready to mark as delivered
+              </p>
+            ` : order.deliveryOTP ? `
+              <p style="margin: 8px 0 0 0; font-size: 12px; color: #DC2626; font-weight: 600;">
+                ❌ OTP Not Verified - Please verify OTP first
+              </p>
+            ` : `
+              <p style="margin: 8px 0 0 0; font-size: 12px; color: #DC2626; font-weight: 600;">
+                ❌ OTP Not Sent - Please send OTP first
+              </p>
+            `}
+          </div>
         </div>
       `;
 
@@ -481,7 +533,7 @@ const OrdersTable: React.FC = () => {
               selectedOtherCharges = otherChargesValue ? parseFloat(otherChargesValue) : null;
               if (selectedOtherCharges !== null && selectedOtherCharges < 0) {
                 Swal.showValidationMessage('Other charges cannot be negative');
-                return false;
+              return false;
               }
             }
 
@@ -528,7 +580,7 @@ const OrdersTable: React.FC = () => {
                 }
                 
                 return {
-                  ...item,
+                ...item,
                   quantity: newQuantity,
                 };
               });
@@ -577,7 +629,18 @@ const OrdersTable: React.FC = () => {
                     otherChargesContainer.style.display = "block";
                   }
                 }
+                // Show/hide delivered warning
+                const deliveredWarningContainer = document.getElementById("deliveredWarningContainer") as HTMLElement;
+                if (deliveredWarningContainer) {
+                  deliveredWarningContainer.style.display = newStatus === "delivered" ? "block" : "none";
+                }
               });
+              
+              // Set initial visibility for delivered warning
+              const deliveredWarningContainer = document.getElementById("deliveredWarningContainer") as HTMLElement;
+              if (deliveredWarningContainer) {
+                deliveredWarningContainer.style.display = currentStatus === "delivered" ? "block" : "none";
+              }
               
               // Payment method selection removed - will be handled in separate module
 
@@ -659,82 +722,286 @@ const OrdersTable: React.FC = () => {
     setIsDetailsModalOpen(true);
   };
 
-  const handleViewTracking = async (orderId: string) => {
+  const handleSendConfirmation = async (order: Order) => {
     try {
-      const response = await AdminOrderService.getOrderTracking(orderId);
-      const trackingItems: TrackingItem[] = response.data.docs;
+      const isResend = order.modificationConfirmationToken !== null && order.modificationConfirmationToken !== undefined;
+      const result = await Swal.fire({
+        title: isResend ? 'Resend Confirmation Email' : 'Send Confirmation Email',
+        text: `Are you sure you want to ${isResend ? 'resend' : 'send'} the order modification confirmation email to ${order.customerId?.email || 'the customer'}?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: isResend ? 'Yes, Resend' : 'Yes, Send',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#0071E0',
+      });
 
-      if (trackingItems.length === 0) {
-        await Swal.fire({
-          title: "No Tracking Information",
-          text: "No tracking details are available for this order.",
-          icon: "info",
-          confirmButtonText: "OK",
-        });
+      if (result.isConfirmed) {
+        await AdminOrderService.resendModificationConfirmation(order._id);
+        toastHelper.showTost(
+          isResend 
+            ? 'Confirmation email resent successfully!' 
+            : 'Confirmation email sent successfully!',
+          'success'
+        );
+        fetchOrders(); // Refresh orders list
+      }
+    } catch (error: any) {
+      console.error('Error sending confirmation email:', error);
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to send confirmation email';
+      toastHelper.showTost(errorMessage, 'error');
+    }
+  };
+
+  const handleSendDeliveryOTP = async (order: Order) => {
+    try {
+      if (!order.receiverDetails?.mobile) {
+        toastHelper.showTost('Receiver mobile number is required. Customer must add receiver details first.', 'error');
         return;
       }
 
-      const baseUrl = import.meta.env.VITE_BASE_URL || '';
-      const trackingHtml = `
-        <div style="text-align: left;">
-          <h3 style="margin-bottom: 16px;">Tracking Details for Order ${orderId}</h3>
-          <table style="width: 100%; border-collapse: collapse;">
-            <thead>
-              <tr style="background-color: #f4f4f4;">
-                <th style="padding: 8px; border: 1px solid #ddd;">Status</th>
-                <th style="padding: 8px; border: 1px solid #ddd;">Changed By</th>
-                <th style="padding: 8px; border: 1px solid #ddd;">User Type</th>
-                <th style="padding: 8px; border: 1px solid #ddd;">Changed At</th>
-                <th style="padding: 8px; border: 1px solid #ddd;">Message</th>
-                <th style="padding: 8px; border: 1px solid #ddd;">Images</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${trackingItems
-                .map(
-                  (item) => `
-                    <tr>
-                      <td style="padding: 8px; border: 1px solid #ddd;">
-                        ${item.status.charAt(0).toUpperCase() + item.status.slice(1).replace(/_/g, ' ')}
-                      </td>
-                      <td style="padding: 8px; border: 1px solid #ddd;">
-                        ${item?.changedBy?.name || "-"}
-                      </td>
-                      <td style="padding: 8px; border: 1px solid #ddd;">
-                        ${item.userType}
-                      </td>
-                      <td style="padding: 8px; border: 1px solid #ddd;">
-                        ${format(new Date(item.changedAt), "yyyy-MM-dd HH:mm")}
-                      </td>
-                      <td style="padding: 8px; border: 1px solid #ddd;">
-                        ${item.message || "-"}
-                      </td>
-                      <td style="padding: 8px; border: 1px solid #ddd;">
-                        ${item.images && item.images.length > 0 
-                          ? item.images.map((img: string, idx: number) => {
-                              const imageUrl = img.startsWith('http') ? img : `${baseUrl}/${img.replace(/^\/+/, '')}`;
-                              return `<a href="${imageUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; margin-right: 8px;">
-                                <img src="${imageUrl}" alt="Image ${idx + 1}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd;" />
-                              </a>`;
-                            }).join('')
-                          : "-"}
-                      </td>
-                    </tr>
-                  `
-                )
-                .join("")}
-            </tbody>
-          </table>
-        </div>
-      `;
-
-      await Swal.fire({
-        title: "Order Tracking",
-        html: trackingHtml,
-        width: 800,
-        showConfirmButton: true,
-        confirmButtonText: "Close",
+      const result = await Swal.fire({
+        title: 'Send Delivery OTP',
+        text: `Send OTP to ${order.receiverDetails.mobile} for order delivery verification?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Send OTP',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#0071E0',
       });
+
+      if (result.isConfirmed) {
+        await AdminOrderService.sendDeliveryOTP(order._id);
+        fetchOrders(); // Refresh orders list
+      }
+    } catch (error: any) {
+      console.error('Error sending delivery OTP:', error);
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to send OTP';
+      toastHelper.showTost(errorMessage, 'error');
+    }
+  };
+
+  const handleVerifyDeliveryOTP = async (order: Order) => {
+    try {
+      const { value: otp } = await Swal.fire({
+        title: 'Verify Delivery OTP',
+        text: `Enter the OTP sent to ${order.receiverDetails?.mobile || 'receiver'}`,
+        input: 'text',
+        inputPlaceholder: 'Enter 6-digit OTP',
+        inputAttributes: {
+          maxlength: 6,
+          pattern: '[0-9]{6}',
+        },
+        showCancelButton: true,
+        confirmButtonText: 'Verify OTP',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#0071E0',
+        inputValidator: (value) => {
+          if (!value) {
+            return 'Please enter the OTP';
+          }
+          if (!/^\d{6}$/.test(value)) {
+            return 'OTP must be 6 digits';
+          }
+        },
+      });
+
+      if (otp) {
+        await AdminOrderService.verifyDeliveryOTP(order._id, otp);
+        fetchOrders(); // Refresh orders list
+      }
+    } catch (error: any) {
+      console.error('Error verifying delivery OTP:', error);
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to verify OTP';
+      toastHelper.showTost(errorMessage, 'error');
+    }
+  };
+
+  const handleViewTracking = async (orderId: string, initialPage: number = 1) => {
+    try {
+      const limit = 10; // Items per page
+      let currentPage = initialPage;
+      
+      const loadTrackingPage = async (page: number): Promise<{ html: string; pagination: any } | null> => {
+        const response = await AdminOrderService.getOrderTracking(orderId, page, limit);
+        const trackingData = response.data;
+        const trackingItems: TrackingItem[] = trackingData.docs || [];
+
+        if (trackingItems.length === 0 && page === 1) {
+          await Swal.fire({
+            title: "No Tracking Information",
+            text: "No tracking details are available for this order.",
+            icon: "info",
+            confirmButtonText: "OK",
+          });
+          return null;
+        }
+
+        const baseUrl = import.meta.env.VITE_BASE_URL || '';
+        
+        // Build pagination controls HTML
+        const paginationHtml = `
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding: 12px; background-color: #f9fafb; border-radius: 4px; border: 1px solid #e5e7eb;">
+            <div style="font-size: 14px; color: #6b7280; font-weight: 500;">
+              Showing ${((trackingData.page - 1) * trackingData.limit) + 1} to ${Math.min(trackingData.page * trackingData.limit, trackingData.totalDocs)} of ${trackingData.totalDocs} entries
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <button id="prevPageBtn" 
+                      style="padding: 6px 12px; background-color: ${!trackingData.hasPrevPage ? '#d1d5db' : '#3b82f6'}; color: white; border: none; border-radius: 4px; cursor: ${!trackingData.hasPrevPage ? 'not-allowed' : 'pointer'}; font-size: 14px;"
+                      ${!trackingData.hasPrevPage ? 'disabled' : ''}>
+                Previous
+              </button>
+              <span style="font-size: 14px; color: #374151; padding: 0 12px; font-weight: 500;">
+                Page ${trackingData.page} of ${trackingData.totalPages}
+              </span>
+              <button id="nextPageBtn"
+                      style="padding: 6px 12px; background-color: ${!trackingData.hasNextPage ? '#d1d5db' : '#3b82f6'}; color: white; border: none; border-radius: 4px; cursor: ${!trackingData.hasNextPage ? 'not-allowed' : 'pointer'}; font-size: 14px;"
+                      ${!trackingData.hasNextPage ? 'disabled' : ''}>
+                Next
+              </button>
+            </div>
+          </div>
+        `;
+
+        const trackingHtml = `
+          <div style="text-align: left;">
+            <h3 style="margin-bottom: 16px; color: #1f2937;">Tracking Details for Order ${orderId}</h3>
+            <div style="max-height: 500px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 4px;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <thead style="position: sticky; top: 0; background-color: #f4f4f4; z-index: 10;">
+                  <tr>
+                    <th style="padding: 10px; border: 1px solid #ddd; background-color: #f9fafb; font-weight: 600;">Status</th>
+                    <th style="padding: 10px; border: 1px solid #ddd; background-color: #f9fafb; font-weight: 600;">Changed By</th>
+                    <th style="padding: 10px; border: 1px solid #ddd; background-color: #f9fafb; font-weight: 600;">User Type</th>
+                    <th style="padding: 10px; border: 1px solid #ddd; background-color: #f9fafb; font-weight: 600;">Changed At</th>
+                    <th style="padding: 10px; border: 1px solid #ddd; background-color: #f9fafb; font-weight: 600;">Message</th>
+                    <th style="padding: 10px; border: 1px solid #ddd; background-color: #f9fafb; font-weight: 600;">Images</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${trackingItems
+                    .map(
+                      (item) => {
+                        // Ensure images is an array
+                        const images = Array.isArray(item.images) ? item.images : (item.images ? [item.images] : []);
+                        
+                        return `
+                        <tr>
+                          <td style="padding: 8px; border: 1px solid #ddd;">
+                            ${item.status.charAt(0).toUpperCase() + item.status.slice(1).replace(/_/g, ' ')}
+                          </td>
+                          <td style="padding: 8px; border: 1px solid #ddd;">
+                            ${item?.changedBy?.name || "-"}
+                          </td>
+                          <td style="padding: 8px; border: 1px solid #ddd;">
+                            ${item.userType}
+                          </td>
+                          <td style="padding: 8px; border: 1px solid #ddd;">
+                            ${format(new Date(item.changedAt), "yyyy-MM-dd HH:mm")}
+                          </td>
+                          <td style="padding: 8px; border: 1px solid #ddd;">
+                            ${item.message || "-"}
+                          </td>
+                          <td style="padding: 8px; border: 1px solid #ddd;">
+                            ${images.length > 0 
+                              ? images.map((img: string, idx: number) => {
+                                  // Ensure image path is correct - handle both relative and absolute paths
+                                  let imageUrl = img;
+                                  if (!img || typeof img !== 'string') {
+                                    console.warn('Invalid image path:', img);
+                                    return '';
+                                  }
+                                  
+                                  // Normalize the path
+                                  if (!img.startsWith('http')) {
+                                    // If path starts with uploads/, prepend /
+                                    if (img.startsWith('uploads/')) {
+                                      imageUrl = `/${img}`;
+                                    } else if (!img.startsWith('/')) {
+                                      // If path doesn't start with /, prepend /uploads/
+                                      imageUrl = `/uploads/${img}`;
+                                    } else {
+                                      imageUrl = img;
+                                    }
+                                  }
+                                  
+                                  // Construct full URL
+                                  const fullImageUrl = imageUrl.startsWith('http') 
+                                    ? imageUrl 
+                                    : `${baseUrl}${imageUrl.startsWith('/') ? imageUrl : '/' + imageUrl}`;
+                                  
+                                  return `<a href="${fullImageUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; margin-right: 8px; margin-bottom: 4px;">
+                                    <img src="${fullImageUrl}" alt="Image ${idx + 1}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd; cursor: pointer;" 
+                                         onerror="this.onerror=null; this.src='https://via.placeholder.com/50?text=Error'; console.error('Image failed to load:', '${fullImageUrl}');" />
+                                  </a>`;
+                                }).filter(img => img !== '').join('')
+                              : "-"}
+                          </td>
+                        </tr>
+                      `;
+                      }
+                    )
+                    .join("")}
+                </tbody>
+              </table>
+            </div>
+            ${paginationHtml}
+          </div>
+        `;
+
+        return { html: trackingHtml, pagination: trackingData };
+      };
+
+      // Load initial page
+      const initialData = await loadTrackingPage(currentPage);
+      if (!initialData) return;
+
+      // Show modal with pagination
+      let currentPagination = initialData.pagination;
+
+      const showTrackingModal = async (page: number) => {
+        const pageData = await loadTrackingPage(page);
+        if (!pageData) return;
+
+        currentPagination = pageData.pagination;
+
+        const result = await Swal.fire({
+          title: "Order Tracking",
+          html: pageData.html,
+          width: 950,
+          showConfirmButton: true,
+          confirmButtonText: "Close",
+          didOpen: () => {
+            // Add event listeners for pagination buttons
+            const prevBtn = document.getElementById('prevPageBtn');
+            const nextBtn = document.getElementById('nextPageBtn');
+
+            if (prevBtn && currentPagination.hasPrevPage) {
+              prevBtn.onclick = async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (currentPagination.hasPrevPage) {
+                  Swal.close();
+                  await showTrackingModal(currentPagination.prevPage || 1);
+                }
+              };
+            }
+
+            if (nextBtn && currentPagination.hasNextPage) {
+              nextBtn.onclick = async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (currentPagination.hasNextPage) {
+                  Swal.close();
+                  await showTrackingModal(currentPagination.nextPage || 1);
+                }
+              };
+            }
+          }
+        });
+      };
+
+      await showTrackingModal(currentPage);
+
     } catch (error) {
       console.error("Failed to fetch tracking:", error);
       toastHelper.showTost("Failed to fetch tracking details", "error");
@@ -1012,6 +1279,63 @@ const OrdersTable: React.FC = () => {
                           >
                             <i className="fas fa-edit"></i>
                           </button>
+                        )}
+                        {/* Show send/resend confirmation button ONLY when quantities were modified */}
+                        {canVerifyApprove && 
+                         (order.status === 'requested' || order.status === 'verify') &&
+                         order.quantitiesModified &&
+                         (!order.isConfirmedByCustomer) && (
+                          <button
+                            onClick={() => handleSendConfirmation(order)}
+                            className="text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-300"
+                            title={
+                              order.modificationConfirmationToken 
+                                ? (order.modificationConfirmationExpiry && new Date(order.modificationConfirmationExpiry) < new Date()
+                                    ? "Resend Confirmation Email (Expired)" 
+                                    : "Resend Confirmation Email")
+                                : "Send Confirmation Email"
+                            }
+                          >
+                            <i className="fas fa-envelope"></i>
+                          </button>
+                        )}
+                        {/* Show OTP send/verify buttons when status is ready_to_pick, ready_to_ship, on_the_way, or delivered */}
+                        {canVerifyApprove && 
+                         (order.status === 'ready_to_pick' || order.status === 'ready_to_ship' || order.status === 'on_the_way' || order.status === 'delivered') &&
+                         order.receiverDetails?.mobile && (
+                          <>
+                            {!order.deliveryOTPVerified && (
+                              <>
+                                {!order.deliveryOTP && (
+                                  <button
+                                    onClick={() => handleSendDeliveryOTP(order)}
+                                    className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                                    title="Send Delivery OTP"
+                                  >
+                                    <i className="fas fa-sms"></i>
+                                  </button>
+                                )}
+                                {order.deliveryOTP && (
+                                  <button
+                                    onClick={() => handleVerifyDeliveryOTP(order)}
+                                    className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300"
+                                    title={
+                                      order.deliveryOTPExpiry && new Date(order.deliveryOTPExpiry) < new Date()
+                                        ? "Verify OTP (Expired - Resend Required)"
+                                        : "Verify Delivery OTP"
+                                    }
+                                  >
+                                    <i className="fas fa-check-circle"></i>
+                                  </button>
+                                )}
+                              </>
+                            )}
+                            {order.deliveryOTPVerified && (
+                              <span className="text-green-600 dark:text-green-400" title="OTP Verified">
+                                <i className="fas fa-check-circle"></i>
+                              </span>
+                            )}
+                          </>
                         )}
                         <button
                           onClick={() => handleViewOrderDetails(order)}

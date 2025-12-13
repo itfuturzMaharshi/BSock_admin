@@ -50,6 +50,19 @@ export interface Order {
   appliedCharges?: any[];
   adminSelectedPaymentMethod?: string;
   orderTrackingIds?: string[];
+  modificationConfirmationToken?: string | null;
+  modificationConfirmationExpiry?: string | Date | null;
+  isConfirmedByCustomer?: boolean;
+  modificationConfirmedAt?: string | Date | null;
+  quantitiesModified?: boolean;
+  receiverDetails?: {
+    name?: string | null;
+    mobile?: string | null;
+  };
+  deliveryOTP?: string | null;
+  deliveryOTPExpiry?: string | Date | null;
+  deliveryOTPVerified?: boolean;
+  deliveryOTPVerifiedAt?: string | Date | null;
 }
 
 export interface TrackingItem {
@@ -135,84 +148,51 @@ export class AdminOrderService {
 
     let res;
     
-    // If images are provided, use FormData
+    // Always use FormData to support images (even if no images, it's more flexible)
+    const formData = new FormData();
+    formData.append('orderId', orderId);
+    formData.append('status', status);
+    
+    if (cartItems && cartItems.length > 0) {
+      formData.append('cartItems', JSON.stringify(cartItems.map(item => ({
+        productId: item.productId._id,
+        skuFamilyId: item.skuFamilyId._id,
+        quantity: item.quantity,
+        price: item.price,
+      }))));
+    }
+    if (message) {
+      formData.append('message', message);
+    }
+    if (paymentMethod) {
+      formData.append('paymentMethod', paymentMethod);
+    }
+    if (otherCharges !== undefined && otherCharges !== null) {
+      formData.append('otherCharges', otherCharges.toString());
+    }
+    
+    // Add images if provided
     if (images && images.length > 0) {
-      const formData = new FormData();
-      formData.append('orderId', orderId);
-      formData.append('status', status);
-      
-      if (cartItems && cartItems.length > 0) {
-        formData.append('cartItems', JSON.stringify(cartItems.map(item => ({
-          productId: item.productId._id,
-          skuFamilyId: item.skuFamilyId._id,
-          quantity: item.quantity,
-          price: item.price,
-        }))));
-      }
-      if (message) {
-        formData.append('message', message);
-      }
-      if (paymentMethod) {
-        formData.append('paymentMethod', paymentMethod);
-      }
-      if (otherCharges !== undefined && otherCharges !== null) {
-        formData.append('otherCharges', otherCharges.toString());
-      }
-      
-      // Add images
       images.forEach((file) => {
         formData.append('images', file);
       });
-
-      try {
-        res = await api.post(url, formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        });
-      } catch (err: any) {
-        const errorMessage = err.response?.data?.message || 'Failed to update order status';
-        toastHelper.showTost(errorMessage, 'error');
-        throw new Error(errorMessage);
-      }
-    } else {
-      // Regular JSON request
-      const body: any = { orderId, status };
-      
-      if (cartItems && cartItems.length > 0) {
-        body.cartItems = cartItems.map(item => ({
-          productId: item.productId._id,
-          skuFamilyId: item.skuFamilyId._id,
-          quantity: item.quantity,
-          price: item.price,
-        }));
-      }
-      if (message) {
-        body.message = message;
-      }
-      if (paymentMethod) {
-        body.paymentMethod = paymentMethod;
-      }
-      if (otherCharges !== undefined && otherCharges !== null) {
-        body.otherCharges = otherCharges;
-      }
-
-      try {
-        res = await api.post(url, body);
-      } catch (err: any) {
-        const errorMessage = err.response?.data?.message || 'Failed to update order status';
-        toastHelper.showTost(errorMessage, 'error');
-        throw new Error(errorMessage);
-      }
     }
 
-    if (res.status === 200 && res.data.data) {
-      toastHelper.showTost(res.data.message || `Order status updated to ${status}!`, 'success');
-      return res.data;
-    } else {
-      toastHelper.showTost(res.data.message || 'Failed to update order status', 'warning');
-      return false;
+    try {
+      res = await api.post(url, formData);
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to update order status';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
     }
+
+      if (res.status === 200 && res.data.data) {
+        toastHelper.showTost(res.data.message || `Order status updated to ${status}!`, 'success');
+        return res.data;
+      } else {
+        toastHelper.showTost(res.data.message || 'Failed to update order status', 'warning');
+        return false;
+      }
   };
 
   static getOrderStages = async (
@@ -267,7 +247,70 @@ export class AdminOrderService {
       toastHelper.showTost(errorMessage, 'error');
       throw new Error(errorMessage);
     }
-  }
+  };
+
+  static resendModificationConfirmation = async (orderId: string): Promise<any> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/order/resend-modification-confirmation`;
+
+    try {
+      const res = await api.post(url, { orderId });
+      if (res.status === 200 && res.data.data) {
+        // Don't show toast here - let the component handle it
+        return res.data;
+      } else {
+        toastHelper.showTost(res.data.message || 'Failed to send confirmation email', 'warning');
+        return false;
+      }
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to send confirmation email';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
+
+  static sendDeliveryOTP = async (orderId: string): Promise<any> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/order/send-delivery-otp`;
+
+    try {
+      const res = await api.post(url, { orderId });
+      if (res.status === 200 && res.data.data) {
+        toastHelper.showTost(res.data.message || 'OTP sent successfully!', 'success');
+        return res.data;
+      } else {
+        toastHelper.showTost(res.data.message || 'Failed to send OTP', 'warning');
+        return false;
+      }
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to send OTP';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
+
+  static verifyDeliveryOTP = async (orderId: string, otp: string): Promise<any> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/order/verify-delivery-otp`;
+
+    try {
+      const res = await api.post(url, { orderId, otp });
+      if (res.status === 200 && res.data.data) {
+        toastHelper.showTost(res.data.message || 'OTP verified successfully!', 'success');
+        return res.data;
+      } else {
+        toastHelper.showTost(res.data.message || 'Failed to verify OTP', 'warning');
+        return false;
+      }
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to verify OTP';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
 }
 
 export default AdminOrderService;
