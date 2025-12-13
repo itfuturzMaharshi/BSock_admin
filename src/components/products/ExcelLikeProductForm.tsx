@@ -43,6 +43,7 @@ export interface ProductRowData {
   totalQty: number | string;
   moqPerVariant: number | string;
   weight: number | string;
+  purchaseType: string; // 'full' | 'partial'
   // Payment Term - array of strings
   paymentTerm: string[];
   // Payment Method - array of strings
@@ -72,6 +73,8 @@ export interface ProductRowData {
   ram?: string;
   sequence?: number;
   images?: string[];
+  // Dynamic custom fields - key-value pairs
+  [key: string]: any;
 }
 
 interface ExcelLikeProductFormProps {
@@ -79,12 +82,15 @@ interface ExcelLikeProductFormProps {
   variants?: VariantOption[];
   onSave: (rows: ProductRowData[], totalMoq?: number | string) => void;
   onCancel: () => void;
+  editProducts?: Product[]; // Products to edit
 }
 
 const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
   variantType,
   variants = [],
+  onSave,
   onCancel,
+  editProducts = [],
 }) => {
   const [rows, setRows] = useState<ProductRowData[]>([]);
   const [grades, setGrades] = useState<any[]>([]);
@@ -126,24 +132,183 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
   const [pendingRows, setPendingRows] = useState<ProductRowData[]>([]);
   const [pendingTotalMoq, setPendingTotalMoq] = useState<number | string | undefined>(undefined);
 
+  // Dynamic custom columns state
+  const [customColumns, setCustomColumns] = useState<Array<{ key: string; label: string; width: number }>>([]);
+  const [showAddColumnModal, setShowAddColumnModal] = useState(false);
+  const [newColumnName, setNewColumnName] = useState('');
+
   // LocalStorage key for saving form data
   const STORAGE_KEY = 'variant-product-form-data';
 
-  // Load data from localStorage on mount
+  // Load data from localStorage on mount OR initialize from editProducts
   useEffect(() => {
+    // Priority 1: Initialize from editProducts if available (editing mode)
+    if (editProducts && editProducts.length > 0) {
+      console.log('ExcelLikeProductForm: Initializing rows from editProducts:', editProducts.length, 'products');
+      console.log('ExcelLikeProductForm: editProducts data:', JSON.stringify(editProducts, null, 2));
+      const transformedRows: ProductRowData[] = editProducts.map((product, index) => {
+        const skuFamily = typeof product.skuFamilyId === 'object' ? product.skuFamilyId : null;
+        const grade = (product as any).gradeId ? (typeof (product as any).gradeId === 'object' ? (product as any).gradeId._id : (product as any).gradeId) : '';
+        const seller = (product as any).sellerId ? (typeof (product as any).sellerId === 'object' ? (product as any).sellerId._id : (product as any).sellerId) : '';
+        
+        // Get country deliverables
+        const hkDeliverable = Array.isArray(product.countryDeliverables) 
+          ? product.countryDeliverables.find(cd => cd.country === 'Hongkong')
+          : null;
+        const dubaiDeliverable = Array.isArray(product.countryDeliverables)
+          ? product.countryDeliverables.find(cd => cd.country === 'Dubai')
+          : null;
+        
+        // Get custom fields
+        const customFields = (product as any).customFields || {};
+        const customFieldsObj: Record<string, string> = {};
+        if (customFields instanceof Map) {
+          customFields.forEach((value, key) => {
+            customFieldsObj[key] = value;
+          });
+        } else if (typeof customFields === 'object') {
+          Object.assign(customFieldsObj, customFields);
+        }
+        
+        // Find matching subSkuFamily to get subModelName
+        // The specification field contains the subModelName value (e.g., "Pro Max")
+        let subModelName = '';
+        if (skuFamily && (skuFamily as any).subSkuFamilies && Array.isArray((skuFamily as any).subSkuFamilies)) {
+          // Try to match by specification (which should match subName)
+          const specification = product.specification || '';
+          if (specification) {
+            const matchingSubSku = (skuFamily as any).subSkuFamilies.find((sub: any) => 
+              sub.subName === specification
+            );
+            if (matchingSubSku && matchingSubSku.subName) {
+              subModelName = matchingSubSku.subName;
+            } else {
+              // If no exact match, use specification directly as it represents the subModelName
+              subModelName = specification;
+            }
+          }
+        } else if (product.specification) {
+          // Fallback: use specification directly (it contains the subModelName)
+          subModelName = product.specification;
+        }
+        
+        return {
+          subModelName: subModelName,
+          storage: product.storage || '',
+          colour: product.color || '',
+          country: product.country || '',
+          sim: product.simType || '',
+          version: product.specification || '',
+          grade: grade,
+          status: (product as any).status || '',
+          condition: product.condition || '',
+          lockUnlock: (product as any).lockUnlock ? '1' : '0',
+          warranty: (product as any).warranty || '',
+          batteryHealth: (product as any).batteryHealth || '',
+          packing: (product as any).packing || '',
+          currentLocation: (product as any).currentLocation || '',
+          hkUsd: hkDeliverable?.usd || 0,
+          hkXe: hkDeliverable?.xe || 0,
+          hkHkd: hkDeliverable?.local || hkDeliverable?.hkd || 0,
+          dubaiUsd: dubaiDeliverable?.usd || 0,
+          dubaiXe: dubaiDeliverable?.xe || 0,
+          dubaiAed: dubaiDeliverable?.local || dubaiDeliverable?.aed || 0,
+          deliveryLocation: Array.isArray((product as any).deliveryLocation) 
+            ? (product as any).deliveryLocation 
+            : [],
+          customMessage: (product as any).customMessage || '',
+          totalQty: product.stock || 0,
+          moqPerVariant: product.moq || 0,
+          weight: (product as any).weight || '',
+          purchaseType: (product as any).purchaseType || 'partial',
+          paymentTerm: Array.isArray((product as any).paymentTerm) 
+            ? (product as any).paymentTerm 
+            : [],
+          paymentMethod: Array.isArray((product as any).paymentMethod)
+            ? (product as any).paymentMethod
+            : [],
+          negotiableFixed: product.isNegotiable ? '1' : '0',
+          tags: (product as any).tags || '',
+          flashDeal: (product as any).isFlashDeal === 'true' || (product as any).isFlashDeal === true ? '1' : '0',
+          shippingTime: (product as any).shippingTime || '',
+          deliveryTime: (product as any).deliveryTime || '',
+          vendor: (product as any).vendor || '',
+          vendorListingNo: (product as any).vendorListingNo || '',
+          carrier: (product as any).carrier || '',
+          carrierListingNo: (product as any).carrierListingNo || '',
+          uniqueListingNo: (product as any).uniqueListingNo || '',
+          adminCustomMessage: (product as any).adminCustomMessage || '',
+          startTime: (product as any).startTime || '',
+          endTime: product.expiryTime || '',
+          remark: (product as any).remark || '',
+          supplierId: seller,
+          supplierListingNumber: (product as any).supplierListingNumber || '',
+          customerListingNumber: (product as any).customerListingNumber || '',
+          skuFamilyId: typeof product.skuFamilyId === 'object' ? product.skuFamilyId._id : product.skuFamilyId,
+          ram: product.ram || '',
+          sequence: (product as any).sequence || undefined,
+          images: (skuFamily as any)?.images || [],
+          ...customFieldsObj,
+        };
+      });
+      console.log('Transformed rows:', transformedRows);
+      setRows(transformedRows);
+      
+      // Extract custom columns from custom fields if any
+      if (transformedRows.length > 0) {
+        const allCustomKeys = new Set<string>();
+        transformedRows.forEach(row => {
+          Object.keys(row).forEach(key => {
+            if (key.startsWith('custom_')) {
+              allCustomKeys.add(key);
+            }
+          });
+        });
+        if (allCustomKeys.size > 0) {
+          const customCols = Array.from(allCustomKeys).map(key => ({
+            key,
+            label: key.replace('custom_', '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+            width: 150,
+          }));
+          setCustomColumns(customCols);
+        }
+      }
+      return;
+    }
+    
+    // Priority 2: Load from localStorage if available (for draft/new products)
+    // Skip localStorage if we're editing (editProducts will be loaded)
+    if (editProducts && editProducts.length > 0) {
+      return; // Don't load from localStorage when editing
+    }
+    
     try {
       const savedData = localStorage.getItem(STORAGE_KEY);
       if (savedData) {
         const parsed = JSON.parse(savedData);
         // Only restore if variantType matches
         if (parsed.variantType === variantType && parsed.rows && parsed.rows.length > 0) {
-          setRows(parsed.rows);
+          // Restore custom columns first if they exist
+          if (parsed.customColumns && Array.isArray(parsed.customColumns) && parsed.customColumns.length > 0) {
+            setCustomColumns(parsed.customColumns);
+            // Ensure all rows have custom column fields initialized
+            const rowsWithCustomFields = parsed.rows.map((row: ProductRowData) => {
+              const rowWithFields = { ...row };
+              parsed.customColumns.forEach((col: { key: string; label: string; width: number }) => {
+                if (!(col.key in rowWithFields)) {
+                  rowWithFields[col.key] = '';
+                }
+              });
+              return rowWithFields;
+            });
+            setRows(rowsWithCustomFields);
+          } else {
+            setRows(parsed.rows);
+          }
           // Restore totalMoq if it exists and variantType is multi
           if (variantType === 'multi' && parsed.totalMoq !== undefined) {
             setTotalMoq(parsed.totalMoq);
           }
-          // Show notification that data was restored
-          // toastHelper.showTost(`Restored ${parsed.rows.length} row(s) from saved data`, 'info');
           return;
         }
       }
@@ -151,19 +316,23 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
       console.error('Error loading from localStorage:', error);
     }
     
-    // Initialize rows based on variant type if no saved data
-    if (variantType === 'multi') {
-      if (variants.length > 0) {
-        const newRows: ProductRowData[] = variants.map((variant, index) => createEmptyRow(index, variant));
-        setRows(newRows);
-      } else {
-        // If no variants provided, create one empty row
+    // Priority 3: Initialize rows based on variant type if no saved data and not editing
+    // Only initialize if variantType is set and we're not editing
+    if (variantType && (!editProducts || editProducts.length === 0) && rows.length === 0) {
+      if (variantType === 'multi') {
+        if (variants.length > 0) {
+          const newRows: ProductRowData[] = variants.map((variant, index) => createEmptyRow(index, variant));
+          setRows(newRows);
+        } else {
+          // If no variants provided, create one empty row
+          setRows([createEmptyRow(0)]);
+        }
+      } else if (variantType === 'single') {
         setRows([createEmptyRow(0)]);
       }
-    } else if (variantType === 'single') {
-      setRows([createEmptyRow(0)]);
     }
-  }, [variantType, variants]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variantType, variants, editProducts]);
 
   // Sync shipping time mode with values
   useEffect(() => {
@@ -297,14 +466,15 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
     }
   }, [rows.length, variantType, rows]);
 
-  // Save data to localStorage whenever rows or totalMoq change
+  // Save data to localStorage whenever rows, totalMoq, or customColumns change
   useEffect(() => {
-    if (rows.length > 0) {
+    if (rows.length > 0 || customColumns.length > 0) {
       try {
         const dataToSave = {
           variantType,
           rows,
           totalMoq: variantType === 'multi' ? totalMoq : undefined,
+          customColumns: customColumns.length > 0 ? customColumns : undefined,
           timestamp: new Date().toISOString(),
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
@@ -312,7 +482,7 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
         console.error('Error saving to localStorage:', error);
       }
     }
-  }, [rows, variantType, totalMoq]);
+  }, [rows, variantType, totalMoq, customColumns]);
 
   const createEmptyRow = (index: number, variant?: VariantOption): ProductRowData => ({
     subModelName: variant?.subModelName || '',
@@ -340,6 +510,7 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
     totalQty: '',
     moqPerVariant: '',
     weight: '',
+    purchaseType: 'partial',
     paymentTerm: [],
     paymentMethod: [],
     negotiableFixed: '0',
@@ -362,6 +533,11 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
     skuFamilyId: variant?.skuFamilyId || '',
     ram: variant?.ram,
     sequence: index + 1,
+    // Initialize custom fields
+    ...customColumns.reduce((acc, col) => {
+      acc[col.key] = '';
+      return acc;
+    }, {} as Record<string, string>),
   });
 
   // Fetch dropdown data
@@ -817,7 +993,14 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
       return;
     }
     
-    // Store rows and open margin modal
+    // If editing, bypass margin/cost flow and directly save
+    if (editProducts && editProducts.length > 0) {
+      // Direct save for edit mode - preserve existing margins and costs
+      onSave(rowsWithListingNos, variantType === 'multi' ? totalMoq : undefined);
+      return;
+    }
+    
+    // Store rows and open margin modal (only for create mode)
     setPendingRows(rowsWithListingNos);
     setPendingTotalMoq(variantType === 'multi' ? totalMoq : undefined);
     setShowMarginModal(true);
@@ -1133,7 +1316,7 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
           skuFamilyId: row.skuFamilyId,
           gradeId: (row.grade && /^[0-9a-fA-F]{24}$/.test(row.grade)) ? row.grade : null,
           sellerId: (row.supplierId && /^[0-9a-fA-F]{24}$/.test(row.supplierId)) ? row.supplierId : null,
-          specification: cleanString(row.version) || '',
+          specification: cleanString(row.subModelName) || cleanString(row.version) || cleanString((row as any).specification) || '',
           simType: row.sim || '',
           color: row.colour || '',
           ram: cleanString(row.ram) || '',
@@ -1143,7 +1326,7 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
           stock: parseFloat(String(row.totalQty)) || 0,
           country: (cleanString(row.country) || null) as string | null,
           moq: parseFloat(String(row.moqPerVariant)) || 1,
-          purchaseType: 'full',
+          purchaseType: (row.purchaseType === 'full' || row.purchaseType === 'partial') ? row.purchaseType : 'partial',
           isNegotiable: row.negotiableFixed === '1',
           isFlashDeal: row.flashDeal && (row.flashDeal === '1' || row.flashDeal === 'true' || row.flashDeal.toLowerCase() === 'yes') ? 'true' : 'false',
           startTime: cleanString(row.startTime) ? new Date(row.startTime).toISOString() : '',
@@ -1169,6 +1352,17 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
                 : []),
           customMessage: cleanString(row.customMessage) || '',
           totalMoq: variantType === 'multi' && pendingTotalMoq ? parseFloat(String(pendingTotalMoq)) : null,
+          // Collect custom fields
+          customFields: (() => {
+            const customFieldsMap: Record<string, string> = {};
+            customColumns.forEach(customCol => {
+              const value = row[customCol.key as keyof ProductRowData];
+              if (value && typeof value === 'string' && value.trim()) {
+                customFieldsMap[customCol.key] = value.trim();
+              }
+            });
+            return Object.keys(customFieldsMap).length > 0 ? customFieldsMap : undefined;
+          })(),
           paymentTerm: (() => {
             if (!row.paymentTerm) return [];
             if (Array.isArray(row.paymentTerm)) return row.paymentTerm;
@@ -1263,6 +1457,7 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
     { key: 'totalQty', label: 'TOTAL QTY*', width: 100, group: 'Pricing/Delivery' },
     { key: 'moqPerVariant', label: 'MOQ/VARIANT*', width: 120, group: 'Pricing/Delivery' },
     { key: 'weight', label: 'WEIGHT', width: 100, group: 'Pricing/Delivery' },
+    { key: 'purchaseType', label: 'PURCHASE TYPE*', width: 130, group: 'Pricing/Delivery' },
     ...(variantType === 'multi' ? [{ key: 'totalMoq', label: 'MOQ PER CART*', width: 150, group: 'Pricing/Delivery' }] : []),
     { key: 'paymentTerm', label: 'PAYMENT TERM*', width: 200, group: 'Payment' },
     { key: 'paymentMethod', label: 'PAYMENT METHOD*', width: 200, group: 'Payment' },
@@ -1280,6 +1475,7 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
     { key: 'startTime', label: 'START TIME', width: 150, group: 'Other Info' },
     { key: 'endTime', label: 'END TIME *', width: 150, group: 'Other Info' },
     { key: 'remark', label: 'REMARK', width: 150, group: 'Other Info' },
+    ...customColumns, // Add dynamic custom columns
   ];
 
   // Get country options from constants (show name, store code)
@@ -1816,6 +2012,29 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
           />
         );
 
+      case 'purchaseType':
+        return (
+          <select
+            value={value as string || 'partial'}
+            onChange={(e) => {
+              updateRow(rowIndex, column.key as keyof ProductRowData, e.target.value);
+              // If changed to 'full', set MOQ to equal stock
+              if (e.target.value === 'full') {
+                updateRow(rowIndex, 'moqPerVariant', row.totalQty || 1);
+              }
+            }}
+            className="w-full px-2 py-1.5 text-xs border-0 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded transition-all duration-150 cursor-pointer appearance-none"
+            required
+            onFocus={() => {
+              setFocusedCell({ row: rowIndex, col: column.key });
+              setSelectedRowIndex(rowIndex);
+            }}
+          >
+            <option value="partial">Partial</option>
+            <option value="full">Full</option>
+          </select>
+        );
+
       case 'totalMoq':
         // Only render in first row, will span all rows
         if (rowIndex === 0 && variantType === 'multi') {
@@ -2241,6 +2460,23 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
         );
 
       default:
+        // Handle custom dynamic columns
+        if (customColumns.some(cc => cc.key === column.key)) {
+          return (
+            <input
+              type="text"
+              value={(value as string) || ''}
+              onChange={(e) => updateRow(rowIndex, column.key as keyof ProductRowData, e.target.value)}
+              className="w-full px-2 py-1.5 text-xs border-0 bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded transition-all duration-150 placeholder:text-gray-400"
+              onFocus={() => {
+                setFocusedCell({ row: rowIndex, col: column.key });
+                setSelectedRowIndex(rowIndex);
+              }}
+              placeholder="Enter value..."
+            />
+          );
+        }
+        // Default case for other fields
         return (
           <input
             type="text"
@@ -2256,6 +2492,44 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
           />
         );
     }
+  };
+
+  // Function to handle adding a new custom column
+  const handleAddCustomColumn = () => {
+    if (!newColumnName.trim()) {
+      toastHelper.showTost('Please enter a column name', 'error');
+      return;
+    }
+
+    // Check if column name already exists
+    const columnKey = `custom_${newColumnName.trim().toLowerCase().replace(/\s+/g, '_')}`;
+    if (columns.some(col => col.key === columnKey)) {
+      toastHelper.showTost('A column with this name already exists', 'error');
+      return;
+    }
+
+    // Add new custom column
+    const newColumn = {
+      key: columnKey,
+      label: newColumnName.trim().toUpperCase(),
+      width: 150,
+      group: 'Custom Fields',
+    };
+
+    setCustomColumns([...customColumns, newColumn]);
+
+    // Initialize the field for all existing rows
+    setRows(prevRows => 
+      prevRows.map(row => ({
+        ...row,
+        [columnKey]: '',
+      }))
+    );
+
+    // Reset modal
+    setNewColumnName('');
+    setShowAddColumnModal(false);
+    toastHelper.showTost(`Column "${newColumnName.trim()}" added successfully`, 'success');
   };
 
   if (loading) {
@@ -2450,11 +2724,13 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
             type="submit"
             className="px-6 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 flex items-center gap-2"
           >
-            <i className="fas fa-save text-sm"></i>
-            <span>Save All Products</span>
-            <span className="ml-1 px-2 py-0.5 bg-blue-500 rounded-full text-xs font-bold">
-              {rows.length}
-            </span>
+            <i className={`fas ${editProducts && editProducts.length > 0 ? 'fa-edit' : 'fa-save'} text-sm`}></i>
+            <span>{editProducts && editProducts.length > 0 ? 'Update Product' : 'Save All Products'}</span>
+            {!editProducts || editProducts.length === 0 ? (
+              <span className="ml-1 px-2 py-0.5 bg-blue-500 rounded-full text-xs font-bold">
+                {rows.length}
+              </span>
+            ) : null}
           </button>
         </div>
       </div>
@@ -2562,7 +2838,9 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
                 <div
                   key={col.key}
                   className={`px-3 py-3 text-xs font-bold text-gray-800 dark:text-gray-200 border-r border-gray-300 dark:border-gray-600 whitespace-nowrap hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors cursor-default ${
-                    col.subgroup === 'HK' 
+                    col.group === 'Custom Fields'
+                      ? 'bg-yellow-50 dark:bg-yellow-900/30'
+                      : col.subgroup === 'HK' 
                       ? 'bg-blue-50 dark:bg-blue-900/30' 
                       : col.subgroup === 'DUBAI' 
                       ? 'bg-green-50 dark:bg-green-900/30'
@@ -2583,6 +2861,15 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
                   </div>
                 </div>
               ))}
+              {/* Add Column Button */}
+              <div
+                className="px-3 py-3 text-xs font-bold text-gray-800 dark:text-gray-200 border-r border-gray-300 dark:border-gray-600 bg-green-50 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors cursor-pointer flex items-center justify-center"
+                style={{ width: '80px', minWidth: '80px' }}
+                onClick={() => setShowAddColumnModal(true)}
+                title="Add Custom Column"
+              >
+                <i className="fas fa-plus text-green-600 dark:text-green-400 text-lg"></i>
+              </div>
             </div>
           </div>
 
@@ -2727,6 +3014,15 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
                   </div>
                   );
                 })}
+                {/* Add Column Button Cell */}
+                <div
+                  className="px-2 py-1.5 border-r border-gray-200 dark:border-gray-700 flex items-center justify-center bg-green-50 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors cursor-pointer"
+                  style={{ width: '80px', minWidth: '80px' }}
+                  onClick={() => setShowAddColumnModal(true)}
+                  title="Add Custom Column"
+                >
+                  <i className="fas fa-plus text-green-600 dark:text-green-400"></i>
+                </div>
               </div>
             ))}
           </div>
@@ -2762,6 +3058,55 @@ const ExcelLikeProductForm: React.FC<ExcelLikeProductFormProps> = ({
         calculationResults={calculationResults}
         loading={loading}
       />
+
+      {/* Add Column Modal */}
+      {showAddColumnModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50" onClick={() => setShowAddColumnModal(false)}>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Add Custom Column</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Enter a name for the new column</p>
+            </div>
+            <div className="p-6">
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Column Name
+                </label>
+                <input
+                  type="text"
+                  value={newColumnName}
+                  onChange={(e) => setNewColumnName(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      handleAddCustomColumn();
+                    }
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g., Special Notes, Warranty Info"
+                  autoFocus
+                />
+              </div>
+            </div>
+            <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowAddColumnModal(false);
+                  setNewColumnName('');
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddCustomColumn}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Add Column
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

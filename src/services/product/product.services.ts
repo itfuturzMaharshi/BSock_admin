@@ -14,7 +14,7 @@ export interface Product {
   stock: number | string;
   country: string | null;
   moq: number | string;
-  purchaseType?: string; // 'full' | 'partial'
+  purchaseType?: string; // 'full' | 'partial' - default: 'partial'
   isNegotiable: boolean;
   isFlashDeal: string;
   startTime: string; // ISO string (e.g., "2025-10-30T03:30:00.000Z")
@@ -285,11 +285,11 @@ export class ProductService {
   static getProductById = async (id: string): Promise<Product> => {
     const baseUrl = import.meta.env.VITE_BASE_URL;
     const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
-    const url = `${baseUrl}/api/${adminRoute}/product/${id}`;
+    const url = `${baseUrl}/api/${adminRoute}/product/get`;
 
     try {
-      const res = await api.get(url);
-      return res.data;
+      const res = await api.post(url, { id });
+      return res.data.data; // Backend returns { success: true, data: product }
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Failed to fetch Product';
       toastHelper.showTost(errorMessage, 'error');
@@ -861,6 +861,39 @@ export class ProductService {
       return res.data;
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Failed to reject product request';
+      toastHelper.showTost(errorMessage, 'error');
+      throw new Error(errorMessage);
+    }
+  };
+
+  // Submit admin details (margins and costs) for seller product
+  static submitAdminDetails = async (
+    id: string,
+    selectedMargins: {
+      sellerCategory?: boolean;
+      brand?: boolean;
+      productCategory?: boolean;
+      conditionCategory?: boolean;
+      customerCategory?: boolean;
+    },
+    selectedCosts: {
+      Hongkong?: string[];
+      Dubai?: string[];
+    }
+  ): Promise<any> => {
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    const adminRoute = import.meta.env.VITE_ADMIN_ROUTE;
+    const url = `${baseUrl}/api/${adminRoute}/product/submit-admin-details`;
+
+    try {
+      const res = await api.post(url, { id, selectedMargins, selectedCosts });
+      if (res.data?.status !== 200) {
+        throw new Error(res.data?.message || 'Failed to submit admin details');
+      }
+      toastHelper.showTost(res.data.message || 'Admin details submitted successfully!', 'success');
+      return res.data;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to submit admin details';
       toastHelper.showTost(errorMessage, 'error');
       throw new Error(errorMessage);
     }

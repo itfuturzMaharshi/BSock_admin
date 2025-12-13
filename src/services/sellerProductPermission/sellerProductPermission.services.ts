@@ -55,6 +55,7 @@ export class SellerProductPermissionService {
       { fieldName: 'totalQty', label: 'Total Qty', hasPermission: false, isRequired: true, group: 'pricing' },
       { fieldName: 'moqPerVariant', label: 'MOQ/Variant', hasPermission: false, isRequired: true, group: 'pricing' },
       { fieldName: 'weight', label: 'Weight', hasPermission: false, isRequired: false, group: 'pricing' },
+      { fieldName: 'purchaseType', label: 'Purchase Type', hasPermission: false, isRequired: true, group: 'pricing' },
       { fieldName: 'paymentTerm', label: 'Payment Term', hasPermission: false, isRequired: false, group: 'pricing' },
       { fieldName: 'paymentMethod', label: 'Payment Method', hasPermission: false, isRequired: false, group: 'pricing' },
       

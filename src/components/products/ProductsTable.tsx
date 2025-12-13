@@ -5,15 +5,16 @@ import { format } from "date-fns";
 import toastHelper from "../../utils/toastHelper";
 import ProductModal from "./ProductsModal";
 import ProductListingModal from "./ProductListingModal";
-import UploadExcelModal from "./UploadExcelModal";
 import ProductHistoryModal from "./ProductHistoryModal";
 import VariantSelectionModal from "./VariantSelectionModal";
 import SellerProductReviewModal from "./SellerProductReviewModal";
 import SellerProductPermissionModal from "./SellerProductPermissionModal";
+import SubmitAdminDetailsModal from "./SubmitAdminDetailsModal";
 import {
   ProductService,
   Product,
 } from "../../services/product/product.services";
+import { SellerService, Seller } from "../../services/seller/sellerService";
 import placeholderImage from "../../../public/images/product/noimage.jpg";
 import { useDebounce } from "../../hooks/useDebounce";
 import { usePermissions } from "../../context/PermissionsContext";
@@ -34,10 +35,11 @@ const navigate = useNavigate();
   const debouncedSearchTerm = useDebounce(searchTerm, 1000);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [productFilter, setProductFilter] = useState<string>("all"); // "all" | "moveToTop" | "expiredOnly" | "soldOut" | "showTimer"
+  const [sellerFilter, setSellerFilter] = useState<string>("all"); // "all" | sellerId
+  const [sellers, setSellers] = useState<Seller[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isListingModalOpen, setIsListingModalOpen] = useState<boolean>(false);
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState<boolean>(false);
   const [isVariantSelectOpen, setIsVariantSelectOpen] = useState<boolean>(false);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
@@ -59,6 +61,8 @@ const navigate = useNavigate();
   const [isSellerReviewModalOpen, setIsSellerReviewModalOpen] = useState<boolean>(false);
   const [selectedSellerRequest, setSelectedSellerRequest] = useState<Product | null>(null);
   const [isSellerRequestView, setIsSellerRequestView] = useState<boolean>(false);
+  const [isAdminDetailsModalOpen, setIsAdminDetailsModalOpen] = useState<boolean>(false);
+  const [selectedProductForDetails, setSelectedProductForDetails] = useState<Product | null>(null);
 
   const handleExport = async () => {
     try {
@@ -75,10 +79,37 @@ const navigate = useNavigate();
     } catch (error) {}
   };
 
+  // Fetch sellers on component mount
+  useEffect(() => {
+    const fetchSellers = async () => {
+      try {
+        // Get all sellers for the filter dropdown (admin should see all sellers)
+        const response = await SellerService.getSellerList({ page: 1, limit: 1000 });
+        console.log('Fetched sellers response:', response);
+        const allSellers = response.docs || [];
+        console.log('All sellers count:', allSellers.length);
+        
+        // Show all sellers in the dropdown (don't filter by isActive)
+        // Admin should be able to filter by any seller
+        setSellers(allSellers);
+        
+        if (allSellers.length === 0) {
+          console.warn('No sellers found');
+        } else {
+          console.log('Sellers loaded successfully:', allSellers.map(s => ({ id: s._id, name: s.name, code: s.code })));
+        }
+      } catch (error) {
+        console.error('Failed to fetch sellers:', error);
+        toastHelper.showTost('Failed to load sellers list', 'error');
+      }
+    };
+    fetchSellers();
+  }, []);
+
   // Fetch products on component mount and when page/search/filter changes
   useEffect(() => {
     fetchProducts();
-  }, [currentPage, debouncedSearchTerm, statusFilter, productFilter]);
+  }, [currentPage, debouncedSearchTerm, statusFilter, productFilter, sellerFilter]);
 
   // Reset to first page when search term changes
   useEffect(() => {
@@ -146,12 +177,74 @@ const navigate = useNavigate();
         showTimer
       );
       console.log('fetchProducts - response data count:', response.data.docs.length);
+      console.log('fetchProducts - sellerFilter:', sellerFilter);
 
       let filteredData = response.data.docs;
 
+      // Apply seller filter first
+      if (sellerFilter !== "all") {
+        // Log first product structure to debug
+        if (filteredData.length > 0) {
+          console.log('Sample product structure:', {
+            sellerId: (filteredData[0] as any).sellerId,
+            addedBySeller: (filteredData[0] as any).addedBySeller,
+            isAddedBySeller: (filteredData[0] as any).isAddedBySeller,
+            fullProduct: filteredData[0]
+          });
+        }
+        
+        filteredData = filteredData.filter((product: any) => {
+          // Handle sellerId as object or string
+          let productSellerId: string | null = null;
+          
+          if (product.sellerId) {
+            if (typeof product.sellerId === 'object' && product.sellerId !== null) {
+              productSellerId = product.sellerId._id || product.sellerId.id || null;
+            } else if (typeof product.sellerId === 'string') {
+              productSellerId = product.sellerId;
+            }
+          }
+          
+          // Also check if sellerId might be in a different field (like addedBySeller, createdBy, etc.)
+          if (!productSellerId && product.addedBySeller) {
+            const addedBySeller = product.addedBySeller;
+            if (typeof addedBySeller === 'object' && addedBySeller !== null) {
+              productSellerId = addedBySeller._id || addedBySeller.id || null;
+            } else if (typeof addedBySeller === 'string') {
+              productSellerId = addedBySeller;
+            }
+          }
+          
+          // Check isAddedBySeller field - if true, product might have seller info elsewhere
+          if (!productSellerId && product.isAddedBySeller && product.sellerId) {
+            // Try sellerId again with different structure
+            const sellerIdField = product.sellerId;
+            if (typeof sellerIdField === 'object' && sellerIdField !== null) {
+              productSellerId = sellerIdField._id || sellerIdField.id || null;
+            } else if (typeof sellerIdField === 'string') {
+              productSellerId = sellerIdField;
+            }
+          }
+          
+          const matches = productSellerId === sellerFilter;
+          if (sellerFilter && !matches) {
+            console.log('Product filtered out:', {
+              productId: product._id,
+              productSellerId,
+              filterSellerId: sellerFilter,
+              matches
+            });
+          }
+          
+          return matches;
+        });
+        
+        console.log('After seller filter, products count:', filteredData.length, 'out of', response.data.docs.length);
+      }
+
       // Apply status filter
       if (statusFilter !== "all") {
-        filteredData = response.data.docs.filter((product: Product) => {
+        filteredData = filteredData.filter((product: Product) => {
           if (statusFilter === "approved") {
             return product.isApproved;
           } else if (statusFilter === "pending") {
@@ -167,10 +260,10 @@ const navigate = useNavigate();
       
       // Use API's totalDocs and totalPages for pagination
       // But if filtering client-side, we need to recalculate based on filtered results
-      if (statusFilter !== "all") {
+      if (statusFilter !== "all" || sellerFilter !== "all") {
         // When filtering client-side, we can't use server pagination properly
         // For now, use the filtered count but this is not ideal
-        // TODO: Move status filtering to server-side
+        // TODO: Move status and seller filtering to server-side
         setTotalDocs(filteredData.length);
         setTotalPages(Math.ceil(filteredData.length / itemsPerPage));
       } else {
@@ -311,8 +404,10 @@ const navigate = useNavigate();
   };
 
   const handleEdit = (product: Product) => {
-    setEditProduct(product);
-    setIsModalOpen(true);
+    if (product._id) {
+      // Navigate to ProductVariantForm with product ID for editing
+      navigate(`/products/create?editId=${product._id}`);
+    }
     setOpenDropdownId(null);
     setDropdownPosition(null);
   };
@@ -763,6 +858,10 @@ const navigate = useNavigate();
     let statusStyles: string;
     let statusIcon: string;
 
+    // Check if product needs admin details (for seller products)
+    const needsAdminDetails = (product as any).needsAdminDetails || 
+      (product.status === 'pending_admin_details' && !(product as any).adminDetailsSubmitted);
+
     if (product.isApproved) {
       statusText = "Approved";
       statusStyles =
@@ -773,6 +872,11 @@ const navigate = useNavigate();
       statusStyles =
         "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-700";
       statusIcon = "fa-clock";
+    } else if (needsAdminDetails) {
+      statusText = "Pending Admin Details";
+      statusStyles =
+        "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border border-orange-200 dark:border-orange-700";
+      statusIcon = "fa-exclamation-circle";
     } else {
       statusText = "Under Verification";
       statusStyles =
@@ -788,6 +892,13 @@ const navigate = useNavigate();
         {statusText}
       </span>
     );
+  };
+
+  const handleAddDetails = (product: Product) => {
+    setSelectedProductForDetails(product);
+    setIsAdminDetailsModalOpen(true);
+    setOpenDropdownId(null);
+    setDropdownPosition(null);
   };
 
   return (
@@ -825,6 +936,28 @@ const navigate = useNavigate();
                 <option value="expiredOnly">Expired Only</option>
                 <option value="soldOut">Sold Out</option>
                 <option value="showTimer">Timer Enabled</option>
+              </select>
+              <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+            </div>
+            <div className="relative">
+              <select
+                value={sellerFilter}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                  setSellerFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="pl-3 pr-8 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm appearance-none cursor-pointer min-w-[180px]"
+              >
+                <option value="all">All Sellers</option>
+                {sellers && sellers.length > 0 ? (
+                  sellers.map((seller) => (
+                    <option key={seller._id} value={seller._id}>
+                      {seller.name} {seller.code ? `(${seller.code})` : ''}
+                    </option>
+                  ))
+                ) : (
+                  <option value="" disabled>Loading sellers...</option>
+                )}
               </select>
               <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
             </div>
@@ -944,13 +1077,6 @@ const navigate = useNavigate();
                   >
                     <i className="fas fa-user-shield text-xs"></i>
                     Seller Permissions
-                  </button>
-                  <button
-                    className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
-                    onClick={() => setIsUploadModalOpen(true)}
-                  >
-                    <i className="fas fa-upload text-xs"></i>
-                    Import
                   </button>
                   <button
                     className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
@@ -1120,6 +1246,47 @@ const navigate = useNavigate();
                           >
                             {isSellerRequestView ? (
                               <>
+                                {/* Show "Add Details" button if product needs admin details */}
+                                {((item as any).needsAdminDetails || (item.status === 'pending_admin_details' && !(item as any).adminDetailsSubmitted)) ? (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleAddDetails(item);
+                                    }}
+                                    className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-orange-600"
+                                  >
+                                    <i className="fas fa-edit"></i>
+                                    Add Details
+                                  </button>
+                                ) : null}
+                                {/* Show Verify button only if admin details submitted and not verified */}
+                                {((item as any).adminDetailsSubmitted || !(item as any).needsAdminDetails) && 
+                                 canVerifyApprove && item.canVerify && item.verifiedBy !== loggedInAdminId && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleVerify(item);
+                                    }}
+                                    className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-green-600"
+                                  >
+                                    <i className="fas fa-check"></i>
+                                    Verify
+                                  </button>
+                                )}
+                                {/* Show Approve button only if verified and not approved */}
+                                {item.isVerified && !item.isApproved && canVerifyApprove && item.canApprove && 
+                                 item.verifiedBy !== loggedInAdminId && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleApprove(item);
+                                    }}
+                                    className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-blue-600"
+                                  >
+                                    <i className="fas fa-thumbs-up"></i>
+                                    Approve
+                                  </button>
+                                )}
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -1134,8 +1301,23 @@ const navigate = useNavigate();
                               </>
                             ) : (
                               <>
+                                {/* Show "Add Details" button if product needs admin details (for seller products) */}
+                                {((item as any).needsAdminDetails || (item.status === 'pending_admin_details' && !(item as any).adminDetailsSubmitted)) && canWrite && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleAddDetails(item);
+                                    }}
+                                    className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-orange-600"
+                                  >
+                                    <i className="fas fa-edit"></i>
+                                    Add Details
+                                  </button>
+                                )}
+                                {/* Show Verify button only if admin details submitted (for seller products) or not a seller product */}
                                 {canVerifyApprove && item.canVerify &&
-                                  item.verifiedBy !== loggedInAdminId && (
+                                  item.verifiedBy !== loggedInAdminId && 
+                                  (!(item as any).needsAdminDetails || (item as any).adminDetailsSubmitted) && (
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
@@ -1300,11 +1482,6 @@ const navigate = useNavigate();
         onSave={handleSave}
         editItem={editProduct || undefined}
       />
-        <UploadExcelModal
-          isOpen={isUploadModalOpen}
-          onClose={() => setIsUploadModalOpen(false)}
-          onImportComplete={fetchProducts}
-        />
 
       <ProductHistoryModal
         isOpen={isHistoryModalOpen}
@@ -1348,13 +1525,26 @@ const navigate = useNavigate();
         />
       )}
 
+      {/* Admin Details Modal */}
+      {selectedProductForDetails && (
+        <SubmitAdminDetailsModal
+          isOpen={isAdminDetailsModalOpen}
+          onClose={() => {
+            setIsAdminDetailsModalOpen(false);
+            setSelectedProductForDetails(null);
+          }}
+          product={selectedProductForDetails}
+          onSuccess={fetchProducts}
+        />
+      )}
+
       {selectedProduct && (
         <div
           className="fixed inset-0 flex items-center justify-center bg-black/60 z-50 transition-opacity duration-300"
           onClick={() => setSelectedProduct(null)}
         >
           <div
-            className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-4xl w-full max-h-[85vh] flex flex-col"
+            className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
@@ -1389,49 +1579,53 @@ const navigate = useNavigate();
             <div className="overflow-y-auto flex-1 p-6">
               <div className="mb-6">{getStatusBadge(selectedProduct)}</div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+              <div className="space-y-6">
+                {/* Basic Information Section */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
                     Basic Information
                   </h3>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Name
-                    </label>
-                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
-                      {getSkuFamilyText(selectedProduct.skuFamilyId)}
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      SKU Family
-                    </label>
-                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
-                      {getSkuFamilyText(selectedProduct.skuFamilyId)}
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      SIM Type
-                    </label>
-                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
-                      {selectedProduct.simType}
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Color
-                    </label>
-                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
-                      {selectedProduct.color}
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Name
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                        {getSkuFamilyText(selectedProduct.skuFamilyId)}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        SKU Family
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                        {getSkuFamilyText(selectedProduct.skuFamilyId)}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Specification
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                        {selectedProduct.specification || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        SIM Type
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                        {selectedProduct.simType}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Color
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                        {selectedProduct.color}
+                      </p>
+                    </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         RAM
@@ -1448,29 +1642,27 @@ const navigate = useNavigate();
                         {selectedProduct.storage}
                       </p>
                     </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Condition
-                    </label>
-                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
-                      {selectedProduct.condition}
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Weight (kg)
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                        {(selectedProduct as any).weight || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Condition
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                        {selectedProduct.condition || 'N/A'}
+                      </p>
+                    </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Flash Deal
                       </label>
-                      <p
-                        className={`text-sm font-medium bg-gray-50 dark:bg-gray-800 p-3 rounded-md ${
-                          selectedProduct.isFlashDeal
-                            ? "text-green-600"
-                            : "text-red-600"
-                        }`}
-                      >
+                      <p className={`text-sm font-medium bg-gray-50 dark:bg-gray-800 p-3 rounded-md ${selectedProduct.isFlashDeal ? "text-green-600" : "text-red-600"}`}>
                         {selectedProduct.isFlashDeal ? "Yes" : "No"}
                       </p>
                     </div>
@@ -1478,50 +1670,27 @@ const navigate = useNavigate();
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Negotiable
                       </label>
-                      <p
-                        className={`text-sm font-medium bg-gray-50 dark:bg-gray-800 p-3 rounded-md ${
-                          selectedProduct.isNegotiable
-                            ? "text-green-600"
-                            : "text-red-600"
-                        }`}
-                      >
+                      <p className={`text-sm font-medium bg-gray-50 dark:bg-gray-800 p-3 rounded-md ${selectedProduct.isNegotiable ? "text-green-600" : "text-red-600"}`}>
                         {selectedProduct.isNegotiable ? "Yes" : "No"}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Purchase Type
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md capitalize">
+                        {(selectedProduct as any).purchaseType || 'partial'}
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                {/* Pricing & Inventory Section */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
                     Pricing & Inventory
                   </h3>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Pricing (by Country)
-                    </label>
-                    <div className="space-y-2">
-                      {Array.isArray(selectedProduct.countryDeliverables) && selectedProduct.countryDeliverables.length > 0 ? (
-                        selectedProduct.countryDeliverables.map((cd, idx) => (
-                          <div key={idx} className="bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
-                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{cd.country}:</p>
-                            <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                              ${formatPrice(cd.usd || 0)} USD
-                            </p>
-                            {cd.local && (
-                              <p className="text-sm text-gray-600 dark:text-gray-400">
-                                Local: {formatPrice(cd.local)} {cd.country === 'Hongkong' ? 'HKD' : 'AED'}
-                              </p>
-                            )}
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-sm text-gray-500 dark:text-gray-400 italic">No pricing information available</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Stock
@@ -1538,26 +1707,343 @@ const navigate = useNavigate();
                         {selectedProduct.moq} units
                       </p>
                     </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Country
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                        {selectedProduct.country || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Start Time
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                        {selectedProduct.startTime ? formatExpiryTime(selectedProduct.startTime) : 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Expiry Time
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                        {formatExpiryTime(selectedProduct.expiryTime)}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Sequence
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                        {(selectedProduct as any).sequence ?? 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Group Code
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                        {(selectedProduct as any).groupCode || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Status
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md capitalize">
+                        {(selectedProduct as any).status || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Verified
+                      </label>
+                      <p className={`text-sm font-medium bg-gray-50 dark:bg-gray-800 p-3 rounded-md ${(selectedProduct as any).isVerified ? "text-green-600" : "text-red-600"}`}>
+                        {(selectedProduct as any).isVerified ? "Yes" : "No"}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Approved
+                      </label>
+                      <p className={`text-sm font-medium bg-gray-50 dark:bg-gray-800 p-3 rounded-md ${(selectedProduct as any).isApproved ? "text-green-600" : "text-red-600"}`}>
+                        {(selectedProduct as any).isApproved ? "Yes" : "No"}
+                      </p>
+                    </div>
                   </div>
-
-                  <div>
+                  
+                  <div className="mt-4">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Country
+                      Pricing (by Country)
                     </label>
-                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
-                      {selectedProduct.country}
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Expiry Date
-                    </label>
-                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
-                      {formatExpiryTime(selectedProduct.expiryTime)}
-                    </p>
+                    <div className="space-y-2">
+                      {Array.isArray(selectedProduct.countryDeliverables) && selectedProduct.countryDeliverables.length > 0 ? (
+                        selectedProduct.countryDeliverables.map((cd, idx) => (
+                          <div key={idx} className="bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{cd.country}:</p>
+                            <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                              ${formatPrice(cd.usd || 0)} USD
+                            </p>
+                            {cd.xe && (
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                Exchange Rate: {cd.xe}
+                              </p>
+                            )}
+                            {cd.local && (
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                Local: {formatPrice(cd.local)} {cd.country === 'Hongkong' ? 'HKD' : 'AED'}
+                              </p>
+                            )}
+                            {cd.hkd && (
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                HKD: {formatPrice(cd.hkd)}
+                              </p>
+                            )}
+                            {cd.aed && (
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                AED: {formatPrice(cd.aed)}
+                              </p>
+                            )}
+                            {cd.charges && cd.charges.length > 0 && (
+                              <div className="mt-2">
+                                <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Charges:</p>
+                                {cd.charges.map((charge, cIdx) => (
+                                  <p key={cIdx} className="text-xs text-gray-500 dark:text-gray-500">
+                                    • {charge.name}: {formatPrice(charge.value)}
+                                  </p>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-gray-500 dark:text-gray-400 italic">No pricing information available</p>
+                      )}
+                    </div>
                   </div>
                 </div>
+
+                {/* Additional Details Section */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
+                    Additional Details
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Supplier Listing Number
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                        {(selectedProduct as any).supplierListingNumber || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Customer Listing Number
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                        {(selectedProduct as any).customerListingNumber || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Packing
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                        {(selectedProduct as any).packing || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Current Location
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                        {(selectedProduct as any).currentLocation || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Delivery Location
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                        {Array.isArray((selectedProduct as any).deliveryLocation) 
+                          ? (selectedProduct as any).deliveryLocation.join(', ') 
+                          : ((selectedProduct as any).deliveryLocation || 'N/A')}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Payment Term
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                        {Array.isArray((selectedProduct as any).paymentTerm) 
+                          ? (selectedProduct as any).paymentTerm.join(', ') 
+                          : ((selectedProduct as any).paymentTerm || 'N/A')}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Payment Method
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                        {Array.isArray((selectedProduct as any).paymentMethod) 
+                          ? (selectedProduct as any).paymentMethod.join(', ') 
+                          : ((selectedProduct as any).paymentMethod || 'N/A')}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Shipping Time
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                        {(selectedProduct as any).shippingTime || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Delivery Time
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                        {(selectedProduct as any).deliveryTime || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Vendor
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md capitalize">
+                        {(selectedProduct as any).vendor || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Vendor Listing No
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                        {(selectedProduct as any).vendorListingNo || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Carrier
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md capitalize">
+                        {(selectedProduct as any).carrier || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Carrier Listing No
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                        {(selectedProduct as any).carrierListingNo || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Unique Listing No
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                        {(selectedProduct as any).uniqueListingNo || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Tags
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                        {(selectedProduct as any).tags || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Warranty
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                        {(selectedProduct as any).warranty || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Battery Health
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                        {(selectedProduct as any).batteryHealth || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Lock/Unlock
+                      </label>
+                      <p className={`text-sm font-medium bg-gray-50 dark:bg-gray-800 p-3 rounded-md ${(selectedProduct as any).lockUnlock ? "text-red-600" : "text-green-600"}`}>
+                        {(selectedProduct as any).lockUnlock ? "Lock" : "Unlock"}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Version
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                        {(selectedProduct as any).version || 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Messages & Notes Section */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
+                    Messages & Notes
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Custom Message
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md min-h-[60px]">
+                        {(selectedProduct as any).customMessage || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Admin Custom Message
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md min-h-[60px]">
+                        {(selectedProduct as any).adminCustomMessage || 'N/A'}
+                      </p>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Remark
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md min-h-[60px]">
+                        {(selectedProduct as any).remark || 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Custom Fields Section */}
+                {(selectedProduct as any).customFields && Object.keys((selectedProduct as any).customFields).length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
+                      Custom Fields
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {Object.entries((selectedProduct as any).customFields).map(([key, value]) => (
+                        <div key={key}>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 capitalize">
+                            {key.replace(/custom_/g, '').replace(/_/g, ' ')}
+                          </label>
+                          <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                            {String(value) || 'N/A'}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
