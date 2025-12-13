@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import PageBreadcrumb from '../../components/common/PageBreadCrumb';
 import { ProductService, Product } from '../../services/product/product.services';
 import SellerProductReviewModal from '../../components/products/SellerProductReviewModal';
+import SubmitAdminDetailsModal from '../../components/products/SubmitAdminDetailsModal';
 import placeholderImage from '../../../public/images/product/noimage.jpg';
 import { useDebounce } from '../../hooks/useDebounce';
+import toastHelper from '../../utils/toastHelper';
 
 const SellerProductRequests: React.FC = () => {
   const [productsData, setProductsData] = useState<Product[]>([]);
@@ -15,6 +17,7 @@ const SellerProductRequests: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState<boolean>(false);
+  const [isAdminDetailsModalOpen, setIsAdminDetailsModalOpen] = useState<boolean>(false);
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -65,6 +68,35 @@ const SellerProductRequests: React.FC = () => {
     }
   };
 
+  const handleAddDetails = (product: Product) => {
+    setSelectedProduct(product);
+    setIsAdminDetailsModalOpen(true);
+  };
+
+  const handleVerify = async (product: Product) => {
+    if (!product._id) return;
+    try {
+      await ProductService.verifyProduct(product._id);
+      toastHelper.showTost('Product verified successfully!', 'success');
+      fetchProducts();
+    } catch (error: any) {
+      console.error('Failed to verify product:', error);
+      toastHelper.showTost(error.message || 'Failed to verify product', 'error');
+    }
+  };
+
+  const handleApprove = async (product: Product) => {
+    if (!product._id) return;
+    try {
+      await ProductService.approveProduct(product._id);
+      toastHelper.showTost('Product approved successfully!', 'success');
+      fetchProducts();
+    } catch (error: any) {
+      console.error('Failed to approve product:', error);
+      toastHelper.showTost(error.message || 'Failed to approve product', 'error');
+    }
+  };
+
   const getSkuFamilyText = (skuFamilyId: any): string => {
     if (!skuFamilyId) return 'N/A';
     if (typeof skuFamilyId === 'object' && skuFamilyId.name) {
@@ -92,6 +124,14 @@ const SellerProductRequests: React.FC = () => {
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
           Pending Approval
+        </span>
+      );
+    }
+    // Check if product needs admin details
+    if ((product as any).needsAdminDetails || (product.status === 'pending_admin_details' && !(product as any).adminDetailsSubmitted)) {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+          Pending Admin Details
         </span>
       );
     }
@@ -206,7 +246,37 @@ const SellerProductRequests: React.FC = () => {
                           : '$0'}
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center justify-center gap-2">
+                        <div className="flex items-center justify-center gap-2 flex-wrap">
+                          {/* Show "Add Details" button if product needs admin details */}
+                          {((product as any).needsAdminDetails || (product.status === 'pending_admin_details' && !(product as any).adminDetailsSubmitted)) ? (
+                            <button
+                              onClick={() => handleAddDetails(product)}
+                              className="px-3 py-1.5 bg-orange-600 text-white text-sm rounded-lg hover:bg-orange-700 transition-colors"
+                            >
+                              Add Details
+                            </button>
+                          ) : (
+                            <>
+                              {/* Show Verify button if admin details submitted but not verified */}
+                              {!(product as any).adminDetailsSubmitted || !product.isVerified ? (
+                                <button
+                                  onClick={() => handleVerify(product)}
+                                  className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                                >
+                                  Verify
+                                </button>
+                              ) : null}
+                              {/* Show Approve button if verified but not approved */}
+                              {product.isVerified && !product.isApproved && (
+                                <button
+                                  onClick={() => handleApprove(product)}
+                                  className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
+                                >
+                                  Approve
+                                </button>
+                              )}
+                            </>
+                          )}
                           <button
                             onClick={() => handleReview(product)}
                             className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
@@ -254,6 +324,19 @@ const SellerProductRequests: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Admin Details Modal */}
+      {selectedProduct && (
+        <SubmitAdminDetailsModal
+          isOpen={isAdminDetailsModalOpen}
+          onClose={() => {
+            setIsAdminDetailsModalOpen(false);
+            setSelectedProduct(null);
+          }}
+          product={selectedProduct}
+          onSuccess={fetchProducts}
+        />
+      )}
 
       {/* Review Modal */}
       {selectedProduct && (

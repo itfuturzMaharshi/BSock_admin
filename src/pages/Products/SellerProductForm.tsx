@@ -37,6 +37,7 @@ interface ProductRowData {
   totalQty: number | string;
   moqPerVariant: number | string;
   weight: number | string;
+  purchaseType: string; // 'full' | 'partial'
   paymentTerm: string;
   paymentMethod: string;
   negotiableFixed: string;
@@ -155,6 +156,7 @@ const SellerProductForm: React.FC = () => {
     totalQty: '',
     moqPerVariant: '',
     weight: '',
+    purchaseType: 'partial',
     paymentTerm: '',
     paymentMethod: '',
     negotiableFixed: '0',
@@ -285,7 +287,7 @@ const SellerProductForm: React.FC = () => {
           stock: hasPermission('totalQty') ? parseFloat(String(row.totalQty)) || 0 : 0,
           country: hasPermission('country') ? (cleanString(row.country) || null) : null,
           moq: hasPermission('moqPerVariant') ? parseFloat(String(row.moqPerVariant)) || 1 : 1,
-          purchaseType: 'full',
+          purchaseType: hasPermission('purchaseType') ? ((row.purchaseType === 'full' || row.purchaseType === 'partial') ? row.purchaseType : 'partial') : 'partial',
           isNegotiable: hasPermission('negotiableFixed') ? (row.negotiableFixed === '1') : false,
           isFlashDeal: hasPermission('flashDeal') && row.flashDeal && (row.flashDeal === '1' || row.flashDeal === 'true') ? 'true' : 'false',
           startTime: hasPermission('startTime') && row.startTime ? new Date(row.startTime).toISOString() : '',
@@ -552,6 +554,10 @@ const SellerProductForm: React.FC = () => {
                       {renderFormField(rowIndex, 'totalQty', 'Total Qty', 'number')}
                       {renderFormField(rowIndex, 'moqPerVariant', 'MOQ/Variant', 'number')}
                       {renderFormField(rowIndex, 'weight', 'Weight', 'number')}
+                      {renderFormField(rowIndex, 'purchaseType', 'Purchase Type', 'select', [
+                        { value: 'partial', label: 'Partial' },
+                        { value: 'full', label: 'Full' },
+                      ])}
                       {renderFormField(rowIndex, 'hkUsd', 'HK USD', 'number')}
                       {renderFormField(rowIndex, 'hkHkd', 'HK HKD', 'number')}
                       {renderFormField(rowIndex, 'dubaiUsd', 'Dubai USD', 'number')}

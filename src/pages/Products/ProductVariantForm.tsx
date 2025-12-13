@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import CascadingVariantSelector, { VariantOption } from '../../components/products/CascadingVariantSelector';
 import ExcelLikeProductForm, { ProductRowData } from '../../components/products/ExcelLikeProductForm';
-import { ProductService } from '../../services/product/product.services';
+import { ProductService, Product } from '../../services/product/product.services';
 import toastHelper from '../../utils/toastHelper';
 
 type PageStep = 'variant-selection' | 'variant-config' | 'form';
@@ -11,9 +11,16 @@ const ProductVariantForm: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const typeParam = searchParams.get('type');
+  const editId = searchParams.get('editId');
+  const [editProduct, setEditProduct] = useState<Product | null>(null);
+  const [editProducts, setEditProducts] = useState<Product[]>([]); // For multi-variant products
+  const [loadingProduct, setLoadingProduct] = useState(false);
   
   // Initialize step and variantType based on URL parameter
   const getInitialStep = (): PageStep => {
+    if (editId) {
+      return 'form'; // Go directly to form when editing
+    }
     if (typeParam === 'single') {
       return 'form';
     }
@@ -24,6 +31,10 @@ const ProductVariantForm: React.FC = () => {
   };
 
   const getInitialVariantType = (): 'single' | 'multi' | null => {
+    if (editId) {
+      // Will be determined after loading product
+      return null;
+    }
     if (typeParam === 'single') {
       return 'single';
     }
@@ -37,9 +48,115 @@ const ProductVariantForm: React.FC = () => {
   const [variantType, setVariantType] = useState<'single' | 'multi' | null>(getInitialVariantType());
   const [selectedVariants, setSelectedVariants] = useState<VariantOption[]>([]);
   const [loading, setLoading] = useState(false);
+  // Load product data when editing
+  useEffect(() => {
+    const loadProductForEdit = async () => {
+      if (!editId) return;
+      
+      try {
+        setLoadingProduct(true);
+        const product = await ProductService.getProductById(editId);
+        
+        console.log('Loaded product for edit:', product);
+        
+        if (!product) {
+          toastHelper.showTost('Product not found', 'error');
+          navigate('/products');
+          return;
+        }
+        
+        // Check if it's a multi-variant product (has groupCode)
+        const groupCode = (product as any).groupCode;
+        if (groupCode) {
+          // Load all products with the same groupCode
+          const response = await ProductService.getProductList(1, 1000, '', false, false, false, false);
+          const allProducts = response.data.docs || [];
+          const groupedProducts = allProducts.filter((p: any) => p.groupCode === groupCode);
+          
+          setEditProducts(groupedProducts);
+          setVariantType('multi');
+          
+          // Set variants from products
+          const variants: VariantOption[] = groupedProducts.map((p: Product) => {
+            const skuFamily = typeof p.skuFamilyId === 'object' ? p.skuFamilyId : null;
+            // Get subModelName from specification
+            let subModelName = '';
+            if (p.specification) {
+              subModelName = p.specification;
+            } else if (skuFamily && (skuFamily as any).subSkuFamilies && Array.isArray((skuFamily as any).subSkuFamilies)) {
+              // Try to find matching subSkuFamily
+              const matchingSubSku = (skuFamily as any).subSkuFamilies.find((sub: any) => 
+                sub.subName
+              );
+              if (matchingSubSku && matchingSubSku.subName) {
+                subModelName = matchingSubSku.subName;
+              }
+            }
+            return {
+              skuFamilyId: typeof p.skuFamilyId === 'object' ? p.skuFamilyId._id : p.skuFamilyId,
+              subModelName: subModelName,
+              storage: p.storage || '',
+              color: p.color || '',
+              ram: p.ram || '',
+            };
+          });
+          setSelectedVariants(variants);
+        } else {
+          // Single variant product
+          console.log('Setting single variant product:', product);
+          setEditProduct(product);
+          setVariantType('single');
+          
+          const skuFamily = typeof product.skuFamilyId === 'object' ? product.skuFamilyId : null;
+          // Get subModelName from specification or find matching subSkuFamily
+          let subModelName = '';
+          if (product.specification) {
+            subModelName = product.specification;
+          } else if (skuFamily && (skuFamily as any).subSkuFamilies && Array.isArray((skuFamily as any).subSkuFamilies)) {
+            // Try to find matching subSkuFamily by storage, ram, color
+            const matchingSubSku = (skuFamily as any).subSkuFamilies.find((sub: any) => {
+              // Match by checking if the IDs correspond to the product's storage, ram, color
+              // Since we have text values, we'll use specification as fallback
+              return true; // Will use first match or specification
+            });
+            if (matchingSubSku && matchingSubSku.subName) {
+              subModelName = matchingSubSku.subName;
+            }
+          }
+          const variant = {
+            skuFamilyId: typeof product.skuFamilyId === 'object' ? product.skuFamilyId._id : product.skuFamilyId,
+            subModelName: subModelName,
+            storage: product.storage || '',
+            color: product.color || '',
+            ram: product.ram || '',
+          };
+          console.log('Setting selected variant:', variant);
+          setSelectedVariants([variant]);
+        }
+        
+        setStep('form');
+        
+        // Clear localStorage when editing to prevent conflicts
+        try {
+          localStorage.removeItem('variant-product-form-data');
+        } catch (error) {
+          console.error('Error clearing localStorage:', error);
+        }
+      } catch (error: any) {
+        console.error('Error loading product:', error);
+        toastHelper.showTost(error.message || 'Failed to load product', 'error');
+        navigate('/products');
+      } finally {
+        setLoadingProduct(false);
+      }
+    };
+    
+    loadProductForEdit();
+  }, [editId, navigate]);
+
   // For multi variant, initialize with empty variant to allow form entry
   useEffect(() => {
-    if (variantType === 'multi' && typeParam === 'multi' && selectedVariants.length === 0) {
+    if (variantType === 'multi' && typeParam === 'multi' && selectedVariants.length === 0 && !editId) {
       // Create an empty variant to allow form entry
       setSelectedVariants([{
         skuFamilyId: '',
@@ -49,7 +166,7 @@ const ProductVariantForm: React.FC = () => {
         ram: '',
       }]);
     }
-  }, [variantType, typeParam, selectedVariants.length]);
+  }, [variantType, typeParam, selectedVariants.length, editId]);
 
   const handleVariantSelection = (type: 'single' | 'multi') => {
     setVariantType(type);
@@ -115,44 +232,99 @@ const ProductVariantForm: React.FC = () => {
         return;
       }
       
-      // Transform rows to backend format and create products
-      const productsToCreate = rows.map(row => {
-        // Build countryDeliverables array
-        const countryDeliverables: any[] = [];
-        
+      // Transform rows to backend format and create/update products
+      const productsToCreate = rows.map((row, rowIndex) => {
         // Helper to convert empty strings to null
         const cleanString = (val: string | null | undefined): string | null => {
           if (!val || val === '' || (typeof val === 'string' && val.trim() === '')) return null;
           return val;
         };
         
-        if (row.hkUsd || row.hkHkd) {
-          countryDeliverables.push({
-            country: 'Hongkong',
-            price: parseFloat(String(row.hkUsd)) || 0,
-            usd: parseFloat(String(row.hkUsd)) || 0,
-            xe: parseFloat(String(row.hkXe)) || 0,
-            local: parseFloat(String(row.hkHkd)) || 0,
-            hkd: parseFloat(String(row.hkHkd)) || 0,
-          });
-        }
+        // When editing, preserve existing countryDeliverables with margins and costs
+        let countryDeliverables: any[] = [];
         
-        if (row.dubaiUsd || row.dubaiAed) {
-          countryDeliverables.push({
-            country: 'Dubai',
-            price: parseFloat(String(row.dubaiUsd)) || 0,
-            usd: parseFloat(String(row.dubaiUsd)) || 0,
-            xe: parseFloat(String(row.dubaiXe)) || 0,
-            local: parseFloat(String(row.dubaiAed)) || 0,
-            aed: parseFloat(String(row.dubaiAed)) || 0,
-          });
+        if (editId) {
+          // For edit mode, preserve existing countryDeliverables structure
+          const existingProduct = variantType === 'single' ? editProduct : (editProducts[rowIndex] || null);
+          if (existingProduct && (existingProduct as any).countryDeliverables) {
+            // Preserve existing countryDeliverables with margins and costs
+            countryDeliverables = (existingProduct as any).countryDeliverables.map((cd: any) => {
+              // Update prices from form data
+              if (cd.country === 'Hongkong') {
+                return {
+                  ...cd,
+                  usd: parseFloat(String(row.hkUsd)) || cd.usd || 0,
+                  xe: parseFloat(String(row.hkXe)) || cd.xe || 0,
+                  local: parseFloat(String(row.hkHkd)) || cd.local || cd.hkd || 0,
+                  hkd: parseFloat(String(row.hkHkd)) || cd.hkd || 0,
+                  price: parseFloat(String(row.hkUsd)) || cd.price || cd.usd || 0,
+                };
+              } else if (cd.country === 'Dubai') {
+                return {
+                  ...cd,
+                  usd: parseFloat(String(row.dubaiUsd)) || cd.usd || 0,
+                  xe: parseFloat(String(row.dubaiXe)) || cd.xe || 0,
+                  local: parseFloat(String(row.dubaiAed)) || cd.local || cd.aed || 0,
+                  aed: parseFloat(String(row.dubaiAed)) || cd.aed || 0,
+                  price: parseFloat(String(row.dubaiUsd)) || cd.price || cd.usd || 0,
+                };
+              }
+              return cd;
+            });
+          } else {
+            // If no existing countryDeliverables, create new ones
+            if (row.hkUsd || row.hkHkd) {
+              countryDeliverables.push({
+                country: 'Hongkong',
+                price: parseFloat(String(row.hkUsd)) || 0,
+                usd: parseFloat(String(row.hkUsd)) || 0,
+                xe: parseFloat(String(row.hkXe)) || 0,
+                local: parseFloat(String(row.hkHkd)) || 0,
+                hkd: parseFloat(String(row.hkHkd)) || 0,
+              });
+            }
+            
+            if (row.dubaiUsd || row.dubaiAed) {
+              countryDeliverables.push({
+                country: 'Dubai',
+                price: parseFloat(String(row.dubaiUsd)) || 0,
+                usd: parseFloat(String(row.dubaiUsd)) || 0,
+                xe: parseFloat(String(row.dubaiXe)) || 0,
+                local: parseFloat(String(row.dubaiAed)) || 0,
+                aed: parseFloat(String(row.dubaiAed)) || 0,
+              });
+            }
+          }
+        } else {
+          // For create mode, create new countryDeliverables
+          if (row.hkUsd || row.hkHkd) {
+            countryDeliverables.push({
+              country: 'Hongkong',
+              price: parseFloat(String(row.hkUsd)) || 0,
+              usd: parseFloat(String(row.hkUsd)) || 0,
+              xe: parseFloat(String(row.hkXe)) || 0,
+              local: parseFloat(String(row.hkHkd)) || 0,
+              hkd: parseFloat(String(row.hkHkd)) || 0,
+            });
+          }
+          
+          if (row.dubaiUsd || row.dubaiAed) {
+            countryDeliverables.push({
+              country: 'Dubai',
+              price: parseFloat(String(row.dubaiUsd)) || 0,
+              usd: parseFloat(String(row.dubaiUsd)) || 0,
+              xe: parseFloat(String(row.dubaiXe)) || 0,
+              local: parseFloat(String(row.dubaiAed)) || 0,
+              aed: parseFloat(String(row.dubaiAed)) || 0,
+            });
+          }
         }
 
         return {
           skuFamilyId: row.skuFamilyId, // Already validated above - required field
           gradeId: (row.grade && isValidObjectId(row.grade)) ? row.grade : null,
           sellerId: (row.supplierId && isValidObjectId(row.supplierId)) ? row.supplierId : null,
-          specification: cleanString(row.version) || '',
+          specification: cleanString(row.subModelName) || cleanString(row.version) || cleanString((row as any).specification) || '',
           simType: row.sim || '',
           color: row.colour || '',
           ram: cleanString(row.ram) || '',
@@ -163,14 +335,16 @@ const ProductVariantForm: React.FC = () => {
           stock: parseFloat(String(row.totalQty)) || 0,
           country: (cleanString(row.country) || null) as string | null,
           moq: parseFloat(String(row.moqPerVariant)) || 1,
-          purchaseType: 'full',
+          purchaseType: (row.purchaseType === 'full' || row.purchaseType === 'partial') ? row.purchaseType : 'partial',
           isNegotiable: row.negotiableFixed === '1',
           // Use flashDeal field from form (code value from constants), convert to boolean string
           // Assuming code '1' or 'true' means flash deal enabled, empty or '0'/'false' means disabled
           isFlashDeal: row.flashDeal && (row.flashDeal === '1' || row.flashDeal === 'true' || row.flashDeal.toLowerCase() === 'yes') ? 'true' : 'false',
           startTime: cleanString(row.startTime) ? new Date(row.startTime).toISOString() : '',
           expiryTime: cleanString(row.endTime) ? new Date(row.endTime).toISOString() : '',
-          groupCode: variantType === 'multi' ? `GROUP-${Date.now()}` : undefined,
+          groupCode: variantType === 'multi' 
+            ? (editId && editProducts.length > 0 ? (editProducts[0] as any).groupCode : (row.groupCode || `GROUP-${Date.now()}`))
+            : undefined,
           sequence: row.sequence || null,
           countryDeliverables,
           // Additional fields that need to be stored - convert empty strings to null
@@ -226,12 +400,37 @@ const ProductVariantForm: React.FC = () => {
         };
       });
 
-      // Create all products
-      const createPromises = productsToCreate.map(product => 
-        ProductService.createProduct(product)
-      );
-
-      await Promise.all(createPromises);
+      // Update or create products
+      if (editId) {
+        // Update existing products
+        if (variantType === 'single' && editProduct?._id) {
+          // Single variant update
+          await ProductService.updateProduct(editProduct._id, productsToCreate[0]);
+          toastHelper.showTost('Product updated successfully!', 'success');
+        } else if (variantType === 'multi' && editProducts.length > 0) {
+          // Multi variant update - update all products in the group
+          const updatePromises = editProducts.map((editProd, index) => {
+            if (editProd._id && productsToCreate[index]) {
+              return ProductService.updateProduct(editProd._id, productsToCreate[index]);
+            }
+            return Promise.resolve();
+          });
+          await Promise.all(updatePromises);
+          toastHelper.showTost('Products updated successfully!', 'success');
+        }
+        
+        // Navigate back to products list after successful update
+        setTimeout(() => {
+          navigate('/products');
+        }, 1000);
+      } else {
+        // Create new products
+        const createPromises = productsToCreate.map(product => 
+          ProductService.createProduct(product)
+        );
+        await Promise.all(createPromises);
+        toastHelper.showTost('Products created successfully!', 'success');
+      }
       
       // Clear localStorage on successful save
       try {
@@ -240,7 +439,6 @@ const ProductVariantForm: React.FC = () => {
         console.error('Error clearing localStorage:', error);
       }
       
-      toastHelper.showTost('Products created successfully!', 'success');
       navigate('/products');
     } catch (error: any) {
       console.error('Error creating products:', error);
@@ -286,7 +484,7 @@ const ProductVariantForm: React.FC = () => {
                     </div>
                     <div>
                       <h2 className="text-3xl font-bold text-gray-800 dark:text-white">
-                        Create New Product
+                        {editId ? 'Edit Product' : 'Create New Product'}
                       </h2>
                       <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                         Choose your listing type to get started
@@ -467,21 +665,29 @@ const ProductVariantForm: React.FC = () => {
             </div>
           </div>
           <div className="flex-1 overflow-hidden">
-            {loading ? (
+            {loadingProduct ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                  <p className="text-gray-600 dark:text-gray-400">Creating products...</p>
+                  <p className="text-gray-600 dark:text-gray-400">Loading product data...</p>
                 </div>
               </div>
-            ) : (
+            ) : loading ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                  <p className="text-gray-600 dark:text-gray-400">{editId ? 'Updating products...' : 'Creating products...'}</p>
+                </div>
+              </div>
+            ) : variantType ? (
               <ExcelLikeProductForm
-                variantType={variantType!}
+                variantType={variantType}
                 variants={selectedVariants}
                 onSave={handleFormSave}
                 onCancel={handleCancel}
+                editProducts={editId ? (variantType === 'multi' ? editProducts : (editProduct ? [editProduct] : [])) : []}
               />
-            )}
+            ) : null}
           </div>
         </div>
       )}
