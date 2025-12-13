@@ -8,6 +8,8 @@ import ProductListingModal from "./ProductListingModal";
 import UploadExcelModal from "./UploadExcelModal";
 import ProductHistoryModal from "./ProductHistoryModal";
 import VariantSelectionModal from "./VariantSelectionModal";
+import SellerProductReviewModal from "./SellerProductReviewModal";
+import SellerProductPermissionModal from "./SellerProductPermissionModal";
 import {
   ProductService,
   Product,
@@ -53,6 +55,10 @@ const navigate = useNavigate();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
   const [bulkActionDropdownOpen, setBulkActionDropdownOpen] = useState<boolean>(false);
+  const [isSellerPermissionModalOpen, setIsSellerPermissionModalOpen] = useState<boolean>(false);
+  const [isSellerReviewModalOpen, setIsSellerReviewModalOpen] = useState<boolean>(false);
+  const [selectedSellerRequest, setSelectedSellerRequest] = useState<Product | null>(null);
+  const [isSellerRequestView, setIsSellerRequestView] = useState<boolean>(false);
 
   const handleExport = async () => {
     try {
@@ -109,6 +115,23 @@ const navigate = useNavigate();
     try {
       setLoading(true);
       console.log('fetchProducts - productFilter:', productFilter);
+      
+      // Check if we're viewing seller requests
+      if (productFilter === "sellerRequests") {
+        setIsSellerRequestView(true);
+        const response = await ProductService.getSellerProductRequests(
+          currentPage,
+          itemsPerPage,
+          debouncedSearchTerm
+        );
+        setProductsData(response.data.docs || []);
+        setTotalDocs(response.data.totalDocs || 0);
+        setTotalPages(response.data.totalPages || 1);
+        setLoading(false);
+        return;
+      }
+      
+      setIsSellerRequestView(false);
       const moveToTop = productFilter === "moveToTop";
       const expiredOnly = productFilter === "expiredOnly";
       const soldOut = productFilter === "soldOut";
@@ -797,6 +820,7 @@ const navigate = useNavigate();
                 className="pl-3 pr-8 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm appearance-none cursor-pointer min-w-[180px]"
               >
                 <option value="all">All Products</option>
+                <option value="sellerRequests">Seller Requests</option>
                 <option value="moveToTop">Moved to Top</option>
                 <option value="expiredOnly">Expired Only</option>
                 <option value="soldOut">Sold Out</option>
@@ -913,6 +937,14 @@ const navigate = useNavigate();
               )}
               {canWrite && (
                 <>
+                  <button
+                    className="inline-flex items-center gap-1 rounded-lg bg-purple-600 text-white px-4 py-2 text-sm font-medium hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600 transition-colors"
+                    onClick={() => setIsSellerPermissionModalOpen(true)}
+                    title="Manage Seller Product Permissions"
+                  >
+                    <i className="fas fa-user-shield text-xs"></i>
+                    Seller Permissions
+                  </button>
                   <button
                     className="inline-flex items-center gap-1 rounded-lg bg-[#0071E0] text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
                     onClick={() => setIsUploadModalOpen(true)}
@@ -1086,29 +1118,47 @@ const navigate = useNavigate();
                               zIndex: 9999,
                             }}
                           >
-                            {canVerifyApprove && item.canVerify &&
-                              item.verifiedBy !== loggedInAdminId && (
+                            {isSellerRequestView ? (
+                              <>
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleVerify(item);
+                                    setSelectedSellerRequest(item);
+                                    setIsSellerReviewModalOpen(true);
                                   }}
-                                  className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-green-600"
+                                  className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-blue-600"
                                 >
-                                  <i className="fas fa-check"></i>
-                                  Verify
+                                  <i className="fas fa-eye"></i>
+                                  Review
                                 </button>
-                              )}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleView(item);
-                              }}
-                              className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-blue-600"
-                            >
-                              <i className="fas fa-eye"></i>
-                              View
-                            </button>
+                              </>
+                            ) : (
+                              <>
+                                {canVerifyApprove && item.canVerify &&
+                                  item.verifiedBy !== loggedInAdminId && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleVerify(item);
+                                      }}
+                                      className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-green-600"
+                                    >
+                                      <i className="fas fa-check"></i>
+                                      Verify
+                                    </button>
+                                  )}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleView(item);
+                                  }}
+                                  className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-blue-600"
+                                >
+                                  <i className="fas fa-eye"></i>
+                                  View
+                                </button>
+                              </>
+                            )}
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -1279,6 +1329,24 @@ const navigate = useNavigate();
           }
         }}
       />
+
+      <SellerProductPermissionModal
+        isOpen={isSellerPermissionModalOpen}
+        onClose={() => setIsSellerPermissionModalOpen(false)}
+        onUpdate={fetchProducts}
+      />
+
+      {selectedSellerRequest && (
+        <SellerProductReviewModal
+          isOpen={isSellerReviewModalOpen}
+          onClose={() => {
+            setIsSellerReviewModalOpen(false);
+            setSelectedSellerRequest(null);
+          }}
+          product={selectedSellerRequest}
+          onUpdate={fetchProducts}
+        />
+      )}
 
       {selectedProduct && (
         <div

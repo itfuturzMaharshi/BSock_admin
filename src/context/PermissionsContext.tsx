@@ -203,7 +203,7 @@ export const PermissionsProvider: React.FC<PermissionsProviderProps> = ({ childr
     window.addEventListener('permissionsUpdated', handlePermissionsUpdate);
 
     // Listen for socket forceLogout event - refresh permissions before logout
-    const handleForceLogout = (payload: any) => {
+    const handleForceLogout = (_payload: any) => {
       console.log('🔄 Force logout received, refreshing permissions before logout...');
       // Refresh permissions one last time before logout
       refreshPermissions().then(() => {

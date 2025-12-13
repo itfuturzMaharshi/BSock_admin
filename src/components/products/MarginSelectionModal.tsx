@@ -6,6 +6,7 @@ export interface MarginSelection {
   productCategory: boolean;
   conditionCategory: boolean;
   sellerCategory: boolean;
+  customerCategory: boolean;
 }
 
 interface MarginSelectionModalProps {
@@ -26,6 +27,7 @@ const MarginSelectionModal: React.FC<MarginSelectionModalProps> = ({
     productCategory: false,
     conditionCategory: false,
     sellerCategory: false,
+    customerCategory: false,
   });
   const [hasSellerCode, setHasSellerCode] = useState(false);
 

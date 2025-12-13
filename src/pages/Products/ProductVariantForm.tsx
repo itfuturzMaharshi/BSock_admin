@@ -195,16 +195,18 @@ const ProductVariantForm: React.FC = () => {
           paymentTerm: (() => {
             if (!row.paymentTerm) return [];
             if (Array.isArray(row.paymentTerm)) return row.paymentTerm;
-            if (typeof row.paymentTerm === 'string') {
-              return row.paymentTerm.trim() ? [row.paymentTerm.trim()] : [];
+            const paymentTermValue = row.paymentTerm as unknown;
+            if (typeof paymentTermValue === 'string') {
+              return paymentTermValue.trim() ? [paymentTermValue.trim()] : [];
             }
             return [];
           })(),
           paymentMethod: (() => {
             if (!row.paymentMethod) return [];
             if (Array.isArray(row.paymentMethod)) return row.paymentMethod;
-            if (typeof row.paymentMethod === 'string') {
-              return row.paymentMethod.trim() ? [row.paymentMethod.trim()] : [];
+            const paymentMethodValue = row.paymentMethod as unknown;
+            if (typeof paymentMethodValue === 'string') {
+              return paymentMethodValue.trim() ? [paymentMethodValue.trim()] : [];
             }
             return [];
           })(),
