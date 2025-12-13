@@ -1844,14 +1844,18 @@ const ProductModal: React.FC<ProductModalProps> = ({
                               })
                               .filter(Boolean) as { value: string; label: string }[]
                           : formData.paymentTerm
-                          ? (typeof formData.paymentTerm === 'string' 
-                              ? formData.paymentTerm.split(',').map(t => t.trim()).filter(t => t)
-                                  .map(code => {
+                          ? (() => {
+                              const paymentTermValue = formData.paymentTerm as unknown;
+                              if (typeof paymentTermValue === 'string') {
+                                return paymentTermValue.split(',').map((t: string) => t.trim()).filter((t: string) => t)
+                                  .map((code: string) => {
                                     const opt = constants?.paymentTerm?.find(p => p.code === code);
                                     return opt ? { value: opt.code, label: opt.name } : null;
                                   })
-                                  .filter(Boolean) as { value: string; label: string }[]
-                              : [])
+                                  .filter(Boolean) as { value: string; label: string }[];
+                              }
+                              return [];
+                            })()
                           : []
                       }
                       onChange={(selected) => {
@@ -1909,14 +1913,18 @@ const ProductModal: React.FC<ProductModalProps> = ({
                               })
                               .filter(Boolean) as { value: string; label: string }[]
                           : formData.paymentMethod
-                          ? (typeof formData.paymentMethod === 'string' 
-                              ? formData.paymentMethod.split(',').map(m => m.trim()).filter(m => m)
-                                  .map(code => {
+                          ? (() => {
+                              const paymentMethodValue = formData.paymentMethod as unknown;
+                              if (typeof paymentMethodValue === 'string') {
+                                return paymentMethodValue.split(',').map((m: string) => m.trim()).filter((m: string) => m)
+                                  .map((code: string) => {
                                     const opt = constants?.paymentMethod?.find(p => p.code === code);
                                     return opt ? { value: opt.code, label: opt.name } : null;
                                   })
-                                  .filter(Boolean) as { value: string; label: string }[]
-                              : [])
+                                  .filter(Boolean) as { value: string; label: string }[];
+                              }
+                              return [];
+                            })()
                           : []
                       }
                       onChange={(selected) => {

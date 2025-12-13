@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ProductService, Product } from '../../services/product/product.services';
-import { CostModuleService } from '../../services/costModule/costModule.services';
 import MarginSelectionModal, { MarginSelection } from './MarginSelectionModal';
 import CostModuleSelectionModal, { SelectedCost } from './CostModuleSelectionModal';
 import toastHelper from '../../utils/toastHelper';
-import Select from 'react-select';
 
 interface SellerProductReviewModalProps {
   isOpen: boolean;
@@ -93,7 +91,7 @@ const SellerProductReviewModal: React.FC<SellerProductReviewModalProps> = ({
             country: 'Hongkong',
             currency: 'USD',
             basePrice: 0,
-            exchangeRate: null,
+            exchangeRate: undefined,
             paymentTerm: null,
             paymentMethod: null,
             margins: [],
@@ -104,7 +102,7 @@ const SellerProductReviewModal: React.FC<SellerProductReviewModalProps> = ({
             country: 'Dubai',
             currency: 'USD',
             basePrice: 0,
-            exchangeRate: null,
+            exchangeRate: undefined,
             paymentTerm: null,
             paymentMethod: null,
             margins: [],
@@ -508,7 +506,8 @@ const SellerProductReviewModal: React.FC<SellerProductReviewModalProps> = ({
             setShowMarginModal(false);
             setCurrentCostCountry(null);
           }}
-          onSelect={(marginSelection) => handleAddMargin(currentCostCountry, marginSelection)}
+          onNext={(marginSelection) => handleAddMargin(currentCostCountry, marginSelection)}
+          products={[]}
         />
       )}
 
@@ -520,7 +519,8 @@ const SellerProductReviewModal: React.FC<SellerProductReviewModalProps> = ({
             setShowCostModal(false);
             setCurrentCostCountry(null);
           }}
-          onSelect={(selectedCosts) => handleAddCost(currentCostCountry, selectedCosts)}
+          onNext={(selectedCosts) => handleAddCost(currentCostCountry, selectedCosts)}
+          products={[]}
           country={currentCostCountry}
         />
       )}

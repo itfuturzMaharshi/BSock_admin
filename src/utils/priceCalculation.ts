@@ -41,8 +41,8 @@ export interface ProductCalculationResult {
 export const calculateMargins = async (
   product: any,
   marginSelection: MarginSelection,
-  basePrice: number,
-  country: 'Hongkong' | 'Dubai'
+  _basePrice: number,
+  _country: 'Hongkong' | 'Dubai'
 ): Promise<CalculatedMargin[]> => {
   const margins: CalculatedMargin[] = [];
 

@@ -1,14 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import PageBreadcrumb from '../../components/common/PageBreadCrumb';
 import { ProductService, Product } from '../../services/product/product.services';
-import toastHelper from '../../utils/toastHelper';
 import SellerProductReviewModal from '../../components/products/SellerProductReviewModal';
 import placeholderImage from '../../../public/images/product/noimage.jpg';
 import { useDebounce } from '../../hooks/useDebounce';
 
 const SellerProductRequests: React.FC = () => {
-  const navigate = useNavigate();
   const [productsData, setProductsData] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const debouncedSearchTerm = useDebounce(searchTerm, 1000);
@@ -205,7 +202,7 @@ const SellerProductRequests: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
                         {product.countryDeliverables && product.countryDeliverables.length > 0
-                          ? `$${product.countryDeliverables[0].basePrice || product.countryDeliverables[0].usd || 0}`
+                          ? `$${product.countryDeliverables[0].usd || 0}`
                           : '$0'}
                       </td>
                       <td className="px-6 py-4">

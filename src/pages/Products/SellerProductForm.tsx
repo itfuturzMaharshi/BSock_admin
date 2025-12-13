@@ -5,9 +5,7 @@ import { SellerProductPermissionService, SellerProductFieldPermission } from '..
 import { ProductService } from '../../services/product/product.services';
 import { GradeService } from '../../services/grade/grade.services';
 import { ConstantsService, Constants } from '../../services/constants/constants.services';
-import { SkuFamilyService } from '../../services/skuFamily/skuFamily.services';
 import toastHelper from '../../utils/toastHelper';
-import Select from 'react-select';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 
@@ -68,12 +66,12 @@ const SellerProductForm: React.FC = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState<PageStep>('variant-selection');
   const [variantType, setVariantType] = useState<'single' | 'multi' | null>(null);
-  const [selectedVariants, setSelectedVariants] = useState<VariantOption[]>([]);
+  const [_selectedVariants, setSelectedVariants] = useState<VariantOption[]>([]);
   const [rows, setRows] = useState<ProductRowData[]>([]);
   const [permissions, setPermissions] = useState<SellerProductFieldPermission[]>([]);
   const [grades, setGrades] = useState<any[]>([]);
-  const [constants, setConstants] = useState<Constants | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [_constants, setConstants] = useState<Constants | null>(null);
+  const [loading, _setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // Load permissions on mount
@@ -515,7 +513,7 @@ const SellerProductForm: React.FC = () => {
                 </button>
               </div>
               <div className="p-6">
-                {rows.map((row, rowIndex) => (
+                {rows.map((_row, rowIndex) => (
                   <div key={rowIndex} className="mb-8 p-6 border border-gray-200 dark:border-gray-700 rounded-lg">
                     <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-200">
                       Product {rowIndex + 1}
